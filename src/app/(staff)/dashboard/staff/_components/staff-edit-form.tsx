@@ -35,6 +35,11 @@ type EditFormStaff = {
   can_be_assigned_cases: boolean;
   permission_overrides: Record<string, boolean>;
   deactivated: boolean;
+  is_rcic: boolean;
+  rcic_membership_number: string | null;
+  office_address: string | null;
+  office_phone: string | null;
+  cell_phone: string | null;
 };
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -80,6 +85,9 @@ const PERMISSION_LABEL: Record<Permission, string> = {
   change_system_settings: "Change system settings",
   manage_templates: "Manage templates",
   delete_checklists: "Delete checklists",
+  manage_retainers: "Manage retainers",
+  void_retainers: "Void retainers",
+  manage_own_signature: "Manage own signature",
 };
 
 type OverrideChoice = "default" | "allow" | "deny";
@@ -108,6 +116,15 @@ export function StaffEditForm({
   const [ciccLicense, setCiccLicense] = useState(staff.cicc_license_no ?? "");
   const [isActive, setIsActive] = useState(staff.is_active);
   const [canBeAssigned, setCanBeAssigned] = useState(staff.can_be_assigned_cases);
+  const [isRcic, setIsRcic] = useState(staff.is_rcic);
+  const [rcicMembership, setRcicMembership] = useState(
+    staff.rcic_membership_number ?? "",
+  );
+  const [officeAddress, setOfficeAddress] = useState(
+    staff.office_address ?? "",
+  );
+  const [officePhone, setOfficePhone] = useState(staff.office_phone ?? "");
+  const [cellPhone, setCellPhone] = useState(staff.cell_phone ?? "");
   const [overrideChoices, setOverrideChoices] = useState<
     Record<string, OverrideChoice>
   >(() => {
@@ -149,6 +166,11 @@ export function StaffEditForm({
       is_active: isActive,
       can_be_assigned_cases: canBeAssigned,
       permission_overrides: buildOverrides(),
+      is_rcic: isRcic,
+      rcic_membership_number: isRcic ? rcicMembership : "",
+      office_address: officeAddress,
+      office_phone: officePhone,
+      cell_phone: cellPhone,
     };
 
     startTransition(async () => {
@@ -293,6 +315,83 @@ export function StaffEditForm({
                 Un-checking &ldquo;Can be assigned&rdquo; hides this user from
                 case assignment dropdowns without removing them.
               </p>
+            </div>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-4 p-6">
+          <div>
+            <h2 className="text-base font-semibold">RCIC details</h2>
+            <p className="text-sm text-stone-500">
+              When this staff member is flagged as an RCIC, their membership
+              number and contact details flow onto the retainer agreement.
+              Leave blank for non-RCIC staff.
+            </p>
+          </div>
+
+          <FieldGroup>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={isRcic}
+                onChange={(e) => setIsRcic(e.target.checked)}
+              />
+              <span>This staff member is an RCIC</span>
+            </label>
+
+            {isRcic && (
+              <Field>
+                <FieldLabel htmlFor="rcic_membership_number">
+                  CICC membership number
+                </FieldLabel>
+                <Input
+                  id="rcic_membership_number"
+                  value={rcicMembership}
+                  onChange={(e) => setRcicMembership(e.target.value)}
+                  placeholder="e.g. R711181"
+                  aria-invalid={Boolean(fieldErrors.rcic_membership_number)}
+                />
+                {fieldErrors.rcic_membership_number && (
+                  <FieldError
+                    errors={fieldErrors.rcic_membership_number.map((m) => ({
+                      message: m,
+                    }))}
+                  />
+                )}
+              </Field>
+            )}
+
+            <Field>
+              <FieldLabel htmlFor="office_address">Office address</FieldLabel>
+              <Input
+                id="office_address"
+                value={officeAddress}
+                onChange={(e) => setOfficeAddress(e.target.value)}
+                placeholder="e.g. 211-2390 Eglinton Avenue East, Toronto, ON M1K 2P5"
+              />
+            </Field>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="office_phone">Office phone</FieldLabel>
+                <Input
+                  id="office_phone"
+                  value={officePhone}
+                  onChange={(e) => setOfficePhone(e.target.value)}
+                  placeholder="e.g. 416-386-5351"
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="cell_phone">Cell phone</FieldLabel>
+                <Input
+                  id="cell_phone"
+                  value={cellPhone}
+                  onChange={(e) => setCellPhone(e.target.value)}
+                  placeholder="e.g. (647) 687-9540"
+                />
+              </Field>
             </div>
           </FieldGroup>
         </CardContent>

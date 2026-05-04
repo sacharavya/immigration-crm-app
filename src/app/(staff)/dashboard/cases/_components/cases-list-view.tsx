@@ -30,8 +30,8 @@ export type CaseRow = {
 };
 
 const statusPill: Record<CaseStatus, { label: string; className: string }> = {
-  retainer_signed: {
-    label: "Retainer Signed",
+  retainer_pending: {
+    label: "Retainer Pending",
     className: "bg-gray-200 text-gray-700",
   },
   documentation_in_progress: {

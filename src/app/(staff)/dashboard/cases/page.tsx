@@ -33,7 +33,7 @@ type Props = {
 const VALID_VIEWS: ReadonlyArray<CasesView> = ["list", "board"];
 
 const PHASE_TO_STATUSES: Record<number, CaseStatus[]> = {
-  1: ["retainer_signed"],
+  1: ["retainer_pending"],
   2: ["documentation_in_progress"],
   3: ["documentation_review"],
   4: ["submitted_to_ircc"],

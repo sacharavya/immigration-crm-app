@@ -127,6 +127,10 @@ export async function createCaseFolderStructure(
     parent = await ensureFolder(driveId, parent.id, part);
   }
 
+  // RET-4: ensure the retainer subfolder sits ahead of the 01-07 group
+  // folders. Numeric prefix keeps it pinned at the top of the listing.
+  await ensureFolder(driveId, parent.id, "00 Retainer");
+
   for (const cat of categories ?? []) {
     await ensureFolder(driveId, parent.id, sanitize(cat.name));
   }
@@ -135,10 +139,55 @@ export async function createCaseFolderStructure(
 }
 
 /**
+ * Returns the case folder + the "00 Retainer" subfolder, creating the
+ * subfolder lazily if it doesn't exist yet (older cases provisioned
+ * before RET-4 won't have it). Used by the upload-signed-retainer
+ * action.
+ */
+export async function ensureCaseRetainerFolder(
+  caseFolderItemId: string,
+): Promise<{ driveId: string; folderItemId: string }> {
+  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
+  if (!driveId) {
+    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
+  }
+  const folder = await ensureFolder(driveId, caseFolderItemId, "00 Retainer");
+  return { driveId, folderItemId: folder.id };
+}
+
+/**
  * Returns the named child folder under `parentItemId`, creating it if it
  * doesn't exist. Idempotent under a single caller; concurrent callers
  * racing on the same name should get one survivor via the 409 fallback.
  */
+/**
+ * Returns the drive id + the parent item id of the "Staff Signatures"
+ * folder, creating the folder under the configured GRAPH_ROOT_FOLDER (if
+ * any) when missing. Used by the staff signature settings page.
+ */
+export async function ensureStaffSignaturesFolder(): Promise<{
+  driveId: string;
+  folderItemId: string;
+}> {
+  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
+  if (!driveId) {
+    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
+  }
+
+  const rootFolder = process.env.GRAPH_ROOT_FOLDER?.trim() ?? "";
+  const rootParts = rootFolder
+    ? rootFolder.split("/").map((p) => p.trim()).filter(Boolean).map(sanitize)
+    : [];
+
+  const root = await graphFetch<DriveItem>(`/drives/${driveId}/root`);
+  let parent: DriveItem = root;
+  for (const part of rootParts) {
+    parent = await ensureFolder(driveId, parent.id, part);
+  }
+  parent = await ensureFolder(driveId, parent.id, "Staff Signatures");
+  return { driveId, folderItemId: parent.id };
+}
+
 async function ensureFolder(
   driveId: string,
   parentItemId: string,

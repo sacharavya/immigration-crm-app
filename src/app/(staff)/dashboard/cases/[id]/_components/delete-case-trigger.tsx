@@ -52,10 +52,11 @@ export function DeleteCaseTrigger({
           setOpen(o);
         }}
         title="Delete this case?"
-        description="This permanently removes the case, its events, document metadata, and tasks. The OneDrive folder is not removed. Soft-deletion (archive) is preferred for compliance. Are you sure you want a hard delete?"
+        description="This permanently removes the case and all its case-scoped history. The OneDrive folder is not removed. Soft-deletion (archive) is preferred for compliance. Are you sure you want a hard delete?"
         warningLines={[
-          "case_events, case_participants, and tasks are removed.",
+          "Events, communications, participants, tasks, document metadata, and the retainer agreement are removed.",
           "OneDrive folder and uploaded files are NOT removed.",
+          "Invoices or payments on this case will block the delete — void or reassign them first.",
           "The audit log captures the deletion event.",
         ]}
         expectedToken={caseNumber}

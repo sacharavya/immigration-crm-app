@@ -54,7 +54,7 @@ export type BoardCase = {
 };
 
 const statusPill: Record<CaseStatus, { label: string; className: string }> = {
-  retainer_signed: { label: "Retainer", className: "bg-gray-200 text-gray-700" },
+  retainer_pending: { label: "Retainer Pending", className: "bg-gray-200 text-gray-700" },
   documentation_in_progress: {
     label: "Documentation",
     className: "bg-blue-100 text-blue-800",

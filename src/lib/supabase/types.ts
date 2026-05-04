@@ -1215,10 +1215,158 @@ export type Database = {
           },
         ]
       }
+      retainer_agreements: {
+        Row: {
+          case_id: string
+          client_signature_image_url: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          final_document_id: string | null
+          first_installment_cad: number | null
+          government_fee_cad: number | null
+          hst_cad: number | null
+          id: string
+          last_resent_at: string | null
+          method: Database["crm"]["Enums"]["retainer_method"] | null
+          notes: string | null
+          quoted_fee_cad_at_signing: number | null
+          rcic_id: string | null
+          resent_count: number
+          second_installment_cad: number | null
+          sent_at: string | null
+          sent_to_email: string | null
+          sent_to_phone: string | null
+          service_description: string | null
+          signed_at: string | null
+          signed_by_staff_id: string | null
+          signed_ip_address: unknown
+          signed_user_agent: string | null
+          signing_token: string | null
+          status: Database["crm"]["Enums"]["retainer_agreement_status"]
+          template_version: string
+          token_expires_at: string | null
+          updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          withdrawal_refund_floor_cad: number | null
+        }
+        Insert: {
+          case_id: string
+          client_signature_image_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          final_document_id?: string | null
+          first_installment_cad?: number | null
+          government_fee_cad?: number | null
+          hst_cad?: number | null
+          id?: string
+          last_resent_at?: string | null
+          method?: Database["crm"]["Enums"]["retainer_method"] | null
+          notes?: string | null
+          quoted_fee_cad_at_signing?: number | null
+          rcic_id?: string | null
+          resent_count?: number
+          second_installment_cad?: number | null
+          sent_at?: string | null
+          sent_to_email?: string | null
+          sent_to_phone?: string | null
+          service_description?: string | null
+          signed_at?: string | null
+          signed_by_staff_id?: string | null
+          signed_ip_address?: unknown
+          signed_user_agent?: string | null
+          signing_token?: string | null
+          status?: Database["crm"]["Enums"]["retainer_agreement_status"]
+          template_version?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          withdrawal_refund_floor_cad?: number | null
+        }
+        Update: {
+          case_id?: string
+          client_signature_image_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          final_document_id?: string | null
+          first_installment_cad?: number | null
+          government_fee_cad?: number | null
+          hst_cad?: number | null
+          id?: string
+          last_resent_at?: string | null
+          method?: Database["crm"]["Enums"]["retainer_method"] | null
+          notes?: string | null
+          quoted_fee_cad_at_signing?: number | null
+          rcic_id?: string | null
+          resent_count?: number
+          second_installment_cad?: number | null
+          sent_at?: string | null
+          sent_to_email?: string | null
+          sent_to_phone?: string | null
+          service_description?: string | null
+          signed_at?: string | null
+          signed_by_staff_id?: string | null
+          signed_ip_address?: unknown
+          signed_user_agent?: string | null
+          signing_token?: string | null
+          status?: Database["crm"]["Enums"]["retainer_agreement_status"]
+          template_version?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          withdrawal_refund_floor_cad?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retainer_agreements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: true
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retainer_agreements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retainer_agreements_rcic_id_fkey"
+            columns: ["rcic_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retainer_agreements_signed_by_staff_id_fkey"
+            columns: ["signed_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retainer_agreements_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff: {
         Row: {
           auth_user_id: string
           can_be_assigned_cases: boolean
+          cell_phone: string | null
           cicc_license_no: string | null
           created_at: string
           created_by_staff: string | null
@@ -1229,17 +1377,26 @@ export type Database = {
           first_name: string
           id: string
           is_active: boolean
+          is_rcic: boolean
           last_login_at: string | null
           last_name: string
+          office_address: string | null
+          office_phone: string | null
           password_reset_required_at: string | null
           permission_overrides: Json
           phone: string | null
+          printed_name_for_signature: string | null
+          rcic_membership_number: string | null
           role: Database["crm"]["Enums"]["staff_role"]
+          signature_capture_method: string | null
+          signature_image_set_at: string | null
+          signature_image_url: string | null
           updated_at: string
         }
         Insert: {
           auth_user_id: string
           can_be_assigned_cases?: boolean
+          cell_phone?: string | null
           cicc_license_no?: string | null
           created_at?: string
           created_by_staff?: string | null
@@ -1250,17 +1407,26 @@ export type Database = {
           first_name: string
           id?: string
           is_active?: boolean
+          is_rcic?: boolean
           last_login_at?: string | null
           last_name: string
+          office_address?: string | null
+          office_phone?: string | null
           password_reset_required_at?: string | null
           permission_overrides?: Json
           phone?: string | null
+          printed_name_for_signature?: string | null
+          rcic_membership_number?: string | null
           role: Database["crm"]["Enums"]["staff_role"]
+          signature_capture_method?: string | null
+          signature_image_set_at?: string | null
+          signature_image_url?: string | null
           updated_at?: string
         }
         Update: {
           auth_user_id?: string
           can_be_assigned_cases?: boolean
+          cell_phone?: string | null
           cicc_license_no?: string | null
           created_at?: string
           created_by_staff?: string | null
@@ -1271,12 +1437,20 @@ export type Database = {
           first_name?: string
           id?: string
           is_active?: boolean
+          is_rcic?: boolean
           last_login_at?: string | null
           last_name?: string
+          office_address?: string | null
+          office_phone?: string | null
           password_reset_required_at?: string | null
           permission_overrides?: Json
           phone?: string | null
+          printed_name_for_signature?: string | null
+          rcic_membership_number?: string | null
           role?: Database["crm"]["Enums"]["staff_role"]
+          signature_capture_method?: string | null
+          signature_image_set_at?: string | null
+          signature_image_url?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1433,7 +1607,7 @@ export type Database = {
     }
     Enums: {
       case_status:
-        | "retainer_signed"
+        | "retainer_pending"
         | "documentation_in_progress"
         | "documentation_review"
         | "submitted_to_ircc"
@@ -1477,6 +1651,12 @@ export type Database = {
         | "ircc_update"
         | "correction"
         | "other"
+        | "retainer_prepared"
+        | "retainer_sent"
+        | "retainer_signed"
+        | "retainer_voided"
+        | "retainer_uploaded"
+        | "retainer_resent"
       gender: "male" | "female" | "other" | "prefer_not_to_say"
       invoice_status: "draft" | "sent" | "partial" | "paid" | "void" | "overdue"
       marital_status:
@@ -1520,6 +1700,17 @@ export type Database = {
         | "step_sister"
         | "guardian"
         | "other"
+      retainer_agreement_status:
+        | "draft"
+        | "pending_signature"
+        | "signed"
+        | "uploaded"
+        | "void"
+        | "expired"
+      retainer_method:
+        | "online_signature"
+        | "signature_image_overlay"
+        | "scanned_upload"
       staff_role:
         | "admin"
         | "rcic"
@@ -2090,7 +2281,7 @@ export const Constants = {
   crm: {
     Enums: {
       case_status: [
-        "retainer_signed",
+        "retainer_pending",
         "documentation_in_progress",
         "documentation_review",
         "submitted_to_ircc",
@@ -2136,6 +2327,12 @@ export const Constants = {
         "ircc_update",
         "correction",
         "other",
+        "retainer_prepared",
+        "retainer_sent",
+        "retainer_signed",
+        "retainer_voided",
+        "retainer_uploaded",
+        "retainer_resent",
       ],
       gender: ["male", "female", "other", "prefer_not_to_say"],
       invoice_status: ["draft", "sent", "partial", "paid", "void", "overdue"],
@@ -2183,6 +2380,19 @@ export const Constants = {
         "step_sister",
         "guardian",
         "other",
+      ],
+      retainer_agreement_status: [
+        "draft",
+        "pending_signature",
+        "signed",
+        "uploaded",
+        "void",
+        "expired",
+      ],
+      retainer_method: [
+        "online_signature",
+        "signature_image_overlay",
+        "scanned_upload",
       ],
       staff_role: [
         "admin",

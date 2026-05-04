@@ -50,7 +50,11 @@ export type Permission =
   | "export_data"
   | "change_system_settings"
   | "manage_templates"
-  | "delete_checklists";
+  | "delete_checklists"
+  // RET-1: retainer agreement + signature management.
+  | "manage_retainers"
+  | "void_retainers"
+  | "manage_own_signature";
 
 export type StaffWithOverrides = {
   id: string;
@@ -93,6 +97,9 @@ const ALL_PERMISSIONS: ReadonlyArray<Permission> = [
   "change_system_settings",
   "manage_templates",
   "delete_checklists",
+  "manage_retainers",
+  "void_retainers",
+  "manage_own_signature",
 ];
 
 const ADMIN_DENIED: ReadonlySet<Permission> = new Set([
@@ -127,6 +134,9 @@ const RCIC_PERMS: ReadonlyArray<Permission> = [
   "view_intake_form",
   "edit_intake_form",
   "manage_templates",
+  "manage_retainers",
+  "void_retainers",
+  "manage_own_signature",
 ];
 
 const DOCUMENT_OFFICER_PERMS: ReadonlyArray<Permission> = [

@@ -6,6 +6,7 @@ import {
   CheckSquare,
   ListChecks,
   LogOut,
+  PenTool,
   Shield,
   Users,
 } from "lucide-react";
@@ -88,6 +89,16 @@ export function StaffSidebar() {
             Icon={Shield}
             active={isActive("/dashboard/staff")}
           />
+        </Can>
+        <Can permission="manage_own_signature">
+          <div className="mt-3 border-t border-stone-200 pt-3">
+            <NavItem
+              href="/dashboard/settings/my-signature"
+              label="My signature"
+              Icon={PenTool}
+              active={isActive("/dashboard/settings/my-signature")}
+            />
+          </div>
         </Can>
       </nav>
 

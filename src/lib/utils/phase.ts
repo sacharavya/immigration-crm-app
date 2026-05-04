@@ -10,7 +10,7 @@ export type CaseStatus = Database["crm"]["Enums"]["case_status"];
  */
 export function phaseIndex(status: CaseStatus): number {
   switch (status) {
-    case "retainer_signed":
+    case "retainer_pending":
       return 1;
     case "documentation_in_progress":
       return 2;
@@ -41,7 +41,7 @@ export const PHASE_LABELS: Record<number, string> = {
 };
 
 export const STATUS_LABEL: Record<CaseStatus, string> = {
-  retainer_signed: "Retainer Signed",
+  retainer_pending: "Retainer Pending",
   documentation_in_progress: "Documentation in Progress",
   documentation_review: "Documentation Review",
   submitted_to_ircc: "Submitted to IRCC",
@@ -114,7 +114,7 @@ export const MILESTONE_NEEDS_CONFIRM: ReadonlySet<Milestone> = new Set<Milestone
  */
 export function nextMilestones(status: CaseStatus): Milestone[] {
   switch (status) {
-    case "retainer_signed":
+    case "retainer_pending":
       return ["documents_in_progress"];
     case "documentation_in_progress":
       return ["review_started"];
@@ -154,7 +154,7 @@ export const WAITING_LABEL: Record<WaitingParty, string> = {
 };
 
 export const WAITING_ON: Record<CaseStatus, WaitingParty> = {
-  retainer_signed: "us",
+  retainer_pending: "us",
   documentation_in_progress: "client",
   documentation_review: "us",
   submitted_to_ircc: "ircc",

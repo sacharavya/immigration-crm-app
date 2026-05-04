@@ -288,6 +288,13 @@ export async function updateStaff(
       is_active: parsed.data.is_active,
       can_be_assigned_cases: parsed.data.can_be_assigned_cases,
       permission_overrides: parsed.data.permission_overrides,
+      is_rcic: parsed.data.is_rcic,
+      rcic_membership_number: parsed.data.is_rcic
+        ? parsed.data.rcic_membership_number || null
+        : null,
+      office_address: parsed.data.office_address ?? null,
+      office_phone: parsed.data.office_phone ?? null,
+      cell_phone: parsed.data.cell_phone ?? null,
     })
     .eq("id", staffId);
 

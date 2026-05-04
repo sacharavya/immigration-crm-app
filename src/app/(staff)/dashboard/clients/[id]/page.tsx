@@ -30,7 +30,7 @@ const clientStatusPill: Record<
 };
 
 const caseStatusLabel: Record<CaseStatus, string> = {
-  retainer_signed: "Retainer Signed",
+  retainer_pending: "Retainer Pending",
   documentation_in_progress: "Documentation",
   documentation_review: "In Review",
   submitted_to_ircc: "Submitted",

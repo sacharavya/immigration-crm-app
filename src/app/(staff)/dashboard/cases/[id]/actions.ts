@@ -606,13 +606,15 @@ export async function recordEvent(
 // deleteCase (PERM-1)
 //
 // Hard delete a case. super_user only — gated here and by the
-// crm.cases delete RLS policy from migration 20260501000005, now tightened
-// by the rewritten staff_can() in 20260502000007.
+// crm.cases delete RLS policy from migration 20260501000005, tightened
+// by 20260502000007 and given proper cascades by 20260503000005.
 //
-// FK cascades clean up case_events, case_participants, and case-scoped
-// rows that have ON DELETE CASCADE. files.documents has its own deletion
-// rules and is not touched here. The audit trigger captures the row state
-// on delete for compliance.
+// On delete, the following children cascade with the case automatically:
+//   case_events, communications, case_participants, tasks,
+//   files.documents, retainer_agreements
+//
+// Invoices and payments do NOT cascade — they're financial records.
+// Staff must void or reassign those before deleting the case.
 // ---------------------------------------------------------------------------
 
 export async function deleteCase(
@@ -629,6 +631,33 @@ export async function deleteCase(
   }
 
   const supabase = await createClient();
+
+  // Refuse if any financial record references this case. Better to
+  // surface a clear message than let Postgres throw a raw FK violation.
+  const [invoiceCount, paymentCount] = await Promise.all([
+    supabase
+      .schema("crm")
+      .from("invoices")
+      .select("id", { count: "exact", head: true })
+      .eq("case_id", caseId)
+      .is("deleted_at", null),
+    supabase
+      .schema("crm")
+      .from("payments")
+      .select("id", { count: "exact", head: true })
+      .eq("case_id", caseId)
+      .is("deleted_at", null),
+  ]);
+  const invoices = invoiceCount.count ?? 0;
+  const payments = paymentCount.count ?? 0;
+  if (invoices > 0 || payments > 0) {
+    const parts: string[] = [];
+    if (invoices > 0) parts.push(`${invoices} invoice${invoices === 1 ? "" : "s"}`);
+    if (payments > 0) parts.push(`${payments} payment${payments === 1 ? "" : "s"}`);
+    return {
+      error: `Cannot delete: this case has ${parts.join(" and ")} on file. Void or reassign those first.`,
+    };
+  }
 
   const { error } = await supabase
     .schema("crm")

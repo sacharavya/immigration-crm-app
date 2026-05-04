@@ -25,7 +25,7 @@ import {
 const PHASES = [1, 2, 3, 4, 5, 6] as const;
 
 const statusPill: Record<CaseStatus, string> = {
-  retainer_signed: "bg-gray-200 text-gray-700",
+  retainer_pending: "bg-gray-200 text-gray-700",
   documentation_in_progress: "bg-blue-100 text-blue-800",
   documentation_review: "bg-blue-100 text-blue-800",
   submitted_to_ircc: "bg-amber-100 text-amber-800",

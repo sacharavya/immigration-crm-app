@@ -133,7 +133,7 @@ export async function createCase(
       service_type_id: parsed.data.service_type_id,
       service_template_id: template.id,
       assigned_rcic: staff.id,
-      status: "retainer_signed",
+      status: "retainer_pending",
       quoted_fee_cad: parsed.data.quoted_fee_cad,
       retainer_minimum_cad: parsed.data.retainer_minimum_cad ?? null,
       retained_at: parsed.data.retained_at
@@ -157,10 +157,33 @@ export async function createCase(
     .insert({
       case_id: newCase.id,
       event_type: "status_changed",
-      event_data: { from: null, to: "retainer_signed" },
+      event_data: { from: null, to: "retainer_pending" },
       description: "Case opened",
       created_by: staff.id,
     });
+
+  // The retainer_agreements row is created automatically by the
+  // trg_ensure_retainer_for_new_case trigger (migration 20260503000006).
+  // No app-side INSERT needed — the trigger is the single source of
+  // truth and bypasses RLS, so it works regardless of caller role.
+
+  // Once a client has a real case, they're no longer a lead. Flip the
+  // status if it's still 'lead' (created via the standalone new-client
+  // form). Existing 'active' / 'dormant' / 'closed' clients are left
+  // alone — staff can change those by other means.
+  const { data: existingClient } = await supabase
+    .schema("crm")
+    .from("clients")
+    .select("status")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (existingClient?.status === "lead") {
+    await supabase
+      .schema("crm")
+      .from("clients")
+      .update({ status: "active" })
+      .eq("id", clientId);
+  }
 
   // Provision the OneDrive folder. Failures are recoverable — the row is
   // already committed, the user can retry from the case detail page, and

@@ -38,16 +38,33 @@ export const addStaffSchema = z.object({
 
 export type AddStaffInput = z.infer<typeof addStaffSchema>;
 
-export const updateStaffSchema = z.object({
-  first_name: z.string().trim().min(1, "First name is required").max(100),
-  last_name: z.string().trim().min(1, "Last name is required").max(100),
-  role: z.enum(ROLES, { message: "Pick a role" }),
-  phone: optionalText(50, "Phone"),
-  cicc_license_no: optionalText(50, "CICC license"),
-  is_active: z.boolean(),
-  can_be_assigned_cases: z.boolean(),
-  permission_overrides: z.record(z.string(), z.boolean()).default({}),
-});
+export const updateStaffSchema = z
+  .object({
+    first_name: z.string().trim().min(1, "First name is required").max(100),
+    last_name: z.string().trim().min(1, "Last name is required").max(100),
+    role: z.enum(ROLES, { message: "Pick a role" }),
+    phone: optionalText(50, "Phone"),
+    cicc_license_no: optionalText(50, "CICC license"),
+    is_active: z.boolean(),
+    can_be_assigned_cases: z.boolean(),
+    permission_overrides: z.record(z.string(), z.boolean()).default({}),
+    // RCIC fields — only meaningful when is_rcic=true. The DB also
+    // enforces "rcic_membership_number requires is_rcic" via CHECK
+    // constraint; we pre-empt that here with a refinement so the UI
+    // returns a helpful Zod error instead of a raw Postgres message.
+    is_rcic: z.boolean().default(false),
+    rcic_membership_number: optionalText(50, "Membership number"),
+    office_address: optionalText(300, "Office address"),
+    office_phone: optionalText(50, "Office phone"),
+    cell_phone: optionalText(50, "Cell phone"),
+  })
+  .refine(
+    (v) => v.is_rcic || !v.rcic_membership_number,
+    {
+      path: ["rcic_membership_number"],
+      message: "Only RCICs may have a membership number.",
+    },
+  );
 
 export type UpdateStaffInput = z.infer<typeof updateStaffSchema>;
 
