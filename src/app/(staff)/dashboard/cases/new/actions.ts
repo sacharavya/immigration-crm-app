@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
@@ -78,11 +79,19 @@ export async function createCase(
       .insert({
         client_number: clientNumber as unknown as string,
         legal_name_full: nc.legal_name_full,
+        given_names: nc.given_names,
+        family_name: nc.family_name,
         email: nc.email ?? null,
         phone_primary: nc.phone_primary ?? null,
         phone_whatsapp: nc.phone_whatsapp ?? null,
         country_of_citizenship: nc.country_of_citizenship ?? null,
         date_of_birth: nc.date_of_birth ?? null,
+        address_line1: nc.address_line1,
+        address_line2: nc.address_line2 ?? null,
+        city: nc.city,
+        province_state: nc.province_state,
+        postal_code: nc.postal_code,
+        country_code: nc.country_code,
         status: "active",
         created_by: staff.id,
       })
@@ -123,6 +132,22 @@ export async function createCase(
     return { error: `Could not generate case number: ${caseNumErr?.message ?? "unknown"}` };
   }
 
+  // Validate the chosen RCIC is still active + flagged. Defense in depth
+  // beyond the wizard's dropdown — guards against stale tabs.
+  const { data: chosenRcic } = await supabase
+    .schema("crm")
+    .from("staff")
+    .select("id, is_rcic, is_active")
+    .eq("id", parsed.data.rcic_id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!chosenRcic || !chosenRcic.is_rcic || !chosenRcic.is_active) {
+    return {
+      error:
+        "The selected RCIC is no longer active or no longer flagged as an RCIC. Pick another.",
+    };
+  }
+
   // Insert case
   const { data: newCase, error: caseErr } = await supabase
     .schema("crm")
@@ -132,10 +157,11 @@ export async function createCase(
       client_id: clientId,
       service_type_id: parsed.data.service_type_id,
       service_template_id: template.id,
-      assigned_rcic: staff.id,
+      assigned_rcic: parsed.data.rcic_id,
       status: "retainer_pending",
       quoted_fee_cad: parsed.data.quoted_fee_cad,
       retainer_minimum_cad: parsed.data.retainer_minimum_cad ?? null,
+      government_fee_cad: parsed.data.government_fee_cad ?? null,
       retained_at: parsed.data.retained_at
         ? new Date(parsed.data.retained_at).toISOString()
         : new Date().toISOString(),
@@ -149,6 +175,18 @@ export async function createCase(
   if (caseErr || !newCase) {
     return { error: `Could not create case: ${caseErr?.message ?? "unknown"}` };
   }
+
+  // The trg_ensure_retainer_for_new_case trigger has now created the
+  // retainer row. Stamp rcic_id on it so loadRetainerData renders the
+  // chosen RCIC even before the agreement is sent — without this it
+  // would have to fall through to assigned_rcic, which works, but
+  // setting both is cheap defense in depth and keeps intent explicit.
+  await supabase
+    .schema("crm")
+    .from("retainer_agreements")
+    .update({ rcic_id: parsed.data.rcic_id })
+    .eq("case_id", newCase.id)
+    .is("deleted_at", null);
 
   // Record the opening event
   await supabase
@@ -185,41 +223,67 @@ export async function createCase(
       .eq("id", clientId);
   }
 
-  // Provision the OneDrive folder. Failures are recoverable — the row is
-  // already committed, the user can retry from the case detail page, and
-  // we leave a breadcrumb in case_events.
-  let folderPending = false;
-  try {
-    const { driveItemId, webUrl } = await createCaseFolderStructure(newCase.id);
-    await supabase
-      .schema("crm")
-      .from("cases")
-      .update({
-        sharepoint_folder_id: driveItemId,
-        sharepoint_folder_url: webUrl,
-      })
-      .eq("id", newCase.id);
-  } catch (err) {
-    folderPending = true;
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(
-      `[createCase] OneDrive folder provisioning failed for case ${newCase.id}:`,
-      err,
-    );
-    await supabase
-      .schema("crm")
-      .from("case_events")
-      .insert({
-        case_id: newCase.id,
-        event_type: "other",
-        event_data: { kind: "onedrive_folder_pending", error: message },
-        description: "OneDrive folder creation failed; awaiting retry",
-        created_by: staff.id,
-      });
-  }
+  // Mark the case as having a folder-provisioning job in flight. Inline so
+  // the case page sees it on first render and shows the spinner state.
+  // The actual Graph work happens in after() below — out of the response
+  // path so the user redirect is fast.
+  await supabase
+    .schema("crm")
+    .from("case_events")
+    .insert({
+      case_id: newCase.id,
+      event_type: "other",
+      event_data: { kind: "onedrive_folder_provisioning" },
+      description: "OneDrive folder provisioning started",
+      created_by: staff.id,
+    });
 
-  const path = `/dashboard/cases/${newCase.id}${folderPending ? "?folderPending=1" : ""}`;
-  redirect(path);
+  const newCaseId = newCase.id;
+  const staffId = staff.id;
+  after(async () => {
+    // Re-resolve the supabase client inside after() — request-scoped
+    // cookies/auth survive in Next.js 15+ specifically for this case.
+    const sb = await createClient();
+    try {
+      const { driveItemId, webUrl } = await createCaseFolderStructure(newCaseId);
+      await sb
+        .schema("crm")
+        .from("cases")
+        .update({
+          sharepoint_folder_id: driveItemId,
+          sharepoint_folder_url: webUrl,
+        })
+        .eq("id", newCaseId);
+      await sb
+        .schema("crm")
+        .from("case_events")
+        .insert({
+          case_id: newCaseId,
+          event_type: "other",
+          event_data: { kind: "onedrive_folder_ready", driveItemId, webUrl },
+          description: "OneDrive folder ready",
+          created_by: staffId,
+        });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(
+        `[createCase] OneDrive folder provisioning failed for case ${newCaseId}:`,
+        err,
+      );
+      await sb
+        .schema("crm")
+        .from("case_events")
+        .insert({
+          case_id: newCaseId,
+          event_type: "other",
+          event_data: { kind: "onedrive_folder_pending", error: message },
+          description: "OneDrive folder creation failed; awaiting retry",
+          created_by: staffId,
+        });
+    }
+  });
+
+  redirect(`/dashboard/cases/${newCaseId}`);
 }
 
 /**

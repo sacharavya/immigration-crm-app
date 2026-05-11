@@ -1,8 +1,10 @@
 "use server";
 
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/types";
 import { resetPasswordSchema } from "@/lib/validators/auth";
 
 export type ResetPasswordState = {
@@ -12,6 +14,23 @@ export type ResetPasswordState = {
     confirmPassword?: string[];
   };
 };
+
+// Service-role client used only to clear password_reset_required_at on
+// the user's own staff row. RLS on crm.staff restricts UPDATE to
+// super_user/admin roles, so non-admin staff would otherwise be unable
+// to clear the flag themselves and end up looping back into this page.
+function adminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error(
+      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
+    );
+  }
+  return createServiceClient<Database>(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
 
 export async function resetPassword(
   _prev: ResetPasswordState,
@@ -44,11 +63,13 @@ export async function resetPassword(
     return { formError: updateErr.message };
   }
 
-  // Clear the forced-reset flag so the (staff) layout stops redirecting
-  // here. Best-effort: if this update fails the user is still left in
-  // a redirect loop, so log loudly. RLS allows the user to update their
-  // own staff row.
-  const { error: clearErr } = await supabase
+  // Clear the forced-reset flag via service role. The cookie-based
+  // client is gated by RLS (super_user/admin only), so a regular staff
+  // member's UPDATE silently affects zero rows and they end up looping
+  // back here. Service role bypasses RLS — safe because we scope the
+  // UPDATE to this auth user's own staff row.
+  const admin = adminClient();
+  const { error: clearErr } = await admin
     .schema("crm")
     .from("staff")
     .update({ password_reset_required_at: null })
@@ -64,5 +85,9 @@ export async function resetPassword(
     };
   }
 
-  redirect("/dashboard");
+  // Sign the user out so they re-authenticate with their new password.
+  // Otherwise the existing session remains valid and the user lands on
+  // /dashboard without ever proving they remember what they just set.
+  await supabase.auth.signOut();
+  redirect("/login?reset=1");
 }

@@ -78,34 +78,33 @@ export function CategoryCard({
     <>
       <Card>
         <CardContent className="p-0">
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-            className="flex w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-stone-50"
-          >
-            <span aria-hidden className="text-stone-400">
-              {open ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </span>
-
-            <div className="flex-1">
-              <h2 className="text-sm font-medium text-[var(--navy)]">
-                {category.name}{" "}
-                <span className="text-stone-500">({checklistCount})</span>
-              </h2>
-              {category.description && (
-                <p className="text-xs text-stone-500">{category.description}</p>
-              )}
-            </div>
-
-            <div
-              className="flex items-center gap-1"
-              onClick={(e) => e.stopPropagation()}
+          <div className="flex items-center gap-3 px-5 py-3">
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              className="-mx-5 -my-3 flex flex-1 items-center gap-3 rounded-md px-5 py-3 text-left transition-colors hover:bg-stone-50"
             >
+              <span aria-hidden className="text-stone-400">
+                {open ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </span>
+
+              <div className="flex-1">
+                <h2 className="text-sm font-medium text-[var(--navy)]">
+                  {category.name}{" "}
+                  <span className="text-stone-500">({checklistCount})</span>
+                </h2>
+                {category.description && (
+                  <p className="text-xs text-stone-500">{category.description}</p>
+                )}
+              </div>
+            </button>
+
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
@@ -128,7 +127,7 @@ export function CategoryCard({
                 Delete
               </Button>
             </div>
-          </button>
+          </div>
 
           {open && (
             <div className="border-t border-stone-100 bg-stone-50/30 px-5 py-4">

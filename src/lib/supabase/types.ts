@@ -172,12 +172,50 @@ export type Database = {
           },
         ]
       }
+      case_required_documents: {
+        Row: {
+          case_id: string
+          document_code: string
+          set_at: string
+          set_by: string | null
+        }
+        Insert: {
+          case_id: string
+          document_code: string
+          set_at?: string
+          set_by?: string | null
+        }
+        Update: {
+          case_id?: string
+          document_code?: string
+          set_at?: string
+          set_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_required_documents_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_required_documents_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cases: {
         Row: {
           assigned_paralegal: string | null
           assigned_rcic: string
           case_number: string
           client_id: string
+          client_portal_token: string | null
+          client_portal_token_created_at: string | null
           closed_at: string | null
           conditional_flags: Json
           created_at: string
@@ -209,6 +247,8 @@ export type Database = {
           assigned_rcic: string
           case_number: string
           client_id: string
+          client_portal_token?: string | null
+          client_portal_token_created_at?: string | null
           closed_at?: string | null
           conditional_flags?: Json
           created_at?: string
@@ -240,6 +280,8 @@ export type Database = {
           assigned_rcic?: string
           case_number?: string
           client_id?: string
+          client_portal_token?: string | null
+          client_portal_token_created_at?: string | null
           closed_at?: string | null
           conditional_flags?: Json
           created_at?: string
@@ -1150,6 +1192,7 @@ export type Database = {
           is_refund: boolean
           method: Database["crm"]["Enums"]["payment_method"]
           notes: string | null
+          proof_document_id: string | null
           received_date: string
           recorded_by: string | null
           reference: string | null
@@ -1165,6 +1208,7 @@ export type Database = {
           is_refund?: boolean
           method: Database["crm"]["Enums"]["payment_method"]
           notes?: string | null
+          proof_document_id?: string | null
           received_date?: string
           recorded_by?: string | null
           reference?: string | null
@@ -1180,6 +1224,7 @@ export type Database = {
           is_refund?: boolean
           method?: Database["crm"]["Enums"]["payment_method"]
           notes?: string | null
+          proof_document_id?: string | null
           received_date?: string
           recorded_by?: string | null
           reference?: string | null
@@ -1218,6 +1263,12 @@ export type Database = {
       retainer_agreements: {
         Row: {
           case_id: string
+          client_address_at_signing: string | null
+          client_email_at_signing: string | null
+          client_family_name_at_signing: string | null
+          client_given_names_at_signing: string | null
+          client_legal_name_full_at_signing: string | null
+          client_phone_at_signing: string | null
           client_signature_image_url: string | null
           created_at: string
           created_by: string | null
@@ -1231,7 +1282,18 @@ export type Database = {
           method: Database["crm"]["Enums"]["retainer_method"] | null
           notes: string | null
           quoted_fee_cad_at_signing: number | null
+          rcic_address_at_signing: string | null
+          rcic_cell_phone_at_signing: string | null
+          rcic_email_at_signing: string | null
+          rcic_family_name_at_signing: string | null
+          rcic_given_name_at_signing: string | null
           rcic_id: string | null
+          rcic_membership_number_at_signing: string | null
+          rcic_name_at_signing: string | null
+          rcic_office_phone_at_signing: string | null
+          rcic_phone_at_signing: string | null
+          rcic_printed_name_at_signing: string | null
+          rcic_signature_image_url_at_signing: string | null
           resent_count: number
           second_installment_cad: number | null
           sent_at: string | null
@@ -1254,6 +1316,12 @@ export type Database = {
         }
         Insert: {
           case_id: string
+          client_address_at_signing?: string | null
+          client_email_at_signing?: string | null
+          client_family_name_at_signing?: string | null
+          client_given_names_at_signing?: string | null
+          client_legal_name_full_at_signing?: string | null
+          client_phone_at_signing?: string | null
           client_signature_image_url?: string | null
           created_at?: string
           created_by?: string | null
@@ -1267,7 +1335,18 @@ export type Database = {
           method?: Database["crm"]["Enums"]["retainer_method"] | null
           notes?: string | null
           quoted_fee_cad_at_signing?: number | null
+          rcic_address_at_signing?: string | null
+          rcic_cell_phone_at_signing?: string | null
+          rcic_email_at_signing?: string | null
+          rcic_family_name_at_signing?: string | null
+          rcic_given_name_at_signing?: string | null
           rcic_id?: string | null
+          rcic_membership_number_at_signing?: string | null
+          rcic_name_at_signing?: string | null
+          rcic_office_phone_at_signing?: string | null
+          rcic_phone_at_signing?: string | null
+          rcic_printed_name_at_signing?: string | null
+          rcic_signature_image_url_at_signing?: string | null
           resent_count?: number
           second_installment_cad?: number | null
           sent_at?: string | null
@@ -1290,6 +1369,12 @@ export type Database = {
         }
         Update: {
           case_id?: string
+          client_address_at_signing?: string | null
+          client_email_at_signing?: string | null
+          client_family_name_at_signing?: string | null
+          client_given_names_at_signing?: string | null
+          client_legal_name_full_at_signing?: string | null
+          client_phone_at_signing?: string | null
           client_signature_image_url?: string | null
           created_at?: string
           created_by?: string | null
@@ -1303,7 +1388,18 @@ export type Database = {
           method?: Database["crm"]["Enums"]["retainer_method"] | null
           notes?: string | null
           quoted_fee_cad_at_signing?: number | null
+          rcic_address_at_signing?: string | null
+          rcic_cell_phone_at_signing?: string | null
+          rcic_email_at_signing?: string | null
+          rcic_family_name_at_signing?: string | null
+          rcic_given_name_at_signing?: string | null
           rcic_id?: string | null
+          rcic_membership_number_at_signing?: string | null
+          rcic_name_at_signing?: string | null
+          rcic_office_phone_at_signing?: string | null
+          rcic_phone_at_signing?: string | null
+          rcic_printed_name_at_signing?: string | null
+          rcic_signature_image_url_at_signing?: string | null
           resent_count?: number
           second_installment_cad?: number | null
           sent_at?: string | null
@@ -2085,7 +2181,6 @@ export type Database = {
           group_code: string
           id: string
           instructions: string | null
-          is_required: boolean
           max_file_size_mb: number | null
           notes: string | null
           service_template_id: string
@@ -2100,7 +2195,6 @@ export type Database = {
           group_code: string
           id?: string
           instructions?: string | null
-          is_required?: boolean
           max_file_size_mb?: number | null
           notes?: string | null
           service_template_id: string
@@ -2115,7 +2209,6 @@ export type Database = {
           group_code?: string
           id?: string
           instructions?: string | null
-          is_required?: boolean
           max_file_size_mb?: number | null
           notes?: string | null
           service_template_id?: string

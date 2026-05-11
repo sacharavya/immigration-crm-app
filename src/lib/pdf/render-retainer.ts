@@ -23,6 +23,7 @@ import {
   renderRetainerHtml,
   type RetainerData,
 } from "@/components/retainer/retainer-document";
+import { getLetterheadLogoDataUrl } from "@/lib/retainer/logo";
 import type { Database } from "@/lib/supabase/types";
 
 export class RetainerRenderError extends Error {
@@ -88,7 +89,24 @@ export async function loadRetainerData(
         hst_cad,
         withdrawal_refund_floor_cad,
         service_description,
-        rcic_id
+        rcic_id,
+        client_legal_name_full_at_signing,
+        client_given_names_at_signing,
+        client_family_name_at_signing,
+        client_address_at_signing,
+        client_email_at_signing,
+        client_phone_at_signing,
+        rcic_name_at_signing,
+        rcic_given_name_at_signing,
+        rcic_family_name_at_signing,
+        rcic_membership_number_at_signing,
+        rcic_address_at_signing,
+        rcic_phone_at_signing,
+        rcic_office_phone_at_signing,
+        rcic_cell_phone_at_signing,
+        rcic_email_at_signing,
+        rcic_signature_image_url_at_signing,
+        rcic_printed_name_at_signing
       `,
     )
     .eq("id", retainerId)
@@ -109,7 +127,8 @@ export async function loadRetainerData(
         client_id,
         service_type_id,
         quoted_fee_cad,
-        retainer_minimum_cad
+        retainer_minimum_cad,
+        government_fee_cad
       `,
     )
     .eq("id", retainer.case_id)
@@ -209,7 +228,9 @@ export async function loadRetainerData(
   const govFee =
     retainer.government_fee_cad !== null
       ? Number(retainer.government_fee_cad)
-      : 0;
+      : caseRow.government_fee_cad !== null
+        ? Number(caseRow.government_fee_cad)
+        : 0;
   // First installment defaults to the case's retainer_minimum_cad
   // (the upfront amount staff entered in the new-case wizard); falls
   // back to 50% of the quoted fee when the case didn't set one.
@@ -239,27 +260,58 @@ export async function loadRetainerData(
       ? Number(retainer.withdrawal_refund_floor_cad)
       : firstInst;
 
+  // Snapshot columns are populated at sendRetainerForSignature time and
+  // never re-read after. For draft / expired retainers, snapshots may
+  // be null — fall through to live data. For anything past 'sent',
+  // prefer snapshot so post-sign edits to clients/staff don't
+  // retroactively rewrite the agreement.
+  const liveRcicName = rcic
+    ? `${rcic.first_name} ${rcic.last_name}`.trim()
+    : "[RCIC not selected]";
+  const liveRcicPhone = rcic?.cell_phone ?? rcic?.office_phone ?? "";
+
   const data: RetainerData = {
     case_number: caseRow.case_number,
     service_description:
       retainer.service_description ?? serviceType?.name ?? "the application",
 
-    client_legal_name_full: client.legal_name_full,
-    client_given_name: client.given_names ?? "",
-    client_family_name: client.family_name ?? "",
-    client_address: clientAddress || "—",
-    client_email: client.email ?? "",
-    client_phone: client.phone_primary ?? "",
+    client_legal_name_full:
+      retainer.client_legal_name_full_at_signing ?? client.legal_name_full,
+    client_given_name:
+      retainer.client_given_names_at_signing ?? client.given_names ?? "",
+    client_family_name:
+      retainer.client_family_name_at_signing ?? client.family_name ?? "",
+    client_address:
+      retainer.client_address_at_signing ?? (clientAddress || "—"),
+    client_email: retainer.client_email_at_signing ?? client.email ?? "",
+    client_phone:
+      retainer.client_phone_at_signing ?? client.phone_primary ?? "",
 
-    rcic_name: rcic
-      ? `${rcic.first_name} ${rcic.last_name}`.trim()
-      : "[RCIC not selected]",
-    rcic_membership_number: rcic?.rcic_membership_number ?? "",
-    rcic_address: rcic?.office_address ?? "",
-    rcic_phone: rcic?.cell_phone ?? rcic?.office_phone ?? "",
-    rcic_email: rcic?.email ?? "",
-    rcic_signature_image_url: rcic?.signature_image_url ?? "",
-    rcic_printed_name: rcic?.printed_name_for_signature ?? null,
+    rcic_name: retainer.rcic_name_at_signing ?? liveRcicName,
+    rcic_given_name:
+      retainer.rcic_given_name_at_signing ?? rcic?.first_name ?? "",
+    rcic_family_name:
+      retainer.rcic_family_name_at_signing ?? rcic?.last_name ?? "",
+    rcic_membership_number:
+      retainer.rcic_membership_number_at_signing ??
+      rcic?.rcic_membership_number ??
+      "",
+    rcic_address:
+      retainer.rcic_address_at_signing ?? rcic?.office_address ?? "",
+    rcic_phone: retainer.rcic_phone_at_signing ?? liveRcicPhone,
+    rcic_office_phone:
+      retainer.rcic_office_phone_at_signing ?? rcic?.office_phone ?? "",
+    rcic_cell_phone:
+      retainer.rcic_cell_phone_at_signing ?? rcic?.cell_phone ?? "",
+    rcic_email: retainer.rcic_email_at_signing ?? rcic?.email ?? "",
+    rcic_signature_image_url:
+      retainer.rcic_signature_image_url_at_signing ??
+      rcic?.signature_image_url ??
+      "",
+    rcic_printed_name:
+      retainer.rcic_printed_name_at_signing ??
+      rcic?.printed_name_for_signature ??
+      null,
 
     quoted_fee_cad: quoted,
     government_fee_cad: govFee,
@@ -270,6 +322,8 @@ export async function loadRetainerData(
 
     date_of_signing: retainer.signed_at,
     client_signature_image_url: retainer.client_signature_image_url,
+
+    letterhead_logo_url: getLetterheadLogoDataUrl(),
   };
 
   return data;
@@ -354,14 +408,28 @@ async function launchBrowser() {
 
 /**
  * Loads the retainer, renders the HTML, and produces a PDF Buffer.
- * Always renders in mode='final' — the signing page uses a different
- * flow that overlays a pad on the screen view.
+ * Defaults to mode='final' — the signing page uses a different
+ * flow that overlays a pad on the screen view. Pass mode='void' to
+ * generate the voided-copy PDF (VOID watermark + voided-on banner).
  */
 export async function renderRetainerPdf(
   retainerId: string,
+  options?: {
+    mode?: "final" | "void";
+    voidedAt?: string | null;
+  },
 ): Promise<Buffer> {
-  const data = await loadRetainerData(retainerId);
-  const html = await renderRetainerHtml(data, "final");
+  const mode = options?.mode ?? "final";
+  // Void mode renders signatures-as-captured, but the "data complete"
+  // gates inside loadRetainerData (RCIC + signature requirements) only
+  // make sense for the final/signed path. Pass requireSignature=false
+  // so a retainer voided from draft state can still produce a PDF.
+  const data = await loadRetainerData(retainerId, {
+    requireSignature: mode === "final",
+  });
+  const html = await renderRetainerHtml(data, mode, {
+    voidedAt: options?.voidedAt,
+  });
 
   let browser: Awaited<ReturnType<typeof launchBrowser>> | null = null;
   try {

@@ -18,6 +18,24 @@ const formatCad = (n: number) =>
     maximumFractionDigits: 2,
   });
 
+// Classify the gate reason so the dialog renders the right call-to-
+// action. The reason strings are returned verbatim from
+// crm.can_advance_phase — keep these substring matches in sync with
+// that function's RAISE messages.
+function classifyReason(reason: string): "payment" | "documents" | "other" {
+  const lower = reason.toLowerCase();
+  if (
+    lower.includes("payment required") ||
+    lower.includes("outstanding")
+  ) {
+    return "payment";
+  }
+  if (lower.includes("required document") || lower.includes("not yet accepted")) {
+    return "documents";
+  }
+  return "other";
+}
+
 export function GateBlockedView({
   caseId,
   reason,
@@ -33,6 +51,7 @@ export function GateBlockedView({
   collectedCad: number;
   onCancel: () => void;
 }) {
+  const kind = classifyReason(reason);
   const shortfall = Math.max(
     0,
     (retainerMinimumCad ?? quotedFeeCad) - collectedCad,
@@ -52,35 +71,46 @@ export function GateBlockedView({
         </div>
       </DialogHeader>
 
-      <dl className="rounded-lg border border-stone-200 bg-stone-50 p-4">
-        <Row label="Quoted fee" value={`$${formatCad(quotedFeeCad)} CAD`} />
-        {retainerMinimumCad !== null && (
+      {kind === "payment" && (
+        <dl className="rounded-lg border border-stone-200 bg-stone-50 p-4">
+          <Row label="Quoted fee" value={`$${formatCad(quotedFeeCad)} CAD`} />
+          {retainerMinimumCad !== null && (
+            <Row
+              label="Retainer minimum"
+              value={`$${formatCad(retainerMinimumCad)} CAD`}
+            />
+          )}
           <Row
-            label="Retainer minimum"
-            value={`$${formatCad(retainerMinimumCad)} CAD`}
+            label="Received so far"
+            value={`$${formatCad(collectedCad)} CAD`}
+            emphasised={shortfall > 0}
           />
-        )}
-        <Row
-          label="Received so far"
-          value={`$${formatCad(collectedCad)} CAD`}
-          emphasised={shortfall > 0}
-        />
-      </dl>
+        </dl>
+      )}
+
+      {kind === "documents" && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Open the <strong>Documents</strong> tab to see which items are
+          still missing. Required docs are marked with a red asterisk.
+        </p>
+      )}
 
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>
-          Cancel
+          Close
         </Button>
-        <RecordPaymentTrigger
-          caseId={caseId}
-          defaultAmount={shortfall > 0 ? shortfall : undefined}
-          onSuccess={onCancel}
-          triggerVariant="default"
-          triggerSize="default"
-          triggerClassName=""
-        >
-          Record payment →
-        </RecordPaymentTrigger>
+        {kind === "payment" && (
+          <RecordPaymentTrigger
+            caseId={caseId}
+            defaultAmount={shortfall > 0 ? shortfall : undefined}
+            onSuccess={onCancel}
+            triggerVariant="default"
+            triggerSize="default"
+            triggerClassName=""
+          >
+            Record payment →
+          </RecordPaymentTrigger>
+        )}
       </DialogFooter>
     </>
   );

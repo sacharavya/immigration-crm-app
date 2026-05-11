@@ -43,6 +43,7 @@ export type Permission =
   | "view_intake_form"
   | "edit_intake_form"
   | "view_audit_log"
+  | "view_reports"
   | "manage_staff"
   | "manage_super_users"
   | "manage_admins"
@@ -63,6 +64,9 @@ export type StaffWithOverrides = {
   last_name: string;
   email: string;
   permission_overrides: Record<string, boolean>;
+  // Optional because most call sites only need identity + permissions for
+  // staffCan(); the layout is the one consumer that actually reads this.
+  password_reset_required_at?: string | null;
 };
 
 const ALL_PERMISSIONS: ReadonlyArray<Permission> = [
@@ -89,6 +93,7 @@ const ALL_PERMISSIONS: ReadonlyArray<Permission> = [
   "view_intake_form",
   "edit_intake_form",
   "view_audit_log",
+  "view_reports",
   "manage_staff",
   "manage_super_users",
   "manage_admins",
@@ -148,7 +153,9 @@ const DOCUMENT_OFFICER_PERMS: ReadonlyArray<Permission> = [
   "edit_clients",
   "view_documents",
   "upload_documents",
-  "review_documents",
+  // No review_documents — approval is reserved for admin + RCIC so the
+  // officer can't sign off on their own uploads. Mirrors the SQL
+  // staff_can() update in 20260509000002_restrict_doc_review_to_admin_rcic.sql.
   "view_communications",
   "create_communications",
   "view_tasks",

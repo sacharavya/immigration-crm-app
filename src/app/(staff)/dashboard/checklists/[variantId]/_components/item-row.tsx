@@ -15,7 +15,6 @@ import {
 export type ItemDraft = {
   id: string;
   documentLabel: string;
-  isRequired: boolean;
   conditionLabel: string | null;
   allowedFileTypes: string[] | null;
   maxFileSizeMb: number | null;
@@ -68,7 +67,6 @@ export function ItemRow({
     if (readonly) return;
     if (
       draft.documentLabel === item.documentLabel &&
-      draft.isRequired === item.isRequired &&
       draft.conditionLabel === item.conditionLabel &&
       arraysEqual(draft.allowedFileTypes, item.allowedFileTypes) &&
       draft.maxFileSizeMb === item.maxFileSizeMb &&
@@ -83,7 +81,6 @@ export function ItemRow({
         const result = await updateTemplateDocument({
           templateDocumentId: draft.id,
           label: draft.documentLabel,
-          isRequired: draft.isRequired,
           conditionLabel: draft.conditionLabel,
           allowedFileTypes:
             (draft.allowedFileTypes as
@@ -165,16 +162,6 @@ export function ItemRow({
             <ChevronDown className="h-3.5 w-3.5" />
           </button>
         </div>
-
-        <label className="flex items-center gap-1.5 pt-1.5 text-xs font-medium text-stone-600">
-          <input
-            type="checkbox"
-            checked={draft.isRequired}
-            onChange={(e) => setField("isRequired", e.target.checked)}
-            disabled={readonly}
-          />
-          Required
-        </label>
 
         <Input
           value={draft.documentLabel}

@@ -8,7 +8,6 @@ export type ChecklistPreviewItem = {
   documentLabel: string;
   conditionLabel: string | null;
   instructions: string | null;
-  isRequired: boolean;
 };
 
 export type ChecklistPreviewGroup = {
@@ -48,13 +47,8 @@ export function ChecklistPreview({
                   className="mt-1.5 h-2 w-2 shrink-0 rounded-full border-2 border-dashed border-stone-300"
                 />
                 <div className="min-w-0 flex-1">
-                  <div className={item.isRequired ? "font-medium text-stone-900" : "text-stone-700"}>
+                  <div className="font-medium text-stone-900">
                     {item.documentLabel}
-                    {!item.isRequired && (
-                      <span className="ml-2 text-[11px] font-normal text-stone-400">
-                        (optional)
-                      </span>
-                    )}
                   </div>
                   {item.conditionLabel && (
                     <div className="mt-0.5 text-xs text-stone-500">

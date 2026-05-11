@@ -27,6 +27,7 @@ type Props = {
     view?: string;
     phase?: string;
     assignee?: string;
+    service_type?: string;
   }>;
 };
 
@@ -56,6 +57,7 @@ export default async function CasesPage({ searchParams }: Props) {
   const phaseFilter =
     phaseParam >= 1 && phaseParam <= 6 ? phaseParam : null;
   const assigneeFilter = sp.assignee?.trim() || null;
+  const serviceTypeFilter = sp.service_type?.trim() || null;
 
   const canViewCases = staffCan(me, "view_cases");
   const supabase = await createClient();
@@ -70,6 +72,7 @@ export default async function CasesPage({ searchParams }: Props) {
         status,
         updated_at,
         quoted_fee_cad,
+        retainer_minimum_cad,
         service_type_id,
         assigned_rcic,
         client:clients(legal_name_full)
@@ -80,11 +83,20 @@ export default async function CasesPage({ searchParams }: Props) {
     .limit(50);
 
   let query = baseQuery;
-  if (phaseFilter !== null) {
+  // Hide closed cases from the default list (archive semantic). Phase
+  // filter for phase 6 still surfaces them via the `.in("status", ...)`
+  // override below since 'closed' is in PHASE_TO_STATUSES[6] if the user
+  // has explicitly chosen to view that phase.
+  if (phaseFilter === null) {
+    query = query.neq("status", "closed");
+  } else {
     query = query.in("status", PHASE_TO_STATUSES[phaseFilter]);
   }
   if (assigneeFilter) {
     query = query.eq("assigned_rcic", assigneeFilter);
+  }
+  if (serviceTypeFilter) {
+    query = query.eq("service_type_id", serviceTypeFilter);
   }
 
   const { data: cases } = canViewCases
@@ -96,8 +108,13 @@ export default async function CasesPage({ searchParams }: Props) {
     ...new Set((cases ?? []).map((c) => c.service_type_id)),
   ];
 
-  const [{ data: payments }, { data: serviceTypes }, { data: allStaff }] =
-    await Promise.all([
+  const [
+    { data: payments },
+    { data: retainersForCases },
+    { data: serviceTypes },
+    { data: allStaff },
+    { data: allServiceTypes },
+  ] = await Promise.all([
       caseIds.length
         ? supabase
             .schema("crm")
@@ -111,6 +128,16 @@ export default async function CasesPage({ searchParams }: Props) {
               amount_cad: number;
               is_refund: boolean;
             }>,
+          }),
+      caseIds.length
+        ? supabase
+            .schema("crm")
+            .from("retainer_agreements")
+            .select("case_id, status")
+            .in("case_id", caseIds)
+            .is("deleted_at", null)
+        : Promise.resolve({
+            data: [] as Array<{ case_id: string; status: string }>,
           }),
       serviceTypeIds.length
         ? supabase
@@ -131,6 +158,14 @@ export default async function CasesPage({ searchParams }: Props) {
         .is("deleted_at", null)
         .eq("is_active", true)
         .order("last_name", { ascending: true }),
+      // All currently usable service types — drives the service-type
+      // filter options. Active only (no deactivation date in the past).
+      supabase
+        .schema("ref")
+        .from("service_types")
+        .select("id, name")
+        .is("deactivated_at", null)
+        .order("name", { ascending: true }),
     ]);
 
   const serviceNameById = new Map(
@@ -157,6 +192,10 @@ export default async function CasesPage({ searchParams }: Props) {
     );
   }
 
+  const retainerStatusByCase = new Map(
+    (retainersForCases ?? []).map((r) => [r.case_id, r.status]),
+  );
+
   // Project the same dataset into both view shapes. List needs payment
   // progress; board doesn't. Build both unconditionally — cheap on 50 rows
   // and means the toggle doesn't trigger another server roundtrip.
@@ -165,6 +204,15 @@ export default async function CasesPage({ searchParams }: Props) {
     const collected = collectedByCase.get(c.id) ?? 0;
     const progress =
       quoted > 0 ? Math.min(100, Math.round((collected / quoted) * 100)) : 0;
+    const retainerStatus = retainerStatusByCase.get(c.id) ?? null;
+    const retainerSigned =
+      retainerStatus === "signed" || retainerStatus === "uploaded";
+    const retainerMin =
+      c.retainer_minimum_cad === null
+        ? null
+        : Number(c.retainer_minimum_cad);
+    const retainerSatisfied =
+      retainerMin === null ? collected > 0 : collected >= retainerMin;
     return {
       id: c.id,
       caseNumber: c.case_number,
@@ -174,21 +222,45 @@ export default async function CasesPage({ searchParams }: Props) {
       assigneeId: c.assigned_rcic ?? null,
       assigneeName: assigneeById.get(c.assigned_rcic) ?? null,
       paymentProgress: progress,
+      retainerSigned,
+      retainerSatisfied,
     };
   });
 
-  const boardCases: BoardCase[] = (cases ?? []).map((c) => ({
-    id: c.id,
-    caseNumber: c.case_number,
-    status: c.status as CaseStatus,
-    clientName: c.client?.legal_name_full ?? "—",
-    serviceName: serviceNameById.get(c.service_type_id) ?? "—",
-    assigneeId: c.assigned_rcic ?? null,
-    assigneeName: assigneeById.get(c.assigned_rcic) ?? null,
-  }));
+  const boardCases: BoardCase[] = (cases ?? []).map((c) => {
+    const collected = collectedByCase.get(c.id) ?? 0;
+    const retainerStatus = retainerStatusByCase.get(c.id) ?? null;
+    const retainerSigned =
+      retainerStatus === "signed" || retainerStatus === "uploaded";
+    const retainerMin =
+      c.retainer_minimum_cad === null
+        ? null
+        : Number(c.retainer_minimum_cad);
+    const retainerSatisfied =
+      retainerMin === null ? collected > 0 : collected >= retainerMin;
+    return {
+      id: c.id,
+      caseNumber: c.case_number,
+      status: c.status as CaseStatus,
+      clientName: c.client?.legal_name_full ?? "—",
+      serviceName: serviceNameById.get(c.service_type_id) ?? "—",
+      assigneeId: c.assigned_rcic ?? null,
+      assigneeName: assigneeById.get(c.assigned_rcic) ?? null,
+      retainerSigned,
+      retainerSatisfied,
+    };
+  });
 
   const totalCases = listRows.length;
-  const isFiltered = phaseFilter !== null || assigneeFilter !== null;
+  const isFiltered =
+    phaseFilter !== null ||
+    assigneeFilter !== null ||
+    serviceTypeFilter !== null;
+
+  const serviceTypeOptions = (allServiceTypes ?? []).map((s) => ({
+    id: s.id,
+    name: s.name,
+  }));
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
@@ -223,6 +295,8 @@ export default async function CasesPage({ searchParams }: Props) {
         phase={phaseFilter}
         assignee={assigneeFilter}
         assigneeOptions={assigneeOptions}
+        serviceType={serviceTypeFilter}
+        serviceTypeOptions={serviceTypeOptions}
       />
 
       {view === "list" ? (

@@ -24,7 +24,7 @@ export default async function StaffDetailPage({ params }: Props) {
     .schema("crm")
     .from("staff")
     .select(
-      "id, auth_user_id, first_name, last_name, email, role, phone, cicc_license_no, is_active, can_be_assigned_cases, permission_overrides, last_login_at, created_at, created_by_staff, deactivated_at, deactivated_by, deleted_at, is_rcic, rcic_membership_number, office_address, office_phone, cell_phone",
+      "id, auth_user_id, first_name, last_name, email, role, phone, cicc_license_no, is_active, can_be_assigned_cases, permission_overrides, last_login_at, created_at, created_by_staff, deactivated_at, deactivated_by, deleted_at, is_rcic, rcic_membership_number, office_address, office_phone, cell_phone, signature_image_url, signature_image_set_at, printed_name_for_signature",
     )
     .eq("id", id)
     .maybeSingle();
@@ -94,6 +94,9 @@ export default async function StaffDetailPage({ params }: Props) {
             office_address: row.office_address,
             office_phone: row.office_phone,
             cell_phone: row.cell_phone,
+            signature_image_url: row.signature_image_url,
+            signature_image_set_at: row.signature_image_set_at,
+            printed_name_for_signature: row.printed_name_for_signature,
           }}
         />
 

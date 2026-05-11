@@ -29,7 +29,7 @@ export const getStaff = cache(async (): Promise<StaffWithOverrides | null> => {
     .schema("crm")
     .from("staff")
     .select(
-      "id, role, first_name, last_name, email, permission_overrides, is_active",
+      "id, role, first_name, last_name, email, permission_overrides, is_active, password_reset_required_at",
     )
     .eq("auth_user_id", user.id)
     .is("deleted_at", null)
@@ -45,5 +45,6 @@ export const getStaff = cache(async (): Promise<StaffWithOverrides | null> => {
     email: row.email,
     permission_overrides:
       (row.permission_overrides as Record<string, boolean> | null) ?? {},
+    password_reset_required_at: row.password_reset_required_at,
   };
 });

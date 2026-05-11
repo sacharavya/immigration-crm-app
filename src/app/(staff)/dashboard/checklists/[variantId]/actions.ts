@@ -206,7 +206,6 @@ export async function createNewVersion(
           document_code,
           document_label,
           group_code,
-          is_required,
           condition_label,
           notes,
           display_order,
@@ -228,7 +227,6 @@ export async function createNewVersion(
             document_code: d.document_code,
             document_label: d.document_label,
             group_code: d.group_code,
-            is_required: d.is_required,
             condition_label: d.condition_label,
             notes: d.notes,
             display_order: d.display_order,
@@ -252,7 +250,6 @@ export async function createNewVersion(
 const updateDocSchema = z.object({
   templateDocumentId: z.string().uuid(),
   label: z.string().trim().min(1).max(300).optional(),
-  isRequired: z.boolean().optional(),
   conditionLabel: z
     .string()
     .trim()
@@ -315,7 +312,6 @@ export async function updateTemplateDocument(
 
   const updates: TemplateDocUpdate = {};
   if (v.label !== undefined) updates.document_label = v.label;
-  if (v.isRequired !== undefined) updates.is_required = v.isRequired;
   if (v.conditionLabel !== undefined) updates.condition_label = v.conditionLabel;
   if (v.allowedFileTypes !== undefined) updates.allowed_file_types = v.allowedFileTypes;
   if (v.maxFileSizeMb !== undefined) updates.max_file_size_mb = v.maxFileSizeMb;
@@ -344,7 +340,6 @@ const addDocSchema = z.object({
     .regex(/^[A-Za-z0-9_]+$/)
     .min(1)
     .max(50),
-  isRequired: z.boolean().default(false),
 });
 
 export async function addTemplateDocument(
@@ -357,7 +352,7 @@ export async function addTemplateDocument(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
-  const { templateId, groupCode, label, documentCode, isRequired } = parsed.data;
+  const { templateId, groupCode, label, documentCode } = parsed.data;
 
   const supabase = await createClient();
   const tpl = await templateIsPast(supabase, templateId);
@@ -385,7 +380,6 @@ export async function addTemplateDocument(
       group_code: groupCode,
       document_code: documentCode,
       document_label: label,
-      is_required: isRequired,
       display_order: displayOrder,
       expected_quantity: 1,
     })

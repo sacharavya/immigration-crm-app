@@ -66,6 +66,7 @@ export const STATUS_LABEL: Record<CaseStatus, string> = {
 export type Milestone =
   | "documents_in_progress"
   | "review_started"
+  | "revision_requested"
   | "submitted_to_ircc"
   | "biometrics_pending"
   | "biometrics_done"
@@ -79,6 +80,13 @@ export type Milestone =
 export const MILESTONE_STATUS: Record<Milestone, CaseStatus> = {
   documents_in_progress: "documentation_in_progress",
   review_started: "documentation_review",
+  // Reviewer found something missing or off — kick the case back to
+  // Documentation so the client / document officer can re-upload.
+  // Same target status as documents_in_progress; distinct milestone
+  // slug so the activity log distinguishes "we started" from "we
+  // restarted". The forward gate (Gate 3) doesn't apply going
+  // backwards.
+  revision_requested: "documentation_in_progress",
   submitted_to_ircc: "submitted_to_ircc",
   biometrics_pending: "biometrics_pending",
   biometrics_done: "biometrics_completed",
@@ -93,6 +101,7 @@ export const MILESTONE_STATUS: Record<Milestone, CaseStatus> = {
 export const MILESTONE_LABEL: Record<Milestone, string> = {
   documents_in_progress: "Start collecting documents",
   review_started: "Begin review",
+  revision_requested: "Send back to Documents (request revisions)",
   submitted_to_ircc: "Submitted to IRCC",
   biometrics_pending: "Biometrics requested",
   biometrics_done: "Biometrics completed",
@@ -119,7 +128,7 @@ export function nextMilestones(status: CaseStatus): Milestone[] {
     case "documentation_in_progress":
       return ["review_started"];
     case "documentation_review":
-      return ["submitted_to_ircc"];
+      return ["submitted_to_ircc", "revision_requested"];
     case "submitted_to_ircc":
       return ["biometrics_pending", "awaiting_decision"];
     case "biometrics_pending":

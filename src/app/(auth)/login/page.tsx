@@ -24,7 +24,7 @@ import { login, type LoginState } from "./actions";
 const initialState: LoginState = {};
 
 type Props = {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; reset?: string }>;
 };
 
 export default function LoginPage({ searchParams }: Props) {
@@ -35,6 +35,10 @@ export default function LoginPage({ searchParams }: Props) {
     params.error === "unauthorized"
       ? "Your account does not have access. Sign in with an authorised staff account."
       : state.formError;
+  const success =
+    params.reset === "1"
+      ? "Password updated. Sign in with your new password."
+      : null;
 
   return (
     <main className="flex min-h-dvh items-center justify-center px-6 py-12">
@@ -48,6 +52,14 @@ export default function LoginPage({ searchParams }: Props) {
         <CardContent>
           <form action={formAction} noValidate>
             <FieldGroup>
+              {success && !banner ? (
+                <p
+                  role="status"
+                  className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+                >
+                  {success}
+                </p>
+              ) : null}
               {banner ? (
                 <p
                   role="alert"

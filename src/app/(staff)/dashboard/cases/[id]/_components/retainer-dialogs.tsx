@@ -44,7 +44,10 @@ export function SendForSignatureDialog({
   onOpenChange: (o: boolean) => void;
   retainerId: string;
   defaultEmail: string;
-  onSent: (signingPath: string) => void;
+  onSent: (
+    signingPath: string,
+    email: { sent: boolean; error?: string },
+  ) => void;
 }) {
   const [email, setEmail] = useState(defaultEmail);
   const [error, setError] = useState<string | null>(null);
@@ -56,13 +59,16 @@ export function SendForSignatureDialog({
       const result = await sendRetainerForSignature({
         retainerId,
         recipient_email: email.trim(),
-        send_email: false, // RET-6 will flip this on
+        send_email: true,
       });
       if ("error" in result) {
         setError(result.error);
         return;
       }
-      onSent(result.signing_path);
+      onSent(result.signing_path, {
+        sent: result.emailSent,
+        error: result.emailError,
+      });
       onOpenChange(false);
     });
   }
@@ -91,9 +97,10 @@ export function SendForSignatureDialog({
           />
         </label>
 
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          Email delivery is not wired yet (RET-6). For now, copy the signing
-          link from the next screen and send it via your usual channel.
+        <p className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-700">
+          Sends an email to the recipient with the signing link. The link
+          also appears in the next screen so you can copy it manually if
+          delivery fails.
         </p>
 
         {error && (

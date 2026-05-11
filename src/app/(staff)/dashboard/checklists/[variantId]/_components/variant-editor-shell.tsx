@@ -61,7 +61,6 @@ export type TemplateDocument = {
   documentCode: string;
   documentLabel: string;
   groupCode: string;
-  isRequired: boolean;
   conditionLabel: string | null;
   allowedFileTypes: string[] | null;
   maxFileSizeMb: number | null;
@@ -237,7 +236,6 @@ export function VariantEditorShell({
         documentLabel: d.documentLabel,
         conditionLabel: d.conditionLabel,
         instructions: d.instructions,
-        isRequired: d.isRequired,
       }));
     }
     return Array.from(byCode.values()).sort(
@@ -255,7 +253,6 @@ export function VariantEditorShell({
     items: g.rawItems.map((d) => ({
       id: d.id,
       documentLabel: d.documentLabel,
-      isRequired: d.isRequired,
       conditionLabel: d.conditionLabel,
       allowedFileTypes: d.allowedFileTypes,
       maxFileSizeMb: d.maxFileSizeMb,

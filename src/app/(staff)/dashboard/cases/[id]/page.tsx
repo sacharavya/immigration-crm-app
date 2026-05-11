@@ -21,11 +21,16 @@ import { CaseTabs, VALID_TABS, type Tab } from "./_components/case-tabs";
 import { DeleteCaseTrigger } from "./_components/delete-case-trigger";
 import { IntakeBanner } from "./_components/intake-banner";
 import { RetainerTab } from "./_components/retainer-tab";
+import { ShareLinkDialog } from "./_components/share-link-dialog";
 import {
   DocumentChecklist,
   type LatestDoc,
 } from "./_components/document-checklist";
 import { OneDriveCard } from "./_components/onedrive-card";
+import {
+  PaymentsTab,
+  type PaymentRow as PaymentTabRow,
+} from "./_components/payments-tab";
 import { PhasePipeline } from "./_components/phase-pipeline";
 import { RecordPaymentTrigger } from "./_components/record-payment-trigger";
 import {
@@ -130,15 +135,72 @@ export default async function CasePage({ params, searchParams }: Props) {
   // The migration's PART M backfill guarantees a row exists for every
   // pre-existing case, but a defensive maybeSingle() handles new cases
   // created before this prompt.
-  const { data: retainerRow } = await supabase
+  const RETAINER_FIELDS =
+    "id, status, signed_at, sent_to_email, sent_at, token_expires_at, signing_token, resent_count, last_resent_at, method, void_reason, voided_at, voided_by, signed_by_staff_id, final_document_id, service_description, government_fee_cad, first_installment_cad, second_installment_cad, hst_cad, withdrawal_refund_floor_cad, rcic_id";
+
+  let { data: retainerRow } = await supabase
     .schema("crm")
     .from("retainer_agreements")
-    .select(
-      "id, status, signed_at, sent_to_email, sent_at, token_expires_at, signing_token, resent_count, last_resent_at, method, void_reason, voided_at, voided_by, signed_by_staff_id, final_document_id, service_description, government_fee_cad, first_installment_cad, second_installment_cad, hst_cad, withdrawal_refund_floor_cad, rcic_id",
-    )
+    .select(RETAINER_FIELDS)
     .eq("case_id", id)
     .is("deleted_at", null)
     .maybeSingle();
+
+  // Lazy-create / restore a draft retainer if one is missing. The
+  // trg_ensure_retainer_for_new_case trigger should always handle this
+  // at case insert time; this is a belt-and-suspenders catch. Three
+  // cases to handle:
+  //   a) No row at all (live or soft-deleted) → INSERT a fresh draft.
+  //   b) Soft-deleted row exists → restore it (clear deleted_at). The
+  //      retainer_agreements.case_id UNIQUE constraint applies to
+  //      soft-deleted rows too, so a fresh INSERT would fail.
+  //   c) An auto-advance race where the row appeared between our
+  //      first SELECT and now → re-SELECT.
+  let lazyError: string | null = null;
+  if (!retainerRow && me && staffCan(me, "manage_retainers")) {
+    const { data: ghost } = await supabase
+      .schema("crm")
+      .from("retainer_agreements")
+      .select("id, deleted_at")
+      .eq("case_id", id)
+      .maybeSingle();
+
+    if (ghost) {
+      // Soft-deleted; restore it to draft so the standard UI takes over.
+      const { data: restored, error: upErr } = await supabase
+        .schema("crm")
+        .from("retainer_agreements")
+        .update({
+          deleted_at: null,
+          status: "draft",
+          signing_token: null,
+          token_expires_at: null,
+          sent_to_email: null,
+          sent_at: null,
+        })
+        .eq("id", ghost.id)
+        .select(RETAINER_FIELDS)
+        .single();
+      if (upErr) lazyError = `Restore retainer failed: ${upErr.message}`;
+      retainerRow = restored ?? null;
+    } else {
+      // No row at all — insert a fresh draft. Capture any error so the
+      // user sees the real problem instead of a silent fall-through.
+      const { data: created, error: insErr } = await supabase
+        .schema("crm")
+        .from("retainer_agreements")
+        .insert({
+          case_id: id,
+          status: "draft",
+          rcic_id: caseRow.assigned_rcic ?? null,
+          created_by: me.id,
+        })
+        .select(RETAINER_FIELDS)
+        .single();
+      if (insErr) lazyError = `Create retainer failed: ${insErr.message}`;
+      retainerRow = created ?? null;
+    }
+  }
 
   const retainerReady =
     retainerRow?.status === "signed" || retainerRow?.status === "uploaded";
@@ -219,6 +281,7 @@ export default async function CasePage({ params, searchParams }: Props) {
     clientRes,
     serviceRes,
     templateDocsRes,
+    requiredDocsRes,
     uploadedDocsRes,
     paymentsRes,
     tasksRes,
@@ -245,7 +308,6 @@ export default async function CasePage({ params, searchParams }: Props) {
           document_code,
           document_label,
           group_code,
-          is_required,
           condition_label,
           display_order,
           allowed_file_types,
@@ -258,19 +320,27 @@ export default async function CasePage({ params, searchParams }: Props) {
       .eq("service_template_id", caseRow.service_template_id)
       .order("display_order"),
     supabase
+      .schema("crm")
+      .from("case_required_documents")
+      .select("document_code")
+      .eq("case_id", id),
+    supabase
       .schema("files")
       .from("documents")
       .select(
-        "document_code, status, file_name, version_number, sharepoint_web_url",
+        "id, document_code, status, file_name, version_number, sharepoint_web_url, rejection_reason, reviewed_at, reviewed_by",
       )
       .eq("case_id", id)
       .is("deleted_at", null),
     supabase
       .schema("crm")
       .from("payments")
-      .select("amount_cad, is_refund")
+      .select(
+        "id, amount_cad, method, reference, received_date, notes, is_refund, recorded_by, proof_document_id",
+      )
       .eq("case_id", id)
-      .is("deleted_at", null),
+      .is("deleted_at", null)
+      .order("received_date", { ascending: false }),
     supabase
       .schema("crm")
       .from("tasks")
@@ -383,11 +453,68 @@ export default async function CasePage({ params, searchParams }: Props) {
   const intakeMissing = intakeProgress
     ? intakeProgress.total - intakeProgress.complete
     : 0;
-  const templateDocs = templateDocsRes.data ?? [];
+  const requiredDocCodes = new Set(
+    (requiredDocsRes.data ?? []).map((r) => r.document_code),
+  );
+  const templateDocs = (templateDocsRes.data ?? []).map((d) => ({
+    ...d,
+    is_required: requiredDocCodes.has(d.document_code),
+  }));
   const uploadedDocs = uploadedDocsRes.data ?? [];
   const payments = paymentsRes.data ?? [];
   const tasks = tasksRes.data ?? [];
   const allStaff = staffRes.data ?? [];
+
+  // OneDrive folder UI state. Folder is "provisioning" if the most recent
+  // folder-related event is `_provisioning` and no `_ready` event has
+  // landed since. Used by OneDriveCard to show the spinner + auto-poll
+  // instead of the manual-retry button.
+  const folderProvisioning =
+    !caseRow.sharepoint_folder_id &&
+    (() => {
+      for (const e of eventsRes.data ?? []) {
+        const kind =
+          e.event_data && typeof e.event_data === "object" && "kind" in e.event_data
+            ? (e.event_data as { kind?: string }).kind
+            : undefined;
+        if (kind === "onedrive_folder_provisioning") return true;
+        if (
+          kind === "onedrive_folder_pending" ||
+          kind === "onedrive_folder_retry_failed" ||
+          kind === "onedrive_folder_ready" ||
+          kind === "onedrive_folder_retry_succeeded"
+        ) {
+          return false;
+        }
+      }
+      return false;
+    })();
+
+  // Per-payment proof document join. Only fetched when the Payments
+  // tab is the active one — other tabs don't surface this data so we
+  // avoid the extra round-trip.
+  const proofDocIds = payments
+    .map((p) => p.proof_document_id)
+    .filter((v): v is string => !!v);
+  const proofDocsById = new Map<
+    string,
+    { fileName: string | null; webUrl: string | null; mimeType: string | null }
+  >();
+  if (tab === "payments" && proofDocIds.length > 0) {
+    const { data: proofDocs } = await supabase
+      .schema("files")
+      .from("documents")
+      .select("id, file_name, sharepoint_web_url, mime_type")
+      .in("id", proofDocIds)
+      .is("deleted_at", null);
+    for (const d of proofDocs ?? []) {
+      proofDocsById.set(d.id, {
+        fileName: d.file_name,
+        webUrl: d.sharepoint_web_url,
+        mimeType: d.mime_type,
+      });
+    }
+  }
   const timelineEvents: TimelineEvent[] = (eventsRes.data ?? []).map((row) => {
     const data = (row.event_data ?? null) as { milestone?: string } | null;
     const recorder = row.recorder
@@ -418,10 +545,12 @@ export default async function CasePage({ params, searchParams }: Props) {
     const existing = latestByCode.get(doc.document_code);
     if (!existing || doc.version_number > existing.version_number) {
       latestByCode.set(doc.document_code, {
+        id: doc.id,
         status: doc.status,
         file_name: doc.file_name,
         sharepoint_web_url: doc.sharepoint_web_url,
         version_number: doc.version_number,
+        rejection_reason: doc.rejection_reason,
       });
     }
   }
@@ -431,6 +560,34 @@ export default async function CasePage({ params, searchParams }: Props) {
     0,
   );
   const quoted = Number(caseRow.quoted_fee_cad);
+
+  const staffNameById = new Map(
+    allStaff.map((s) => [s.id, `${s.first_name} ${s.last_name}`.trim()]),
+  );
+  const paymentRows: PaymentTabRow[] = payments.map((p) => ({
+    id: p.id,
+    amount_cad: Number(p.amount_cad),
+    method: p.method,
+    reference: p.reference,
+    received_date: p.received_date,
+    notes: p.notes,
+    is_refund: p.is_refund,
+    recorded_by_name: p.recorded_by
+      ? staffNameById.get(p.recorded_by) ?? null
+      : null,
+    proof: p.proof_document_id
+      ? {
+          documentId: p.proof_document_id,
+          fileName:
+            proofDocsById.get(p.proof_document_id)?.fileName ?? null,
+          webUrl:
+            proofDocsById.get(p.proof_document_id)?.webUrl ?? null,
+          mimeType:
+            proofDocsById.get(p.proof_document_id)?.mimeType ?? null,
+        }
+      : null,
+  }));
+  const canManagePayments = me ? staffCan(me, "record_payments") : false;
   const paymentPct =
     quoted > 0 ? Math.min(100, Math.round((collected / quoted) * 100)) : 0;
   const retainerMin =
@@ -441,7 +598,20 @@ export default async function CasePage({ params, searchParams }: Props) {
   const retainerSatisfied =
     retainerMin === null ? collected > 0 : collected >= retainerMin;
 
-  const pill = statusPill[caseRow.status];
+  // Override the Phase 1 pill once the retainer is signed: the case
+  // status is still 'retainer_pending' (it won't advance until the
+  // retainer minimum payment arrives — see crm.can_advance_phase),
+  // but "Retainer Pending" is misleading at that point. Surface what's
+  // actually pending instead.
+  const retainerSigned =
+    retainerRow?.status === "signed" || retainerRow?.status === "uploaded";
+  const pill =
+    caseRow.status === "retainer_pending" && retainerSigned
+      ? {
+          label: retainerSatisfied ? "Retainer Signed" : "Awaiting Payment",
+          className: "bg-emerald-100 text-emerald-800",
+        }
+      : statusPill[caseRow.status];
 
   const nextTask = tasks[0];
 
@@ -589,9 +759,16 @@ export default async function CasePage({ params, searchParams }: Props) {
                     <p className="text-stone-600">{retainerLoadError}</p>
                   </>
                 ) : !retainerRow ? (
-                  <p className="text-stone-500">
-                    Retainer record not found for this case. Try refreshing.
-                  </p>
+                  <>
+                    <p className="text-stone-500">
+                      Retainer record not found for this case.
+                    </p>
+                    {lazyError && (
+                      <p className="text-xs text-red-700">
+                        {lazyError}
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <p className="text-stone-500">Loading…</p>
                 )}
@@ -603,6 +780,18 @@ export default async function CasePage({ params, searchParams }: Props) {
             caseId={caseRow.id}
             templateDocs={templateDocs}
             latestByCode={latestByCode}
+            canEditRequired={me ? staffCan(me, "review_documents") : false}
+            canReview={me ? staffCan(me, "review_documents") : false}
+            canUpload={me ? staffCan(me, "upload_documents") : false}
+            shareButtonSlot={
+              me && staffCan(me, "upload_documents") ? (
+                <ShareLinkDialog
+                  caseId={caseRow.id}
+                  initialToken={caseRow.client_portal_token ?? null}
+                  clientEmail={client?.email ?? null}
+                />
+              ) : null
+            }
           />
         ) : tab === "activity" ? (
           <Card>
@@ -619,6 +808,13 @@ export default async function CasePage({ params, searchParams }: Props) {
               <TimelineList events={timelineEvents} />
             </CardContent>
           </Card>
+        ) : tab === "payments" ? (
+          <PaymentsTab
+            caseId={caseRow.id}
+            payments={paymentRows}
+            totalQuoted={quoted}
+            canManage={canManagePayments}
+          />
         ) : (
           <Card>
             <CardContent className="p-6 text-center text-stone-500">
@@ -709,6 +905,7 @@ export default async function CasePage({ params, searchParams }: Props) {
                   caseId={caseRow.id}
                   folderId={caseRow.sharepoint_folder_id}
                   folderUrl={caseRow.sharepoint_folder_url}
+                  provisioning={folderProvisioning}
                 />
               </CardContent>
             </Card>

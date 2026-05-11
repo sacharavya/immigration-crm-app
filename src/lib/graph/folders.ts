@@ -127,13 +127,15 @@ export async function createCaseFolderStructure(
     parent = await ensureFolder(driveId, parent.id, part);
   }
 
-  // RET-4: ensure the retainer subfolder sits ahead of the 01-07 group
-  // folders. Numeric prefix keeps it pinned at the top of the listing.
-  await ensureFolder(driveId, parent.id, "00 Retainer");
-
-  for (const cat of categories ?? []) {
-    await ensureFolder(driveId, parent.id, sanitize(cat.name));
-  }
+  // RET-4: "00 Retainer" + the N category subfolders are all siblings of
+  // the case folder, so create them in parallel. The numeric prefix on
+  // "00 Retainer" still pins it at the top of the OneDrive listing.
+  await Promise.all([
+    ensureFolder(driveId, parent.id, "00 Retainer"),
+    ...(categories ?? []).map((cat) =>
+      ensureFolder(driveId, parent.id, sanitize(cat.name)),
+    ),
+  ]);
 
   return { driveItemId: parent.id, webUrl: parent.webUrl };
 }
@@ -152,6 +154,23 @@ export async function ensureCaseRetainerFolder(
     throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
   }
   const folder = await ensureFolder(driveId, caseFolderItemId, "00 Retainer");
+  return { driveId, folderItemId: folder.id };
+}
+
+/**
+ * Returns the case folder + the "00 Payments" subfolder, creating the
+ * subfolder lazily if it doesn't exist yet. Same numeric "00 " prefix
+ * pattern as 00 Retainer so both pin to the top of the case folder
+ * listing in OneDrive.
+ */
+export async function ensureCasePaymentsFolder(
+  caseFolderItemId: string,
+): Promise<{ driveId: string; folderItemId: string }> {
+  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
+  if (!driveId) {
+    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
+  }
+  const folder = await ensureFolder(driveId, caseFolderItemId, "00 Payments");
   return { driveId, folderItemId: folder.id };
 }
 

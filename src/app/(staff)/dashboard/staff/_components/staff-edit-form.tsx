@@ -22,6 +22,7 @@ import {
 import { ROLES, selectableRoles } from "@/lib/validators/staff";
 
 import { updateStaff } from "../actions";
+import { SignatureUploader } from "./signature-uploader";
 
 type EditFormStaff = {
   id: string;
@@ -40,6 +41,9 @@ type EditFormStaff = {
   office_address: string | null;
   office_phone: string | null;
   cell_phone: string | null;
+  signature_image_url: string | null;
+  signature_image_set_at: string | null;
+  printed_name_for_signature: string | null;
 };
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -77,6 +81,7 @@ const PERMISSION_LABEL: Record<Permission, string> = {
   view_intake_form: "View intake form",
   edit_intake_form: "Edit intake form",
   view_audit_log: "View audit log",
+  view_reports: "View reports",
   manage_staff: "Manage staff",
   manage_super_users: "Manage super users",
   manage_admins: "Manage admins",
@@ -342,25 +347,37 @@ export function StaffEditForm({
             </label>
 
             {isRcic && (
-              <Field>
-                <FieldLabel htmlFor="rcic_membership_number">
-                  CICC membership number
-                </FieldLabel>
-                <Input
-                  id="rcic_membership_number"
-                  value={rcicMembership}
-                  onChange={(e) => setRcicMembership(e.target.value)}
-                  placeholder="e.g. R711181"
-                  aria-invalid={Boolean(fieldErrors.rcic_membership_number)}
-                />
-                {fieldErrors.rcic_membership_number && (
-                  <FieldError
-                    errors={fieldErrors.rcic_membership_number.map((m) => ({
-                      message: m,
-                    }))}
+              <>
+                <Field>
+                  <FieldLabel htmlFor="rcic_membership_number">
+                    CICC membership number
+                  </FieldLabel>
+                  <Input
+                    id="rcic_membership_number"
+                    value={rcicMembership}
+                    onChange={(e) => setRcicMembership(e.target.value)}
+                    placeholder="e.g. R711181"
+                    aria-invalid={Boolean(fieldErrors.rcic_membership_number)}
                   />
-                )}
-              </Field>
+                  {fieldErrors.rcic_membership_number && (
+                    <FieldError
+                      errors={fieldErrors.rcic_membership_number.map((m) => ({
+                        message: m,
+                      }))}
+                    />
+                  )}
+                </Field>
+
+                <SignatureUploader
+                  staffId={staff.id}
+                  defaultPrintedName={`${staff.first_name} ${staff.last_name}`.trim()}
+                  current={{
+                    imageUrl: staff.signature_image_url,
+                    setAt: staff.signature_image_set_at,
+                    printedName: staff.printed_name_for_signature,
+                  }}
+                />
+              </>
             )}
 
             <Field>

@@ -30,9 +30,13 @@ export type RetainerData = {
 
   // RCIC
   rcic_name: string;
+  rcic_given_name: string;
+  rcic_family_name: string;
   rcic_membership_number: string;
   rcic_address: string;
   rcic_phone: string;
+  rcic_office_phone: string;
+  rcic_cell_phone: string;
   rcic_email: string;
   rcic_signature_image_url: string;
   rcic_printed_name?: string | null;
@@ -48,13 +52,21 @@ export type RetainerData = {
   // Signing event
   date_of_signing: string | null;
   client_signature_image_url: string | null;
+
+  // Letterhead asset (base64 data URL). Inlined so the PDF renderer
+  // doesn't need a base URL to resolve /logo.png.
+  letterhead_logo_url: string;
 };
 
-export type RetainerMode = "preview" | "signing" | "final";
+export type RetainerMode = "preview" | "signing" | "final" | "void";
 
 export type RetainerDocumentProps = {
   data: RetainerData;
   mode: RetainerMode;
+  // Only used when mode === "void". Passed through so the void PDF
+  // shows the actual voided-on date instead of the date_of_signing
+  // (which may be unset or stale).
+  voidedAt?: string | null;
 };
 
 const cadFormatter = new Intl.NumberFormat("en-CA", {
@@ -98,6 +110,25 @@ export const RETAINER_STYLES = `
   max-width: 800px;
   margin: 0 auto;
   position: relative;
+  /* Clip rotated watermark stamps so they can't bleed past the column. */
+  overflow: hidden;
+}
+
+.retainer-letterhead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 20px;
+  margin: 0 0 24px;
+  border-bottom: 2px solid var(--rt-border);
+}
+
+.retainer-letterhead img {
+  max-height: 80px;
+  max-width: 320px;
+  width: auto;
+  height: auto;
+  display: block;
 }
 
 .retainer-page h1 {
@@ -262,23 +293,52 @@ export const RETAINER_STYLES = `
   line-height: 1.45;
 }
 
+/*
+ * Watermark stamps. Each .retainer-watermark is an absolutely-
+ * positioned, zero-height strip whose child renders a rotated
+ * watermark phrase centred horizontally inside the document column.
+ * Multiple stamps are emitted at evenly-spaced top percentages so
+ * the watermark is visible no matter where the reader is in the
+ * agreement (and across pages of the generated PDF).
+ */
 .retainer-watermark {
-  position: fixed;
-  inset: 0;
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  overflow: visible;
   pointer-events: none;
   display: flex;
-  align-items: center;
   justify-content: center;
   z-index: 1000;
 }
 
 .retainer-watermark span {
-  transform: rotate(-30deg);
-  font-size: 96pt;
+  display: inline-block;
+  transform: translateY(-50%) rotate(-20deg);
+  transform-origin: center center;
+  font-size: 42pt;
   font-weight: 800;
   color: rgba(15, 23, 42, 0.08);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   white-space: nowrap;
+}
+
+.retainer-void-banner {
+  margin: 0 0 20px;
+  padding: 10px 14px;
+  border: 1px solid #fecaca;
+  border-left-width: 4px;
+  border-left-color: #dc2626;
+  background: #fef2f2;
+  color: #7f1d1d;
+  font-size: 11pt;
+  border-radius: 4px;
+}
+
+.retainer-void-banner strong {
+  color: #b91c1c;
+  margin-right: 4px;
 }
 
 @media print {
@@ -295,6 +355,10 @@ export const RETAINER_STYLES = `
   .retainer-page {
     padding: 20px 16px;
     font-size: 11pt;
+  }
+  .retainer-letterhead img {
+    max-height: 60px;
+    max-width: 220px;
   }
   .retainer-meta {
     flex-direction: column;
@@ -318,21 +382,65 @@ export const RETAINER_STYLES = `
 }
 `;
 
-export function RetainerDocument({ data, mode }: RetainerDocumentProps) {
+// Vertical positions (% of .retainer-page height) for the repeated
+// watermark stamps. Spread evenly enough that at least one stamp is
+// visible on every printed page of a typical 5–8 page retainer.
+const WATERMARK_TOPS = [12, 32, 52, 72, 92] as const;
+
+export function RetainerDocument({
+  data,
+  mode,
+  voidedAt,
+}: RetainerDocumentProps) {
   const subtotal = data.quoted_fee_cad + data.hst_cad;
   const totalCost = subtotal + data.government_fee_cad;
   const dateOfSigning = fmtDate(data.date_of_signing);
-  const showWatermark = mode === "preview";
+  const watermarkText =
+    mode === "preview"
+      ? "DRAFT — NOT SIGNED"
+      : mode === "void"
+        ? "VOID"
+        : null;
+  // Final + void both render the captured signatures (if any) so the
+  // void PDF accurately reflects what was on file at the time it was
+  // voided. Signing/preview modes leave the client signature blank.
   const showClientSignature =
-    mode === "final" && Boolean(data.client_signature_image_url);
+    (mode === "final" || mode === "void") &&
+    Boolean(data.client_signature_image_url);
+  // RCIC counter-signature is suppressed until the client has actually
+  // signed. The retainer is only "executed" once both parties sign, so
+  // a draft / pending preview should never display the RCIC signature
+  // image — that's a tell that the document is still in flight.
+  const showRcicSignature =
+    showClientSignature && Boolean(data.rcic_signature_image_url);
   const printedName = data.rcic_printed_name?.trim() || data.rcic_name;
 
   return (
     <article className="retainer-page">
-      {showWatermark && (
-        <div className="retainer-watermark" aria-hidden="true">
-          <span>DRAFT — NOT SIGNED</span>
+      {watermarkText &&
+        WATERMARK_TOPS.map((top) => (
+          <div
+            key={top}
+            className="retainer-watermark"
+            aria-hidden="true"
+            style={{ top: `${top}%` }}
+          >
+            <span>{watermarkText}</span>
+          </div>
+        ))}
+
+      {mode === "void" && (
+        <div className="retainer-void-banner" role="status">
+          <strong>This agreement has been voided.</strong>
+          {voidedAt ? <span> Voided on {fmtDate(voidedAt)}.</span> : null}
         </div>
+      )}
+
+      {data.letterhead_logo_url && (
+        <header className="retainer-letterhead">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={data.letterhead_logo_url} alt="Big Bang Immigration" />
+        </header>
       )}
 
       <h1>RETAINER AGREEMENT</h1>
@@ -750,11 +858,11 @@ export function RetainerDocument({ data, mode }: RetainerDocumentProps) {
             <td>
               <div className="row">
                 <span className="key">Given Name:</span>
-                <span>Shasi Prasad</span>
+                <span>{data.rcic_given_name}</span>
               </div>
               <div className="row">
                 <span className="key">Family Name:</span>
-                <span>Timalsina</span>
+                <span>{data.rcic_family_name}</span>
               </div>
               <div className="row">
                 <span className="key">Address:</span>
@@ -762,11 +870,11 @@ export function RetainerDocument({ data, mode }: RetainerDocumentProps) {
               </div>
               <div className="row">
                 <span className="key">Telephone Number:</span>
-                <span>416-386-5351</span>
+                <span>{data.rcic_office_phone}</span>
               </div>
               <div className="row">
                 <span className="key">Cell phone Number:</span>
-                <span>{data.rcic_phone}</span>
+                <span>{data.rcic_cell_phone}</span>
               </div>
               <div className="row">
                 <span className="key">E-mail Address:</span>
@@ -801,12 +909,14 @@ export function RetainerDocument({ data, mode }: RetainerDocumentProps) {
           </div>
         </div>
         <div className="sig-cell">
-          <div className="sig-image">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={data.rcic_signature_image_url}
-              alt="RCIC signature"
-            />
+          <div className={`sig-image${showRcicSignature ? "" : " empty"}`}>
+            {showRcicSignature ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={data.rcic_signature_image_url}
+                alt="RCIC signature"
+              />
+            ) : null}
           </div>
           <div className="sig-caption">Signature of RCIC</div>
           <div className="sig-printed-name">{printedName}</div>
@@ -834,10 +944,11 @@ export function RetainerDocument({ data, mode }: RetainerDocumentProps) {
 export async function renderRetainerHtml(
   data: RetainerData,
   mode: RetainerMode,
+  options?: { voidedAt?: string | null },
 ): Promise<string> {
   const { renderToStaticMarkup } = await import("react-dom/server");
   const body = renderToStaticMarkup(
-    <RetainerDocument data={data} mode={mode} />,
+    <RetainerDocument data={data} mode={mode} voidedAt={options?.voidedAt} />,
   );
   const title = `Retainer Agreement — ${data.case_number}`;
   return `<!doctype html>

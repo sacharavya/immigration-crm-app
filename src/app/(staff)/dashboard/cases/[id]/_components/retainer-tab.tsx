@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import {
@@ -138,6 +139,8 @@ export function RetainerTab(props: RetainerTabProps) {
     currentRcicId,
   } = props;
 
+  const router = useRouter();
+
   // RET-1's PART M backfill inserts a 'pending_signature' row for every
   // pre-existing case so the phase gate kicks in immediately, but those
   // rows have no fee details and no signing_token. Treat them as draft
@@ -148,7 +151,15 @@ export function RetainerTab(props: RetainerTabProps) {
   const status: RetainerStatus = isStaleBackfill ? "draft" : rawStatus;
 
   const [signingLink, setSigningLink] = useState<string | null>(null);
+  const [emailNotice, setEmailNotice] = useState<{
+    sent: boolean;
+    error?: string;
+  } | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  // Inline success banner for the Get-link path's auto-copy. Cleared on
+  // a timer; kept separate from `linkCopied` (which drives the manual
+  // Copy button label inside the visible link card).
+  const [copyNotice, setCopyNotice] = useState<string | null>(null);
   const [linkPending, startLinkTransition] = useTransition();
   const [resendPending, startResendTransition] = useTransition();
   const [cancelPending, startCancelTransition] = useTransition();
@@ -171,21 +182,33 @@ export function RetainerTab(props: RetainerTabProps) {
 
   function handleGetLink() {
     setActionError(null);
+    setEmailNotice(null);
+    setCopyNotice(null);
     startLinkTransition(async () => {
       const result = await getSigningLink(retainerId);
       if ("error" in result) {
         setActionError(result.error);
         return;
       }
-      // Don't auto-copy here — the Clipboard API needs a fresh user
-      // gesture and the awaited server call loses that context. Show
-      // the link in a card with an explicit Copy button instead.
-      setSigningLink(result.signing_path);
+      const url = absoluteUrl(result.signing_path);
+      // copyToClipboard's execCommand fallback works after the awaited
+      // server call (no user-gesture requirement), so we can copy
+      // immediately. If both paths fail (e.g. headless test runner,
+      // some Safari edge cases), fall back to rendering the visible
+      // link card so staff can select-and-copy manually.
+      const ok = await copyToClipboard(url);
+      if (ok) {
+        setCopyNotice("Signing link copied — ready to paste.");
+        window.setTimeout(() => setCopyNotice(null), 3000);
+      } else {
+        setSigningLink(result.signing_path);
+      }
     });
   }
 
   function handleResend() {
     setActionError(null);
+    setEmailNotice(null);
     startResendTransition(async () => {
       const result = await resendRetainerEmail(retainerId);
       if ("error" in result) {
@@ -193,6 +216,7 @@ export function RetainerTab(props: RetainerTabProps) {
         return;
       }
       setSigningLink(result.signing_path);
+      setEmailNotice({ sent: result.emailSent, error: result.emailError });
     });
   }
 
@@ -212,7 +236,12 @@ export function RetainerTab(props: RetainerTabProps) {
       const result = await startNewRetainer(caseId);
       if ("error" in result) {
         setActionError(result.error);
+        return;
       }
+      // The action opens a NEW case with cloned details. Send the user
+      // there directly — their work continues on the new case while the
+      // old one stays as a closed audit record.
+      router.push(`/dashboard/cases/${result.newCaseId}`);
     });
   }
 
@@ -245,16 +274,26 @@ export function RetainerTab(props: RetainerTabProps) {
             />
           )}
 
-          {!rcicHasSignature && (status === "draft" || status === "expired") && (
+          {!currentRcicId && (status === "draft" || status === "expired") && (
+            <p className="rounded-md border-2 border-amber-400 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+              Select an RCIC above before sending this retainer for
+              signature. The picked RCIC counter-signs the agreement and
+              appears on the letterhead.
+            </p>
+          )}
+
+          {currentRcicId &&
+            !rcicHasSignature &&
+            (status === "draft" || status === "expired") && (
             <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
               The assigned RCIC hasn&apos;t set up a signature yet.{" "}
               <Link
-                href="/dashboard/settings/my-signature"
+                href={`/dashboard/staff/${currentRcicId}`}
                 className="font-semibold underline"
               >
-                Set it up
+                Open their profile
               </Link>{" "}
-              before sending.
+              and upload one before sending.
             </p>
           )}
 
@@ -264,6 +303,16 @@ export function RetainerTab(props: RetainerTabProps) {
               className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
               {actionError}
+            </p>
+          )}
+
+          {copyNotice && !signingLink && (
+            <p
+              role="status"
+              className="inline-flex items-center gap-2 self-start rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800"
+            >
+              <Check className="h-3.5 w-3.5" />
+              {copyNotice}
             </p>
           )}
 
@@ -305,11 +354,23 @@ export function RetainerTab(props: RetainerTabProps) {
                   )}
                 </Button>
               </div>
-              <p className="mt-1 text-stone-500">
-                Email delivery is pending RET-6. Click the field to select,
-                or hit Copy. Send this link to{" "}
-                {meta.sent_to_email ?? "the client"} manually for now.
-              </p>
+              {emailNotice ? (
+                emailNotice.sent ? (
+                  <p className="mt-1 text-emerald-700">
+                    Email sent to {meta.sent_to_email ?? "the recipient"}.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-amber-700">
+                    Email could not be sent
+                    {emailNotice.error ? `: ${emailNotice.error}` : ""}.
+                    Copy the link above and send it manually.
+                  </p>
+                )
+              ) : (
+                <p className="mt-1 text-stone-500">
+                  Click the field to select, or hit Copy.
+                </p>
+              )}
             </div>
           )}
         </CardContent>
@@ -321,14 +382,27 @@ export function RetainerTab(props: RetainerTabProps) {
           <CardContent className="flex flex-wrap items-center gap-2 p-4">
             {status === "draft" && (
               <>
-                <Button onClick={() => setSendOpen(true)}>
+                <Button
+                  onClick={() => setSendOpen(true)}
+                  disabled={!currentRcicId}
+                  title={
+                    !currentRcicId
+                      ? "Select an RCIC above first"
+                      : undefined
+                  }
+                >
                   <Send className="mr-1 h-3.5 w-3.5" />
                   Send for signature
                 </Button>
                 <Button
                   variant="outline"
                   onClick={handleGetLink}
-                  disabled={linkPending}
+                  disabled={linkPending || !currentRcicId}
+                  title={
+                    !currentRcicId
+                      ? "Select an RCIC above first"
+                      : undefined
+                  }
                 >
                   {linkPending ? (
                     <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
@@ -492,7 +566,10 @@ export function RetainerTab(props: RetainerTabProps) {
         onOpenChange={setSendOpen}
         retainerId={retainerId}
         defaultEmail={defaultRecipientEmail}
-        onSent={(path) => setSigningLink(path)}
+        onSent={(path, email) => {
+          setSigningLink(path);
+          setEmailNotice(email);
+        }}
       />
       <VoidRetainerDialog
         open={voidOpen}

@@ -51,6 +51,11 @@ export type BoardCase = {
   assigneeId: string | null;
   assigneeName: string | null;
   status: CaseStatus;
+  // Retainer signal: when status is still 'retainer_pending' but the
+  // retainer has been signed, the pill should reflect what's actually
+  // pending (payment) instead of "Retainer Pending".
+  retainerSigned: boolean;
+  retainerSatisfied: boolean;
 };
 
 const statusPill: Record<CaseStatus, { label: string; className: string }> = {
@@ -91,17 +96,29 @@ const statusPill: Record<CaseStatus, { label: string; className: string }> = {
   closed: { label: "Closed", className: "bg-gray-200 text-gray-700" },
 };
 
-// Milestone recorded when a card is dropped onto a phase column.
-// Phase 1 / phase 6 are intentionally not drop targets — phase 1 has no
-// "open the case" milestone (cases start there at creation), and phase 6
-// outcomes (passport / refused / more info) are decisions that should be
-// chosen explicitly via the timeline's record-event dialog.
-const PHASE_DROP_MILESTONE: Partial<Record<number, Milestone>> = {
+// Milestone recorded when a card is dropped onto a phase column,
+// FORWARD only (source phase < target phase). Phase 1 / phase 6 are
+// not drop targets — phase 1 has no "open the case" milestone, and
+// phase 6 outcomes (passport / refused / more info) are decisions
+// that need explicit choice via the timeline's record-event dialog.
+const PHASE_FORWARD_DROP_MILESTONE: Partial<Record<number, Milestone>> = {
   2: "documents_in_progress",
   3: "review_started",
   4: "submitted_to_ircc",
   5: "biometrics_pending",
 };
+
+// Backward drops require both the source and target phases to know
+// which "send back" milestone to fire. Today only Review (3) → Docs
+// (2) is supported; phase 4+ rollbacks need explicit decisions and
+// stay manual via the record-event dialog.
+function pickBackwardDropMilestone(
+  sourcePhase: number,
+  targetPhase: number,
+): Milestone | null {
+  if (sourcePhase === 3 && targetPhase === 2) return "revision_requested";
+  return null;
+}
 
 const PHASES = [1, 2, 3, 4, 5, 6] as const;
 
@@ -169,10 +186,15 @@ export function CasesBoardView({ cases }: { cases: BoardCase[] }) {
     const sourcePhase = findPhaseOf(caseId);
     if (sourcePhase === null || sourcePhase === targetPhase) return;
 
-    const milestone = PHASE_DROP_MILESTONE[targetPhase];
+    const milestone =
+      targetPhase > sourcePhase
+        ? PHASE_FORWARD_DROP_MILESTONE[targetPhase] ?? null
+        : pickBackwardDropMilestone(sourcePhase, targetPhase);
     if (!milestone) {
       setError(
-        "Phase 6 outcomes (passport / refused / more info) need an explicit choice — open the case to record a decision event.",
+        targetPhase > sourcePhase
+          ? "Phase 6 outcomes (passport / refused / more info) need an explicit choice — open the case to record a decision event."
+          : "Backward drop not supported for this transition. Open the case and record an event to roll back.",
       );
       return;
     }
@@ -228,7 +250,9 @@ export function CasesBoardView({ cases }: { cases: BoardCase[] }) {
               key={phase}
               phase={phase}
               cases={items[phase]}
-              droppable={Boolean(PHASE_DROP_MILESTONE[phase])}
+              droppable={
+                Boolean(PHASE_FORWARD_DROP_MILESTONE[phase]) || phase === 2
+              }
             />
           ))}
         </div>
@@ -312,7 +336,17 @@ function CaseCard({
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: caseRow.id });
 
-  const pill = statusPill[caseRow.status];
+  // Mirror the case detail page: while status is still retainer_pending
+  // but the retainer is signed, show what's actually pending instead.
+  const pill =
+    caseRow.status === "retainer_pending" && caseRow.retainerSigned
+      ? {
+          label: caseRow.retainerSatisfied
+            ? "Retainer Signed"
+            : "Awaiting Payment",
+          className: "bg-emerald-100 text-emerald-800",
+        }
+      : statusPill[caseRow.status];
 
   const style = transform
     ? { transform: `translate(${transform.x}px, ${transform.y}px)` }

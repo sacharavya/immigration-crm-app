@@ -41,7 +41,11 @@ export function AddStaffDialog({ actorRole }: { actorRole: Role }) {
   const [role, setRole] = useState<Role | "">("");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
-  const [success, setSuccess] = useState<{ tempPassword: string } | null>(null);
+  const [success, setSuccess] = useState<{
+    tempPassword: string;
+    emailSent: boolean;
+    emailError?: string;
+  } | null>(null);
   const [pending, startTransition] = useTransition();
 
   function reset() {
@@ -80,7 +84,11 @@ export function AddStaffDialog({ actorRole }: { actorRole: Role }) {
         if (result.fieldErrors) setFieldErrors(result.fieldErrors);
         return;
       }
-      setSuccess({ tempPassword: result.tempPassword });
+      setSuccess({
+        tempPassword: result.tempPassword,
+        emailSent: result.emailSent,
+        emailError: result.emailError,
+      });
     });
   }
 
@@ -95,6 +103,8 @@ export function AddStaffDialog({ actorRole }: { actorRole: Role }) {
           {success ? (
             <SuccessView
               tempPassword={success.tempPassword}
+              emailSent={success.emailSent}
+              emailError={success.emailError}
               onClose={() => handleOpenChange(false)}
             />
           ) : (
@@ -102,10 +112,10 @@ export function AddStaffDialog({ actorRole }: { actorRole: Role }) {
               <DialogHeader>
                 <DialogTitle>Add staff</DialogTitle>
                 <DialogDescription>
-                  Creates the auth user and staff record. Copy the temporary
-                  password and share it with the new staff member directly —
-                  no email is sent. They&apos;ll be required to reset on first
-                  login.
+                  Creates the auth user and staff record, and emails them a
+                  welcome message with the temporary password. The password
+                  is also shown here as a backup. They&apos;ll be required
+                  to reset on first login.
                 </DialogDescription>
               </DialogHeader>
 
@@ -251,9 +261,13 @@ export function AddStaffDialog({ actorRole }: { actorRole: Role }) {
 
 function SuccessView({
   tempPassword,
+  emailSent,
+  emailError,
   onClose,
 }: {
   tempPassword: string;
+  emailSent: boolean;
+  emailError?: string;
   onClose: () => void;
 }) {
   return (
@@ -266,7 +280,9 @@ function SuccessView({
           <div>
             <DialogTitle>Staff added</DialogTitle>
             <DialogDescription>
-              Share the password with the new staff member directly.
+              {emailSent
+                ? "Welcome email sent. Share the password directly only if delivery fails."
+                : "Welcome email could not be sent — share the password with them directly."}
             </DialogDescription>
           </div>
         </div>
@@ -282,6 +298,9 @@ function SuccessView({
         <p className="text-xs text-stone-500">
           The user will be forced to reset on first login.
         </p>
+        {!emailSent && emailError && (
+          <p className="text-xs text-amber-700">Email error: {emailError}</p>
+        )}
       </div>
 
       <DialogFooter>

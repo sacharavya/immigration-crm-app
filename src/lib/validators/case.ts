@@ -20,6 +20,8 @@ const optionalCountryCode = z.preprocess(
   z.string().length(2, "Use a 2-letter ISO country code").optional(),
 );
 
+// Standalone client capture (e.g., adding a lead before any case exists).
+// Address + name split optional — staff can fill in later when a case opens.
 export const newClientSchema = z.object({
   legal_name_full: z.string().trim().min(1, "Full legal name is required"),
   email: optionalEmail,
@@ -31,14 +33,35 @@ export const newClientSchema = z.object({
 
 export type NewClientInput = z.infer<typeof newClientSchema>;
 
+// Stricter shape for the case-creation wizard. The retainer agreement
+// renders the client's name (split) + mailing address, so we require
+// both at case-creation time to avoid re-prompting later.
+export const newClientForCaseSchema = newClientSchema.extend({
+  given_names: z.string().trim().min(1, "First name is required"),
+  family_name: z.string().trim().min(1, "Last name is required"),
+  address_line1: z.string().trim().min(1, "Address line 1 is required"),
+  address_line2: optionalText,
+  city: z.string().trim().min(1, "City is required"),
+  province_state: z.string().trim().min(1, "Province/state is required"),
+  postal_code: z.string().trim().min(1, "Postal code is required"),
+  country_code: z.string().trim().length(2, "Pick a country"),
+});
+
+export type NewClientForCaseInput = z.infer<typeof newClientForCaseSchema>;
+
 const feeFields = {
   service_type_id: z.string().uuid("Select a service"),
+  rcic_id: z.string().uuid("Select an RCIC"),
   quoted_fee_cad: z.coerce
     .number({ message: "Quoted fee must be a number" })
     .positive("Quoted fee must be greater than 0"),
   retainer_minimum_cad: z.coerce
     .number({ message: "Retainer minimum must be a number" })
     .min(0, "Retainer minimum cannot be negative")
+    .optional(),
+  government_fee_cad: z.coerce
+    .number({ message: "Government fee must be a number" })
+    .min(0, "Government fee cannot be negative")
     .optional(),
   retained_at: optionalDate,
 };
@@ -51,7 +74,7 @@ export const newCaseSchema = z.discriminatedUnion("client_kind", [
   }),
   z.object({
     client_kind: z.literal("new"),
-    new_client: newClientSchema,
+    new_client: newClientForCaseSchema,
     ...feeFields,
   }),
 ]);

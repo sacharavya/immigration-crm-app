@@ -280,7 +280,6 @@ function GroupSection({
         groupCode: group.code,
         label: trimmedLabel,
         documentCode: trimmedCode,
-        isRequired: false,
       });
       if ("error" in result) {
         setError(result.error);
@@ -289,7 +288,6 @@ function GroupSection({
       onItemAdded({
         id: result.id,
         documentLabel: trimmedLabel,
-        isRequired: false,
         conditionLabel: null,
         allowedFileTypes: null,
         maxFileSizeMb: null,

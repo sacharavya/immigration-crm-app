@@ -4,9 +4,11 @@ import {
   BarChart3,
   Briefcase,
   CheckSquare,
+  History,
+  LineChart,
   ListChecks,
   LogOut,
-  PenTool,
+  Receipt,
   Shield,
   Users,
 } from "lucide-react";
@@ -74,6 +76,14 @@ export function StaffSidebar() {
             active={isActive(href)}
           />
         ))}
+        <Can permission="view_financials">
+          <NavItem
+            href="/dashboard/payments"
+            label="Payments"
+            Icon={Receipt}
+            active={isActive("/dashboard/payments")}
+          />
+        </Can>
         <Can permission="manage_templates">
           <NavItem
             href="/dashboard/checklists"
@@ -90,15 +100,21 @@ export function StaffSidebar() {
             active={isActive("/dashboard/staff")}
           />
         </Can>
-        <Can permission="manage_own_signature">
-          <div className="mt-3 border-t border-stone-200 pt-3">
-            <NavItem
-              href="/dashboard/settings/my-signature"
-              label="My signature"
-              Icon={PenTool}
-              active={isActive("/dashboard/settings/my-signature")}
-            />
-          </div>
+        <Can permission="view_reports">
+          <NavItem
+            href="/dashboard/reports"
+            label="Reports"
+            Icon={LineChart}
+            active={isActive("/dashboard/reports")}
+          />
+        </Can>
+        <Can permission="view_audit_log">
+          <NavItem
+            href="/dashboard/audit"
+            label="Audit log"
+            Icon={History}
+            active={isActive("/dashboard/audit")}
+          />
         </Can>
       </nav>
 

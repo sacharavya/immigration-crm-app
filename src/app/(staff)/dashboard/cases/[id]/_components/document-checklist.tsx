@@ -12,10 +12,12 @@ export type TemplateDoc = {
 };
 
 export type LatestDoc = {
+  id: string;
   status: string;
   file_name: string | null;
   sharepoint_web_url: string | null;
   version_number: number;
+  rejection_reason: string | null;
 };
 
 type Group = {
@@ -53,10 +55,20 @@ export function DocumentChecklist({
   caseId,
   templateDocs,
   latestByCode,
+  canEditRequired,
+  canReview,
+  canUpload,
+  clientPortalToken,
+  shareButtonSlot,
 }: {
   caseId: string;
   templateDocs: TemplateDoc[];
   latestByCode: Map<string, LatestDoc>;
+  canEditRequired: boolean;
+  canReview: boolean;
+  canUpload: boolean;
+  clientPortalToken?: string;
+  shareButtonSlot?: React.ReactNode;
 }) {
   const isReceived = (code: string) => {
     const u = latestByCode.get(code);
@@ -71,11 +83,14 @@ export function DocumentChecklist({
 
   return (
     <div className="rounded-xl border border-stone-200 bg-white p-6">
-      <div className="mb-4 flex items-baseline justify-between">
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="text-base font-semibold">Document checklist</h2>
-        <span className="text-sm text-stone-500">
-          {receivedCount} of {templateDocs.length} received
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-stone-500">
+            {receivedCount} of {templateDocs.length} received
+          </span>
+          {shareButtonSlot}
+        </div>
       </div>
       {templateDocs.length === 0 ? (
         <p className="text-sm text-stone-500">
@@ -96,10 +111,15 @@ export function DocumentChecklist({
                     templateDoc={{
                       document_code: d.document_code,
                       document_label: d.document_label,
+                      is_required: d.is_required,
                       condition_label: d.condition_label,
                       instructions: d.instructions,
                     }}
                     uploaded={latestByCode.get(d.document_code) ?? null}
+                    canEditRequired={canEditRequired}
+                    canReview={canReview}
+                    canUpload={canUpload}
+                    clientPortalToken={clientPortalToken}
                   />
                 ))}
               </ul>

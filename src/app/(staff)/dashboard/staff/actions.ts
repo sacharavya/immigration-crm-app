@@ -6,6 +6,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { staffCan, type Role } from "@/lib/auth/permissions";
+import { sendEmail } from "@/lib/email/client";
+import { passwordResetEmail } from "@/lib/email/templates/password-reset";
+import { staffInviteEmail } from "@/lib/email/templates/staff-invite";
+import { getBaseUrl } from "@/lib/email/url";
 import { createClient } from "@/lib/supabase/server";
 import {
   addStaffSchema,
@@ -74,43 +78,6 @@ async function loadActor(): Promise<
   };
 }
 
-async function sendEmail(args: {
-  to: string;
-  subject: string;
-  html: string;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_ADDRESS;
-  if (!apiKey || !from) {
-    return { ok: false, error: "Resend not configured" };
-  }
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({ from, to: args.to, subject: args.subject, html: args.html }),
-  });
-  if (!res.ok) {
-    return { ok: false, error: `Resend ${res.status}: ${await res.text()}` };
-  }
-  return { ok: true };
-}
-
-function resetEmailHtml(firstName: string, email: string, password: string) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
-  return `<p>Hi ${firstName},</p>
-<p>Your password has been reset by an administrator.</p>
-<p>Sign in with:</p>
-<ul>
-<li>Email: <strong>${email}</strong></li>
-<li>Temporary password: <code>${password}</code></li>
-</ul>
-<p>You'll be asked to reset your password on first login.</p>
-${appUrl ? `<p>Sign in at <a href="${appUrl}/login">${appUrl}/login</a></p>` : ""}`;
-}
-
 // ---------- 1. addStaff -----------------------------------------------------
 
 export type AddStaffResult =
@@ -118,6 +85,8 @@ export type AddStaffResult =
       ok: true;
       staffId: string;
       tempPassword: string;
+      emailSent: boolean;
+      emailError?: string;
     }
   | { error: string; fieldErrors?: Record<string, string[]> };
 
@@ -202,14 +171,29 @@ export async function addStaff(
     };
   }
 
-  // Email is intentionally not sent in this flow; admins create staff
-  // manually and communicate the temporary password directly. The dialog
-  // surfaces tempPassword for the admin to copy.
+  // Best-effort welcome email. The dialog still surfaces tempPassword
+  // so the admin has a fallback if delivery fails or is delayed.
+  const baseUrl = await getBaseUrl();
+  const tpl = staffInviteEmail({
+    firstName: parsed.data.first_name,
+    email: parsed.data.email,
+    tempPassword,
+    loginUrl: `${baseUrl}/login`,
+  });
+  const emailRes = await sendEmail({
+    to: parsed.data.email,
+    subject: tpl.subject,
+    html: tpl.html,
+    text: tpl.text,
+  });
+
   revalidatePath("/dashboard/staff");
   return {
     ok: true,
     staffId: newStaff.id,
     tempPassword,
+    emailSent: emailRes.ok,
+    emailError: emailRes.ok ? undefined : emailRes.error,
   };
 }
 
@@ -533,10 +517,18 @@ export async function resetStaffPassword(
     .update({ password_reset_required_at: new Date().toISOString() })
     .eq("id", staffId);
 
+  const baseUrl = await getBaseUrl();
+  const tpl = passwordResetEmail({
+    firstName: target.first_name,
+    email: target.email,
+    tempPassword,
+    loginUrl: `${baseUrl}/login`,
+  });
   const emailRes = await sendEmail({
     to: target.email,
-    subject: "Your Big Bang Immigration CRM password was reset",
-    html: resetEmailHtml(target.first_name, target.email, tempPassword),
+    subject: tpl.subject,
+    html: tpl.html,
+    text: tpl.text,
   });
 
   revalidatePath("/dashboard/staff");
@@ -547,4 +539,169 @@ export async function resetStaffPassword(
     emailSent: emailRes.ok,
     emailError: emailRes.ok ? undefined : emailRes.error,
   };
+}
+
+// ---------- 6. setStaffSignature -------------------------------------------
+
+const SIGNATURE_MAX_BYTES = 2 * 1024 * 1024;
+const SIGNATURE_ACCEPTED_MIME = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/heic",
+]);
+
+const setSignatureSchema = z.object({
+  imageDataUrl: z
+    .string()
+    .regex(
+      /^data:image\/(png|jpeg|jpg|heic);base64,/i,
+      "Image must be a PNG/JPEG/HEIC data URL",
+    ),
+  printedName: z.string().trim().min(1, "Printed name is required").max(200),
+});
+
+// Sets a staff member's signature image. Allowed if the actor has
+// manage_staff OR is updating their own row.
+export async function setStaffSignature(
+  staffId: string,
+  input: z.input<typeof setSignatureSchema>,
+): Promise<{ ok: true } | { error: string }> {
+  if (!z.string().uuid().safeParse(staffId).success) {
+    return { error: "Invalid staff id" };
+  }
+
+  const a = await loadActor();
+  if (!a.ok) return { error: a.error };
+  const actor = a.actor;
+
+  const isSelf = actor.id === staffId;
+  if (!isSelf) {
+    const canManage = staffCan(
+      {
+        id: actor.id,
+        role: actor.role,
+        first_name: "",
+        last_name: "",
+        email: "",
+        permission_overrides: actor.permission_overrides,
+      },
+      "manage_staff",
+    );
+    if (!canManage) {
+      return { error: "You don't have permission to update this signature." };
+    }
+  }
+
+  const parsed = setSignatureSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  const match = parsed.data.imageDataUrl.match(
+    /^data:(image\/[a-z]+);base64,(.*)$/i,
+  );
+  if (!match) return { error: "Could not parse signature image" };
+  const mimeType = match[1].toLowerCase();
+  if (!SIGNATURE_ACCEPTED_MIME.has(mimeType)) {
+    return { error: `Unsupported image type: ${mimeType}` };
+  }
+  const approxBytes = Math.floor((match[2].length * 3) / 4);
+  if (approxBytes > SIGNATURE_MAX_BYTES) {
+    return { error: "Signature image must be under 2 MB" };
+  }
+
+  const supabase = await createClient();
+  const { data: target } = await supabase
+    .schema("crm")
+    .from("staff")
+    .select("id, role, is_rcic, deleted_at")
+    .eq("id", staffId)
+    .maybeSingle();
+  if (!target) return { error: "Staff not found" };
+  if (target.deleted_at) {
+    return { error: "Cannot edit a deactivated staff member." };
+  }
+  if (!isSelf && !canActOnRole(actor.role, target.role as Role)) {
+    return { error: "Your role cannot edit this staff member." };
+  }
+
+  const { error } = await supabase
+    .schema("crm")
+    .from("staff")
+    .update({
+      signature_image_url: parsed.data.imageDataUrl,
+      signature_image_set_at: new Date().toISOString(),
+      printed_name_for_signature: parsed.data.printedName,
+      signature_capture_method: "uploaded",
+    })
+    .eq("id", staffId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/staff");
+  revalidatePath(`/dashboard/staff/${staffId}`);
+  return { ok: true };
+}
+
+// ---------- 7. removeStaffSignature ----------------------------------------
+
+export async function removeStaffSignature(
+  staffId: string,
+): Promise<{ ok: true } | { error: string }> {
+  if (!z.string().uuid().safeParse(staffId).success) {
+    return { error: "Invalid staff id" };
+  }
+
+  const a = await loadActor();
+  if (!a.ok) return { error: a.error };
+  const actor = a.actor;
+
+  const isSelf = actor.id === staffId;
+  if (!isSelf) {
+    const canManage = staffCan(
+      {
+        id: actor.id,
+        role: actor.role,
+        first_name: "",
+        last_name: "",
+        email: "",
+        permission_overrides: actor.permission_overrides,
+      },
+      "manage_staff",
+    );
+    if (!canManage) {
+      return { error: "You don't have permission to update this signature." };
+    }
+  }
+
+  const supabase = await createClient();
+  const { data: target } = await supabase
+    .schema("crm")
+    .from("staff")
+    .select("id, role, deleted_at")
+    .eq("id", staffId)
+    .maybeSingle();
+  if (!target) return { error: "Staff not found" };
+  if (target.deleted_at) {
+    return { error: "Cannot edit a deactivated staff member." };
+  }
+  if (!isSelf && !canActOnRole(actor.role, target.role as Role)) {
+    return { error: "Your role cannot edit this staff member." };
+  }
+
+  const { error } = await supabase
+    .schema("crm")
+    .from("staff")
+    .update({
+      signature_image_url: null,
+      signature_image_set_at: null,
+      printed_name_for_signature: null,
+      signature_capture_method: null,
+    })
+    .eq("id", staffId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/staff");
+  revalidatePath(`/dashboard/staff/${staffId}`);
+  return { ok: true };
 }

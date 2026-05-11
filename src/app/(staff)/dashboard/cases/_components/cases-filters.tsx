@@ -9,6 +9,7 @@ import { PHASE_LABELS } from "@/lib/utils/phase";
 import type { CasesView } from "./view-toggle";
 
 export type StaffPick = { id: string; name: string };
+export type ServiceTypePick = { id: string; name: string };
 
 const PHASES = [1, 2, 3, 4, 5, 6] as const;
 
@@ -17,15 +18,23 @@ export function CasesFilters({
   phase,
   assignee,
   assigneeOptions,
+  serviceType,
+  serviceTypeOptions,
 }: {
   view: CasesView;
   phase: number | null;
   assignee: string | null;
   assigneeOptions: StaffPick[];
+  serviceType: string | null;
+  serviceTypeOptions: ServiceTypePick[];
 }) {
   const router = useRouter();
 
-  function buildHref(next: { phase?: number | null; assignee?: string | null }) {
+  function buildHref(next: {
+    phase?: number | null;
+    assignee?: string | null;
+    serviceType?: string | null;
+  }) {
     const params = new URLSearchParams();
     // Board is the default view; only include when set to list.
     if (view === "list") params.set("view", "list");
@@ -38,6 +47,10 @@ export function CasesFilters({
     const nextAssignee =
       next.assignee === undefined ? assignee : next.assignee;
     if (nextAssignee) params.set("assignee", nextAssignee);
+
+    const nextServiceType =
+      next.serviceType === undefined ? serviceType : next.serviceType;
+    if (nextServiceType) params.set("service_type", nextServiceType);
 
     const qs = params.toString();
     return qs ? `/dashboard/cases?${qs}` : "/dashboard/cases";
@@ -53,7 +66,12 @@ export function CasesFilters({
     router.push(buildHref({ assignee: value === "" ? null : value }));
   }
 
-  const hasFilters = phase !== null || assignee !== null;
+  function pushServiceType(value: string) {
+    router.push(buildHref({ serviceType: value === "" ? null : value }));
+  }
+
+  const hasFilters =
+    phase !== null || assignee !== null || serviceType !== null;
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -77,6 +95,19 @@ export function CasesFilters({
       >
         <option value="">Anyone</option>
         {assigneeOptions.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </FilterSelect>
+
+      <FilterSelect
+        label="Service"
+        value={serviceType ?? ""}
+        onChange={pushServiceType}
+      >
+        <option value="">All services</option>
+        {serviceTypeOptions.map((s) => (
           <option key={s.id} value={s.id}>
             {s.name}
           </option>

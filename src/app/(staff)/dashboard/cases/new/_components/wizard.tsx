@@ -22,9 +22,9 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
-  newClientSchema,
+  newClientForCaseSchema,
   type NewCaseInput,
-  type NewClientInput,
+  type NewClientForCaseInput,
 } from "@/lib/validators/case";
 
 import {
@@ -50,10 +50,11 @@ export type VariantOption = {
 };
 
 type CountryOption = { code: string; name: string };
+type RcicOption = { id: string; name: string };
 
 type ClientChoice =
   | { kind: "existing"; client: ClientSearchResult }
-  | { kind: "new"; data: NewClientInput };
+  | { kind: "new"; data: NewClientForCaseInput };
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -64,25 +65,35 @@ const stepTitles: Record<Step, string> = {
   4: "Confirm",
 };
 
-const emptyClient: NewClientInput = {
+const emptyClient: NewClientForCaseInput = {
+  given_names: "",
+  family_name: "",
   legal_name_full: "",
   email: undefined,
   phone_primary: undefined,
   phone_whatsapp: undefined,
   country_of_citizenship: undefined,
   date_of_birth: undefined,
+  address_line1: "",
+  address_line2: undefined,
+  city: "",
+  province_state: "",
+  postal_code: "",
+  country_code: "",
 };
 
 export function NewCaseWizard({
   categories,
   variants,
   countries,
+  rcicOptions,
   canManageTemplates,
   preselectedClient,
 }: {
   categories: CategoryOption[];
   variants: VariantOption[];
   countries: CountryOption[];
+  rcicOptions: RcicOption[];
   canManageTemplates: boolean;
   preselectedClient?: ClientSearchResult | null;
 }) {
@@ -94,7 +105,12 @@ export function NewCaseWizard({
   const [serviceTypeId, setServiceTypeId] = useState<string>("");
   const [quotedFee, setQuotedFee] = useState("");
   const [retainerMin, setRetainerMin] = useState("");
+  const [governmentFee, setGovernmentFee] = useState("");
   const [retainedAt, setRetainedAt] = useState("");
+  // Auto-select when there's only one RCIC; otherwise force a deliberate pick.
+  const [rcicId, setRcicId] = useState<string>(
+    rcicOptions.length === 1 ? rcicOptions[0].id : "",
+  );
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -106,10 +122,16 @@ export function NewCaseWizard({
       setStep(1);
       return;
     }
+    if (!rcicId) {
+      setSubmitError("Pick the RCIC who will sign this retainer.");
+      return;
+    }
     setSubmitError(null);
 
     const fee = Number(quotedFee);
     const min = retainerMin.trim() === "" ? undefined : Number(retainerMin);
+    const gov =
+      governmentFee.trim() === "" ? undefined : Number(governmentFee);
 
     const retainedAtInput = retainedAt.trim() === "" ? undefined : retainedAt;
 
@@ -119,16 +141,20 @@ export function NewCaseWizard({
             client_kind: "existing",
             client_id: client.client.id,
             service_type_id: serviceTypeId,
+            rcic_id: rcicId,
             quoted_fee_cad: fee,
             retainer_minimum_cad: min,
+            government_fee_cad: gov,
             retained_at: retainedAtInput,
           }
         : {
             client_kind: "new",
             new_client: client.data,
             service_type_id: serviceTypeId,
+            rcic_id: rcicId,
             quoted_fee_cad: fee,
             retainer_minimum_cad: min,
+            government_fee_cad: gov,
             retained_at: retainedAtInput,
           };
 
@@ -179,9 +205,11 @@ export function NewCaseWizard({
           <FeeStep
             quotedFee={quotedFee}
             retainerMin={retainerMin}
+            governmentFee={governmentFee}
             retainedAt={retainedAt}
             onQuotedFeeChange={setQuotedFee}
             onRetainerMinChange={setRetainerMin}
+            onGovernmentFeeChange={setGovernmentFee}
             onRetainedAtChange={setRetainedAt}
             onBack={() => setStep(2)}
             onNext={() => setStep(4)}
@@ -193,7 +221,11 @@ export function NewCaseWizard({
             service={selectedService}
             quotedFee={quotedFee}
             retainerMin={retainerMin}
+            governmentFee={governmentFee}
             retainedAt={retainedAt}
+            rcicOptions={rcicOptions}
+            rcicId={rcicId}
+            onRcicChange={setRcicId}
             error={submitError}
             pending={pending}
             onBack={() => setStep(3)}
@@ -384,21 +416,36 @@ function NewClientForm({
   onSubmit,
 }: {
   countries: CountryOption[];
-  initial: NewClientInput;
-  onSubmit: (data: NewClientInput) => void;
+  initial: NewClientForCaseInput;
+  onSubmit: (data: NewClientForCaseInput) => void;
 }) {
-  const [form, setForm] = useState<NewClientInput>(initial);
+  const [form, setForm] = useState<NewClientForCaseInput>(initial);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
+  // Track whether the user has manually edited legal_name_full so we
+  // don't overwrite their override when given/family change.
+  const [legalNameTouched, setLegalNameTouched] = useState(
+    initial.legal_name_full.trim() !== "",
+  );
 
-  function update<K extends keyof NewClientInput>(
+  function update<K extends keyof NewClientForCaseInput>(
     key: K,
-    v: NewClientInput[K] | string,
+    v: NewClientForCaseInput[K] | string,
   ) {
-    setForm((f) => ({ ...f, [key]: v as NewClientInput[K] }));
+    setForm((f) => ({ ...f, [key]: v as NewClientForCaseInput[K] }));
+  }
+
+  function updateName(part: "given_names" | "family_name", v: string) {
+    setForm((f) => {
+      const next = { ...f, [part]: v };
+      if (!legalNameTouched) {
+        next.legal_name_full = `${next.given_names} ${next.family_name}`.trim();
+      }
+      return next;
+    });
   }
 
   function handleContinue() {
-    const parsed = newClientSchema.safeParse(form);
+    const parsed = newClientForCaseSchema.safeParse(form);
     if (!parsed.success) {
       setErrors(parsed.error.flatten().fieldErrors as Record<string, string[]>);
       return;
@@ -409,18 +456,57 @@ function NewClientForm({
 
   return (
     <FieldGroup>
+      <div className="grid grid-cols-2 gap-3">
+        <Field>
+          <FieldLabel htmlFor="given_names">First name</FieldLabel>
+          <Input
+            id="given_names"
+            value={form.given_names ?? ""}
+            onChange={(e) => updateName("given_names", e.target.value)}
+            aria-invalid={Boolean(errors.given_names)}
+          />
+          {errors.given_names && (
+            <FieldError
+              errors={errors.given_names.map((m) => ({ message: m }))}
+            />
+          )}
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="family_name">Last name</FieldLabel>
+          <Input
+            id="family_name"
+            value={form.family_name ?? ""}
+            onChange={(e) => updateName("family_name", e.target.value)}
+            aria-invalid={Boolean(errors.family_name)}
+          />
+          {errors.family_name && (
+            <FieldError
+              errors={errors.family_name.map((m) => ({ message: m }))}
+            />
+          )}
+        </Field>
+      </div>
+
       <Field>
         <FieldLabel htmlFor="legal_name_full">Full legal name</FieldLabel>
         <Input
           id="legal_name_full"
           value={form.legal_name_full ?? ""}
-          onChange={(e) => update("legal_name_full", e.target.value)}
+          onChange={(e) => {
+            setLegalNameTouched(true);
+            update("legal_name_full", e.target.value);
+          }}
           aria-invalid={Boolean(errors.legal_name_full)}
         />
-        {errors.legal_name_full && (
+        {errors.legal_name_full ? (
           <FieldError
             errors={errors.legal_name_full.map((m) => ({ message: m }))}
           />
+        ) : (
+          <FieldDescription>
+            Auto-fills from first + last. Edit if it differs from passport
+            (e.g. middle names, suffixes).
+          </FieldDescription>
         )}
       </Field>
 
@@ -491,6 +577,107 @@ function NewClientForm({
             />
           )}
         </Field>
+      </div>
+
+      <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
+        <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-stone-500">
+          Mailing address
+        </div>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="address_line1">Address line 1</FieldLabel>
+            <Input
+              id="address_line1"
+              value={form.address_line1 ?? ""}
+              onChange={(e) => update("address_line1", e.target.value)}
+              aria-invalid={Boolean(errors.address_line1)}
+              placeholder="Street, suite/unit"
+            />
+            {errors.address_line1 && (
+              <FieldError
+                errors={errors.address_line1.map((m) => ({ message: m }))}
+              />
+            )}
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="address_line2">
+              Address line 2 (optional)
+            </FieldLabel>
+            <Input
+              id="address_line2"
+              value={form.address_line2 ?? ""}
+              onChange={(e) => update("address_line2", e.target.value)}
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field>
+              <FieldLabel htmlFor="city">City</FieldLabel>
+              <Input
+                id="city"
+                value={form.city ?? ""}
+                onChange={(e) => update("city", e.target.value)}
+                aria-invalid={Boolean(errors.city)}
+              />
+              {errors.city && (
+                <FieldError
+                  errors={errors.city.map((m) => ({ message: m }))}
+                />
+              )}
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="province_state">Province / state</FieldLabel>
+              <Input
+                id="province_state"
+                value={form.province_state ?? ""}
+                onChange={(e) => update("province_state", e.target.value)}
+                aria-invalid={Boolean(errors.province_state)}
+              />
+              {errors.province_state && (
+                <FieldError
+                  errors={errors.province_state.map((m) => ({ message: m }))}
+                />
+              )}
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field>
+              <FieldLabel htmlFor="postal_code">Postal code</FieldLabel>
+              <Input
+                id="postal_code"
+                value={form.postal_code ?? ""}
+                onChange={(e) => update("postal_code", e.target.value)}
+                aria-invalid={Boolean(errors.postal_code)}
+              />
+              {errors.postal_code && (
+                <FieldError
+                  errors={errors.postal_code.map((m) => ({ message: m }))}
+                />
+              )}
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="country_code">Country</FieldLabel>
+              <select
+                id="country_code"
+                value={form.country_code ?? ""}
+                onChange={(e) => update("country_code", e.target.value)}
+                aria-invalid={Boolean(errors.country_code)}
+                className="h-9 rounded-md border border-stone-200 bg-white px-3 text-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/30"
+              >
+                <option value="">—</option>
+                {countries.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              {errors.country_code && (
+                <FieldError
+                  errors={errors.country_code.map((m) => ({ message: m }))}
+                />
+              )}
+            </Field>
+          </div>
+        </FieldGroup>
       </div>
 
       <div className="flex justify-end pt-2">
@@ -663,18 +850,22 @@ function ServiceStep({
 function FeeStep({
   quotedFee,
   retainerMin,
+  governmentFee,
   retainedAt,
   onQuotedFeeChange,
   onRetainerMinChange,
+  onGovernmentFeeChange,
   onRetainedAtChange,
   onBack,
   onNext,
 }: {
   quotedFee: string;
   retainerMin: string;
+  governmentFee: string;
   retainedAt: string;
   onQuotedFeeChange: (v: string) => void;
   onRetainerMinChange: (v: string) => void;
+  onGovernmentFeeChange: (v: string) => void;
   onRetainedAtChange: (v: string) => void;
   onBack: () => void;
   onNext: () => void;
@@ -682,6 +873,7 @@ function FeeStep({
   const [errors, setErrors] = useState<{
     fee?: string;
     min?: string;
+    gov?: string;
     retained?: string;
   }>({});
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -700,6 +892,12 @@ function FeeStep({
         next.min = "Retainer minimum cannot exceed the quoted fee.";
       }
     }
+    if (governmentFee.trim() !== "") {
+      const gov = Number(governmentFee);
+      if (!Number.isFinite(gov) || gov < 0) {
+        next.gov = "Government fee cannot be negative.";
+      }
+    }
     if (retainedAt.trim() !== "") {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(retainedAt)) {
         next.retained = "Use a valid date.";
@@ -708,7 +906,7 @@ function FeeStep({
       }
     }
     setErrors(next);
-    if (!next.fee && !next.min && !next.retained) onNext();
+    if (!next.fee && !next.min && !next.gov && !next.retained) onNext();
   }
 
   return (
@@ -755,6 +953,29 @@ function FeeStep({
       </Field>
 
       <Field>
+        <FieldLabel htmlFor="government_fee_cad">
+          Government fee (CAD, optional)
+        </FieldLabel>
+        <Input
+          id="government_fee_cad"
+          type="number"
+          step="0.01"
+          min="0"
+          value={governmentFee}
+          onChange={(e) => onGovernmentFeeChange(e.target.value)}
+          aria-invalid={Boolean(errors.gov)}
+        />
+        {errors.gov ? (
+          <FieldError errors={[{ message: errors.gov }]} />
+        ) : (
+          <FieldDescription>
+            IRCC processing or biometrics fees collected on behalf of the
+            client. Pre-fills onto the retainer; can be edited later.
+          </FieldDescription>
+        )}
+      </Field>
+
+      <Field>
         <FieldLabel htmlFor="retained_at">Retainer date (optional)</FieldLabel>
         <Input
           id="retained_at"
@@ -791,7 +1012,11 @@ function ConfirmStep({
   service,
   quotedFee,
   retainerMin,
+  governmentFee,
   retainedAt,
+  rcicOptions,
+  rcicId,
+  onRcicChange,
   error,
   pending,
   onBack,
@@ -801,7 +1026,11 @@ function ConfirmStep({
   service: VariantOption | undefined;
   quotedFee: string;
   retainerMin: string;
+  governmentFee: string;
   retainedAt: string;
+  rcicOptions: RcicOption[];
+  rcicId: string;
+  onRcicChange: (id: string) => void;
   error: string | null;
   pending: boolean;
   onBack: () => void;
@@ -814,11 +1043,22 @@ function ConfirmStep({
         ? `${client.data.legal_name_full} (new client)`
         : "—";
 
+  const onlyRcic = rcicOptions.length === 1 ? rcicOptions[0] : null;
+  const showRcicSelector = rcicOptions.length > 1;
+
   return (
     <div className="space-y-4">
       <dl className="divide-y divide-stone-200 rounded-lg border border-stone-200">
         <Row label="Client" value={clientLabel} />
         <Row label="Service" value={service?.name ?? "—"} />
+        <Row
+          label="RCIC"
+          value={
+            onlyRcic
+              ? onlyRcic.name
+              : rcicOptions.find((r) => r.id === rcicId)?.name ?? "—"
+          }
+        />
         <Row label="Quoted fee" value={`${formatCad(quotedFee)} CAD`} />
         <Row
           label="Retainer minimum"
@@ -829,10 +1069,50 @@ function ConfirmStep({
           }
         />
         <Row
+          label="Government fee"
+          value={
+            governmentFee.trim() === ""
+              ? "—"
+              : `${formatCad(governmentFee)} CAD`
+          }
+        />
+        <Row
           label="Retainer date"
           value={retainedAt.trim() === "" ? "Today" : retainedAt}
         />
       </dl>
+
+      {showRcicSelector && (
+        <Field>
+          <FieldLabel htmlFor="rcic_id">
+            Which RCIC will sign this retainer?
+          </FieldLabel>
+          <select
+            id="rcic_id"
+            value={rcicId}
+            onChange={(e) => onRcicChange(e.target.value)}
+            className="h-9 rounded-md border border-stone-200 bg-white px-3 text-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/30"
+          >
+            <option value="">Pick an RCIC…</option>
+            {rcicOptions.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+          <FieldDescription>
+            The RCIC of record. They counter-sign the retainer and appear
+            on the agreement letterhead.
+          </FieldDescription>
+        </Field>
+      )}
+
+      {rcicOptions.length === 0 && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          No active RCICs found. Add one in <strong>Team</strong> (flag the
+          staff member as RCIC) before opening cases.
+        </p>
+      )}
 
       {error && (
         <p
@@ -847,7 +1127,10 @@ function ConfirmStep({
         <Button variant="outline" onClick={onBack} disabled={pending}>
           Back
         </Button>
-        <Button onClick={onSubmit} disabled={pending}>
+        <Button
+          onClick={onSubmit}
+          disabled={pending || rcicOptions.length === 0 || !rcicId}
+        >
           {pending ? "Creating case…" : "Open case"}
         </Button>
       </div>

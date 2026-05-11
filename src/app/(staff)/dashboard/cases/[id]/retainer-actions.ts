@@ -7,8 +7,17 @@ import { z } from "zod";
 
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
-import { ensureCaseRetainerFolder } from "@/lib/graph/folders";
+import { sendEmail } from "@/lib/email/client";
+import { logEmail } from "@/lib/email/log";
+import { shouldRateLimit } from "@/lib/email/rate-limit";
+import { retainerInviteEmail } from "@/lib/email/templates/retainer-invite";
+import { getBaseUrl } from "@/lib/email/url";
+import {
+  createCaseFolderStructure,
+  ensureCaseRetainerFolder,
+} from "@/lib/graph/folders";
 import { uploadFile } from "@/lib/graph/uploads";
+import { renderRetainerPdf } from "@/lib/pdf/render-retainer";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 
@@ -52,13 +61,130 @@ async function loadRetainerWithCase(retainerId: string) {
     .schema("crm")
     .from("cases")
     .select(
-      "id, quoted_fee_cad, retainer_minimum_cad, service_type_id, assigned_rcic, sharepoint_folder_id",
+      "id, case_number, status, client_id, quoted_fee_cad, retainer_minimum_cad, government_fee_cad, service_type_id, assigned_rcic, sharepoint_folder_id",
     )
     .eq("id", retainer.case_id)
     .is("deleted_at", null)
     .maybeSingle();
   if (!caseRow) return null;
   return { retainer, caseRow };
+}
+
+async function loadClient(clientId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("crm")
+    .from("clients")
+    .select("id, legal_name_full, given_names, preferred_name, email")
+    .eq("id", clientId)
+    .maybeSingle();
+  return data;
+}
+
+// Reads the full client + RCIC rows used at send/sign time to populate
+// the *_at_signing snapshot columns. Centralising the projection keeps
+// sendRetainerForSignature and the public signing actions in lock-step.
+async function loadSignatureSnapshotInputs(args: {
+  clientId: string;
+  rcicStaffId: string;
+}) {
+  const supabase = await createClient();
+  const [{ data: client }, { data: rcic }] = await Promise.all([
+    supabase
+      .schema("crm")
+      .from("clients")
+      .select(
+        "legal_name_full, given_names, family_name, address_line1, address_line2, city, province_state, postal_code, country_code, email, phone_primary",
+      )
+      .eq("id", args.clientId)
+      .is("deleted_at", null)
+      .maybeSingle(),
+    supabase
+      .schema("crm")
+      .from("staff")
+      .select(
+        "first_name, last_name, email, signature_image_url, printed_name_for_signature, rcic_membership_number, office_address, office_phone, cell_phone",
+      )
+      .eq("id", args.rcicStaffId)
+      .is("deleted_at", null)
+      .maybeSingle(),
+  ]);
+  return { client, rcic };
+}
+
+function buildClientAddress(c: {
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  province_state: string | null;
+  postal_code: string | null;
+  country_code: string | null;
+}): string {
+  return [
+    c.address_line1,
+    c.address_line2,
+    [c.city, c.province_state].filter(Boolean).join(", "),
+    [c.postal_code, c.country_code].filter(Boolean).join(" "),
+  ]
+    .filter((s) => s && s.trim() !== "")
+    .join(", ")
+    .trim();
+}
+
+// Builds the *_at_signing snapshot dict from live client + RCIC rows.
+// Called from any path that flips a retainer out of `draft` (Send,
+// Get-link). Keeping it as one function ensures the column set stays in
+// lock-step regardless of which entry point fires.
+async function buildRetainerSnapshotFields(args: {
+  clientId: string;
+  rcicStaffId: string;
+}): Promise<
+  | {
+      ok: true;
+      fields: RetainerUpdate;
+    }
+  | { error: string }
+> {
+  const snap = await loadSignatureSnapshotInputs(args);
+  if (!snap.client) return { error: "Client record missing for this case." };
+  if (!snap.rcic) return { error: "RCIC record missing." };
+
+  const clientAddress = buildClientAddress(snap.client);
+  const rcicFullName =
+    `${snap.rcic.first_name} ${snap.rcic.last_name}`.trim();
+
+  return {
+    ok: true,
+    fields: {
+      client_legal_name_full_at_signing: snap.client.legal_name_full,
+      client_given_names_at_signing: snap.client.given_names,
+      client_family_name_at_signing: snap.client.family_name,
+      client_address_at_signing: clientAddress || null,
+      client_email_at_signing: snap.client.email,
+      client_phone_at_signing: snap.client.phone_primary,
+      rcic_name_at_signing: rcicFullName,
+      rcic_given_name_at_signing: snap.rcic.first_name,
+      rcic_family_name_at_signing: snap.rcic.last_name,
+      rcic_membership_number_at_signing: snap.rcic.rcic_membership_number,
+      rcic_address_at_signing: snap.rcic.office_address,
+      rcic_phone_at_signing:
+        snap.rcic.cell_phone ?? snap.rcic.office_phone ?? null,
+      rcic_office_phone_at_signing: snap.rcic.office_phone,
+      rcic_cell_phone_at_signing: snap.rcic.cell_phone,
+      rcic_email_at_signing: snap.rcic.email,
+      rcic_signature_image_url_at_signing: snap.rcic.signature_image_url,
+      rcic_printed_name_at_signing: snap.rcic.printed_name_for_signature,
+    },
+  };
+}
+
+function clientGreetingName(c: {
+  preferred_name: string | null;
+  given_names: string | null;
+  legal_name_full: string;
+} | null): string {
+  if (!c) return "there";
+  return c.preferred_name?.trim() || c.given_names?.trim() || c.legal_name_full;
 }
 
 // ---------------------------------------------------------------------------
@@ -190,7 +316,7 @@ export async function setRetainerRcic(
 export async function prepareRetainerForSending(
   retainerId: string,
 ): Promise<
-  | { ok: true }
+  | { ok: true; rcicStaffId: string }
   | {
       error: string;
       code?: "rcic_signature_missing" | "rcic_not_assigned";
@@ -268,7 +394,7 @@ export async function prepareRetainerForSending(
   // time — no inline form, no "details incomplete" gate. The send
   // action snapshots the derived values onto the retainer row.
 
-  return { ok: true };
+  return { ok: true, rcicStaffId };
 }
 
 // ---------------------------------------------------------------------------
@@ -283,7 +409,10 @@ const sendSchema = z.object({
 
 export async function sendRetainerForSignature(
   input: z.input<typeof sendSchema>,
-): Promise<{ ok: true; signing_path: string } | { error: string }> {
+): Promise<
+  | { ok: true; signing_path: string; emailSent: boolean; emailError?: string }
+  | { error: string }
+> {
   const g = await gate();
   if (!g.ok) return { error: g.error };
 
@@ -308,12 +437,19 @@ export async function sendRetainerForSignature(
   // even if the case fee changes later. Fields explicitly set on the
   // retainer (very rare path, only via direct SQL) are preserved.
   const supabase = await createClient();
-  const { data: serviceType } = await supabase
-    .schema("ref")
-    .from("service_types")
-    .select("name")
-    .eq("id", ctx.caseRow.service_type_id)
-    .maybeSingle();
+  const [{ data: serviceType }, snap] = await Promise.all([
+    supabase
+      .schema("ref")
+      .from("service_types")
+      .select("name")
+      .eq("id", ctx.caseRow.service_type_id)
+      .maybeSingle(),
+    buildRetainerSnapshotFields({
+      clientId: ctx.caseRow.client_id,
+      rcicStaffId: pre.rcicStaffId,
+    }),
+  ]);
+  if ("error" in snap) return { error: snap.error };
 
   const quoted = Number(ctx.caseRow.quoted_fee_cad);
   const caseRetainerMin =
@@ -350,7 +486,16 @@ export async function sendRetainerForSignature(
       second_installment_cad: Number(secondInst),
       hst_cad: Number(hst),
       withdrawal_refund_floor_cad: Number(withdrawalFloor),
-      government_fee_cad: ctx.retainer.government_fee_cad ?? 0,
+      government_fee_cad:
+        ctx.retainer.government_fee_cad ??
+        (ctx.caseRow.government_fee_cad !== null
+          ? Number(ctx.caseRow.government_fee_cad)
+          : 0),
+      // Identity / contact / signature snapshots — once written, these
+      // are the source of truth for rendering and never reread from the
+      // live clients/staff rows. See migration
+      // 20260506000001_retainer_signing_snapshots.sql.
+      ...snap.fields,
     })
     .eq("id", parsed.data.retainerId);
   if (error) return { error: error.message };
@@ -370,12 +515,54 @@ export async function sendRetainerForSignature(
       created_by: g.me.id,
     });
 
-  // Email firing is RET-6's job; for now we just persist sent_at.
-  // The signing link is returned so staff can copy/paste in chat or
-  // manually email it until Resend wiring lands.
+  // Best-effort transactional email. Failures never roll back the
+  // signing-token write — staff can always copy the link from the UI.
+  let emailSent = false;
+  let emailError: string | undefined;
+  if (parsed.data.send_email) {
+    const client = await loadClient(ctx.caseRow.client_id);
+    const limited = await shouldRateLimit(
+      "retainer_invite",
+      parsed.data.recipient_email,
+    );
+    if (limited) {
+      emailError = "Rate limit reached for this recipient. Try again later.";
+    } else {
+      const baseUrl = await getBaseUrl();
+      const signingUrl = `${baseUrl}/sign/retainer/${token}`;
+      const tpl = retainerInviteEmail({
+        clientName: clientGreetingName(client),
+        caseNumber: ctx.caseRow.case_number,
+        signingUrl,
+        expiryDate: new Date(expires),
+      });
+      const res = await sendEmail({
+        to: parsed.data.recipient_email,
+        subject: tpl.subject,
+        html: tpl.html,
+        text: tpl.text,
+      });
+      emailSent = res.ok;
+      if (!res.ok) emailError = res.error;
+      await logEmail({
+        supabase,
+        caseId: ctx.caseRow.id,
+        clientId: ctx.caseRow.client_id,
+        staffId: g.me.id,
+        to: parsed.data.recipient_email,
+        subject: tpl.subject,
+        body: tpl.text,
+      });
+    }
+  }
 
   rev(ctx.caseRow.id);
-  return { ok: true, signing_path: `/sign/retainer/${token}` };
+  return {
+    ok: true,
+    signing_path: `/sign/retainer/${token}`,
+    emailSent,
+    emailError,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -384,7 +571,10 @@ export async function sendRetainerForSignature(
 
 export async function resendRetainerEmail(
   retainerId: string,
-): Promise<{ ok: true; signing_path: string } | { error: string }> {
+): Promise<
+  | { ok: true; signing_path: string; emailSent: boolean; emailError?: string }
+  | { error: string }
+> {
   const g = await gate();
   if (!g.ok) return { error: g.error };
 
@@ -402,6 +592,22 @@ export async function resendRetainerEmail(
   ).toISOString();
 
   const supabase = await createClient();
+
+  // First-set-wins backfill: if this retainer was activated before the
+  // snapshot columns existed (or via a path that didn't populate them),
+  // populate now so a Resend locks the data even if Send didn't.
+  let snapshotFields: RetainerUpdate = {};
+  if (!ctx.retainer.client_legal_name_full_at_signing) {
+    const pre = await prepareRetainerForSending(retainerId);
+    if (!("error" in pre)) {
+      const snap = await buildRetainerSnapshotFields({
+        clientId: ctx.caseRow.client_id,
+        rcicStaffId: pre.rcicStaffId,
+      });
+      if (!("error" in snap)) snapshotFields = snap.fields;
+    }
+  }
+
   const { error } = await supabase
     .schema("crm")
     .from("retainer_agreements")
@@ -409,6 +615,7 @@ export async function resendRetainerEmail(
       resent_count: (ctx.retainer.resent_count ?? 0) + 1,
       last_resent_at: new Date().toISOString(),
       token_expires_at: expires,
+      ...snapshotFields,
     })
     .eq("id", retainerId);
   if (error) return { error: error.message };
@@ -427,8 +634,54 @@ export async function resendRetainerEmail(
       created_by: g.me.id,
     });
 
+  // Re-fire the invite email if we still have the original recipient.
+  let emailSent = false;
+  let emailError: string | undefined;
+  const recipient = ctx.retainer.sent_to_email;
+  if (recipient) {
+    const limited = await shouldRateLimit("retainer_invite", recipient);
+    if (limited) {
+      emailError = "Rate limit reached for this recipient. Try again later.";
+    } else {
+      const client = await loadClient(ctx.caseRow.client_id);
+      const baseUrl = await getBaseUrl();
+      const signingUrl = `${baseUrl}/sign/retainer/${ctx.retainer.signing_token}`;
+      const tpl = retainerInviteEmail({
+        clientName: clientGreetingName(client),
+        caseNumber: ctx.caseRow.case_number,
+        signingUrl,
+        expiryDate: new Date(expires),
+        isResend: true,
+      });
+      const res = await sendEmail({
+        to: recipient,
+        subject: tpl.subject,
+        html: tpl.html,
+        text: tpl.text,
+      });
+      emailSent = res.ok;
+      if (!res.ok) emailError = res.error;
+      await logEmail({
+        supabase,
+        caseId: ctx.caseRow.id,
+        clientId: ctx.caseRow.client_id,
+        staffId: g.me.id,
+        to: recipient,
+        subject: tpl.subject,
+        body: tpl.text,
+      });
+    }
+  } else {
+    emailError = "No recipient on file — copy the link manually.";
+  }
+
   rev(ctx.caseRow.id);
-  return { ok: true, signing_path: `/sign/retainer/${ctx.retainer.signing_token}` };
+  return {
+    ok: true,
+    signing_path: `/sign/retainer/${ctx.retainer.signing_token}`,
+    emailSent,
+    emailError,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -510,6 +763,21 @@ export async function getSigningLink(
   ).toISOString();
 
   const supabase = await createClient();
+
+  // First-set-wins snapshots: this path also leaves draft, so populate
+  // *_at_signing if they aren't already set. Without this, a retainer
+  // activated via Get-link (rather than Send) would render live data
+  // and silently follow edits to the live clients/staff rows.
+  let snapshotFields: RetainerUpdate = {};
+  if (!ctx.retainer.client_legal_name_full_at_signing) {
+    const snap = await buildRetainerSnapshotFields({
+      clientId: ctx.caseRow.client_id,
+      rcicStaffId: pre.rcicStaffId,
+    });
+    if ("error" in snap) return { error: snap.error };
+    snapshotFields = snap.fields;
+  }
+
   const { error } = await supabase
     .schema("crm")
     .from("retainer_agreements")
@@ -518,6 +786,7 @@ export async function getSigningLink(
       method: "online_signature",
       signing_token: token,
       token_expires_at: expires,
+      ...snapshotFields,
     })
     .eq("id", retainerId);
   if (error) return { error: error.message };
@@ -556,13 +825,14 @@ export async function voidRetainer(
   }
 
   const supabase = await createClient();
+  const voidedAt = new Date().toISOString();
   const { error } = await supabase
     .schema("crm")
     .from("retainer_agreements")
     .update({
       status: "void",
       void_reason: parsed.data.reason,
-      voided_at: new Date().toISOString(),
+      voided_at: voidedAt,
       voided_by: me.id,
       signing_token: null,
       token_expires_at: null,
@@ -581,66 +851,265 @@ export async function voidRetainer(
       created_by: me.id,
     });
 
+  // Close the case — voiding a retainer is a real-world reset; the
+  // case itself is no longer active. Use the canonical closed state +
+  // closed_at timestamp; the cases-list filter hides closed by
+  // default (archive semantic).
+  await supabase
+    .schema("crm")
+    .from("cases")
+    .update({
+      status: "closed",
+      closed_at: voidedAt,
+    })
+    .eq("id", ctx.caseRow.id);
+
+  await supabase
+    .schema("crm")
+    .from("case_events")
+    .insert({
+      case_id: ctx.caseRow.id,
+      event_type: "status_changed",
+      event_data: {
+        from: ctx.caseRow.status ?? null,
+        to: "closed",
+        reason: "retainer_voided",
+      },
+      description: "Case closed due to retainer void.",
+      created_by: me.id,
+    });
+
+  // Best-effort void PDF generation. Failures must not roll back the
+  // void (the retainer status is the legal artifact; the PDF is a
+  // convenience copy for the OneDrive folder). Skipped silently if the
+  // case has no OneDrive folder yet.
+  try {
+    if (ctx.caseRow.sharepoint_folder_id) {
+      const pdf = await renderRetainerPdf(parsed.data.retainerId, {
+        mode: "void",
+        voidedAt,
+      });
+      const today = voidedAt.slice(0, 10);
+      const fileName = `Retainer_VOID_${today}.pdf`;
+      const folder = await ensureCaseRetainerFolder(
+        ctx.caseRow.sharepoint_folder_id,
+      );
+      const uploaded = await uploadFile(
+        folder.driveId,
+        folder.folderItemId,
+        fileName,
+        pdf,
+        "application/pdf",
+      );
+      await supabase
+        .schema("files")
+        .from("documents")
+        .insert({
+          case_id: ctx.caseRow.id,
+          category: "retainer_void",
+          document_code: "VOIDED_RETAINER",
+          display_name: `Voided Retainer Agreement (${today})`,
+          file_name: fileName,
+          file_size_bytes: pdf.byteLength,
+          mime_type: "application/pdf",
+          sharepoint_drive_id: folder.driveId,
+          sharepoint_item_id: uploaded.id,
+          sharepoint_web_url: uploaded.webUrl,
+          status: "accepted",
+          uploaded_by_staff: me.id,
+        });
+    }
+  } catch (err) {
+    console.error(
+      `[voidRetainer] void PDF generation failed for ${parsed.data.retainerId}:`,
+      err,
+    );
+  }
+
   rev(ctx.caseRow.id);
   return { ok: true };
 }
 
 // ---------------------------------------------------------------------------
-// startNewRetainer — creates a fresh draft for a case whose previous
-// retainer is void. The void row stays for audit; the new row becomes
-// the "active" retainer (UNIQUE on case_id requires the void row to be
-// soft-deleted or for the schema to allow multiple).
+// startNewRetainer — opens a NEW case that continues the work from a
+// case whose retainer was voided. The original case stays as-is for
+// audit (status closed, void retainer attached); the new case inherits
+// every reusable detail (client, service, fees, RCIC, flags) so the
+// staff member doesn't have to retype the wizard. Unique IDs
+// (case_number, retainer id, OneDrive folder) are freshly generated.
 //
-// The schema declares case_id UNIQUE on retainer_agreements, so before
-// inserting the new row we must soft-delete the void one. Audit log
-// captures both events.
+// Why a new case rather than reactivating the existing retainer:
+//   - retainer_agreements.case_id is a true UNIQUE constraint; soft-
+//     deleting the void row doesn't free it because the constraint
+//     applies regardless of deleted_at.
+//   - Voiding a contract is a real-world reset; conflating it with a
+//     re-draft on the same case obscures the audit trail.
 // ---------------------------------------------------------------------------
 
 export async function startNewRetainer(
   caseId: string,
-): Promise<{ ok: true; retainerId: string } | { error: string }> {
+): Promise<
+  | { ok: true; newCaseId: string; newCaseNumber: string }
+  | { error: string }
+> {
   const g = await gate();
   if (!g.ok) return { error: g.error };
 
   const supabase = await createClient();
-  const { data: existing } = await supabase
+
+  const { data: oldCase } = await supabase
+    .schema("crm")
+    .from("cases")
+    .select(
+      `
+        id, case_number, client_id, service_type_id, service_template_id,
+        assigned_rcic, assigned_paralegal,
+        quoted_fee_cad, retainer_minimum_cad, government_fee_cad,
+        conditional_flags, priority, internal_notes
+      `,
+    )
+    .eq("id", caseId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!oldCase) return { error: "Original case not found" };
+
+  const { data: existingRetainer } = await supabase
     .schema("crm")
     .from("retainer_agreements")
     .select("id, status")
     .eq("case_id", caseId)
     .is("deleted_at", null)
     .maybeSingle();
-  if (existing && existing.status !== "void") {
+  if (!existingRetainer) {
+    return { error: "No retainer found on the original case." };
+  }
+  if (existingRetainer.status !== "void") {
     return {
       error:
-        "A non-void retainer already exists. Void it first before starting a new one.",
+        "Void the current retainer before starting a new one.",
     };
   }
 
-  if (existing) {
-    // Soft-delete the void row to free the UNIQUE constraint on case_id.
-    const { error: delErr } = await supabase
-      .schema("crm")
-      .from("retainer_agreements")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", existing.id);
-    if (delErr) return { error: delErr.message };
+  // Mint a new case number via the same RPC the wizard uses.
+  const { data: newCaseNumber, error: numErr } = await supabase
+    .schema("crm")
+    .rpc("generate_case_number");
+  if (numErr || !newCaseNumber) {
+    return {
+      error: `Could not generate case number: ${numErr?.message ?? "unknown"}`,
+    };
   }
 
-  const { data, error } = await supabase
+  // Insert the cloned case. The trg_ensure_retainer_for_new_case
+  // trigger creates a fresh draft retainer row automatically.
+  const { data: newCase, error: caseErr } = await supabase
     .schema("crm")
-    .from("retainer_agreements")
+    .from("cases")
     .insert({
-      case_id: caseId,
-      status: "draft",
+      case_number: newCaseNumber as unknown as string,
+      client_id: oldCase.client_id,
+      service_type_id: oldCase.service_type_id,
+      service_template_id: oldCase.service_template_id,
+      assigned_rcic: oldCase.assigned_rcic,
+      assigned_paralegal: oldCase.assigned_paralegal,
+      status: "retainer_pending",
+      quoted_fee_cad: oldCase.quoted_fee_cad,
+      retainer_minimum_cad: oldCase.retainer_minimum_cad,
+      government_fee_cad: oldCase.government_fee_cad,
+      conditional_flags: oldCase.conditional_flags,
+      priority: oldCase.priority,
+      internal_notes: oldCase.internal_notes,
+      sharepoint_folder_id: null,
+      sharepoint_folder_url: null,
       created_by: g.me.id,
     })
     .select("id")
     .single();
-  if (error || !data) return { error: error?.message ?? "Insert failed" };
+  if (caseErr || !newCase) {
+    return {
+      error: `Could not create case: ${caseErr?.message ?? "unknown"}`,
+    };
+  }
+
+  // Stamp rcic_id on the new (auto-created) retainer so loadRetainerData
+  // resolves it directly. Mirrors the same step in createCase.
+  await supabase
+    .schema("crm")
+    .from("retainer_agreements")
+    .update({ rcic_id: oldCase.assigned_rcic })
+    .eq("case_id", newCase.id)
+    .is("deleted_at", null);
+
+  // Audit on both cases — the trail makes the continuation explicit.
+  await supabase
+    .schema("crm")
+    .from("case_events")
+    .insert([
+      {
+        case_id: caseId,
+        event_type: "other",
+        event_data: {
+          kind: "retainer_restart",
+          new_case_id: newCase.id,
+          new_case_number: newCaseNumber,
+        },
+        description: `Retainer voided; continuation opened as ${newCaseNumber}.`,
+        created_by: g.me.id,
+      },
+      {
+        case_id: newCase.id,
+        event_type: "status_changed",
+        event_data: {
+          from: null,
+          to: "retainer_pending",
+          source_case_id: caseId,
+          source_case_number: oldCase.case_number,
+        },
+        description: `Case opened (continuation of ${oldCase.case_number}).`,
+        created_by: g.me.id,
+      },
+    ]);
+
+  // Best-effort OneDrive provisioning. Same pattern as createCase —
+  // failures don't roll back the case row; staff can retry from the
+  // new case detail page.
+  try {
+    const { driveItemId, webUrl } =
+      await createCaseFolderStructure(newCase.id);
+    await supabase
+      .schema("crm")
+      .from("cases")
+      .update({
+        sharepoint_folder_id: driveItemId,
+        sharepoint_folder_url: webUrl,
+      })
+      .eq("id", newCase.id);
+  } catch (err) {
+    console.error(
+      `[startNewRetainer] OneDrive provisioning failed for ${newCase.id}:`,
+      err,
+    );
+    await supabase
+      .schema("crm")
+      .from("case_events")
+      .insert({
+        case_id: newCase.id,
+        event_type: "other",
+        event_data: {
+          kind: "onedrive_folder_pending",
+          error: err instanceof Error ? err.message : String(err),
+        },
+        description: "OneDrive folder creation failed; awaiting retry",
+        created_by: g.me.id,
+      });
+  }
 
   rev(caseId);
-  return { ok: true, retainerId: data.id };
+  return {
+    ok: true,
+    newCaseId: newCase.id,
+    newCaseNumber: newCaseNumber as unknown as string,
+  };
 }
 
 // ---------------------------------------------------------------------------

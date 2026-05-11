@@ -29,6 +29,7 @@ export default async function NewCasePage({ searchParams }: Props) {
     { data: serviceTypes },
     { data: templates },
     { data: countries },
+    { data: rcicStaff },
   ] = await Promise.all([
     supabase
       .schema("ref")
@@ -63,7 +64,20 @@ export default async function NewCasePage({ searchParams }: Props) {
       .select("code, name")
       .eq("is_active", true)
       .order("name"),
+    supabase
+      .schema("crm")
+      .from("staff")
+      .select("id, first_name, last_name")
+      .eq("is_rcic", true)
+      .eq("is_active", true)
+      .is("deleted_at", null)
+      .order("last_name", { ascending: true }),
   ]);
+
+  const rcicOptions = (rcicStaff ?? []).map((s) => ({
+    id: s.id,
+    name: `${s.first_name} ${s.last_name}`.trim(),
+  }));
 
   // Mirror ref.is_variant_active() in JS so we don't need a per-row RPC.
   function isVariantActive(v: {
@@ -150,6 +164,7 @@ export default async function NewCasePage({ searchParams }: Props) {
           categories={categories}
           variants={variants}
           countries={countries ?? []}
+          rcicOptions={rcicOptions}
           canManageTemplates={canManageTemplates}
           preselectedClient={preselectedClient}
         />

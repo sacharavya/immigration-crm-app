@@ -27,6 +27,10 @@ export type CaseRow = {
   assigneeId: string | null;
   assigneeName: string | null;
   paymentProgress: number;
+  // Same retainer-signal pair as BoardCase. Drives the pill override
+  // when status is retainer_pending but the retainer is already signed.
+  retainerSigned: boolean;
+  retainerSatisfied: boolean;
 };
 
 const statusPill: Record<CaseStatus, { label: string; className: string }> = {
@@ -151,7 +155,15 @@ export function CasesListView({ rows }: { rows: CaseRow[] }) {
               </TableRow>
             ) : (
               filtered.map((r) => {
-                const pill = statusPill[r.status];
+                const pill =
+                  r.status === "retainer_pending" && r.retainerSigned
+                    ? {
+                        label: r.retainerSatisfied
+                          ? "Retainer Signed"
+                          : "Awaiting Payment",
+                        className: "bg-emerald-100 text-emerald-800",
+                      }
+                    : statusPill[r.status];
                 const open = () => router.push(`/dashboard/cases/${r.id}`);
                 return (
                   <TableRow
