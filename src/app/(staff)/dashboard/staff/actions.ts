@@ -8,7 +8,6 @@ import { z } from "zod";
 import { staffCan, type Role } from "@/lib/auth/permissions";
 import { sendEmail } from "@/lib/email/client";
 import { passwordResetEmail } from "@/lib/email/templates/password-reset";
-import { passwordResetLinkEmail } from "@/lib/email/templates/password-reset-link";
 import { staffInviteEmail } from "@/lib/email/templates/staff-invite";
 import { getBaseUrl } from "@/lib/email/url";
 import { createClient } from "@/lib/supabase/server";
@@ -450,11 +449,18 @@ export async function reactivateStaff(
 }
 
 // ---------- 5. resetStaffPassword -------------------------------------------
+// Generates BOTH a temporary password and a one-time recovery link in one
+// shot, and emails the recipient with both options. The recipient picks
+// whichever works for them — click the link for the smooth path, or sign
+// in with the temp password if email links are blocked. Both paths land
+// at /reset-password (the link via /auth/callback, the temp password via
+// /login + the password_reset_required_at gate).
 
 export type ResetStaffPasswordResult =
   | {
       ok: true;
       tempPassword: string;
+      resetUrl: string;
       emailSent: boolean;
       emailError?: string;
     }
@@ -512,94 +518,8 @@ export async function resetStaffPassword(
   );
   if (updateErr) return { error: updateErr.message };
 
-  await supabase
-    .schema("crm")
-    .from("staff")
-    .update({ password_reset_required_at: new Date().toISOString() })
-    .eq("id", staffId);
-
-  const baseUrl = await getBaseUrl();
-  const tpl = passwordResetEmail({
-    firstName: target.first_name,
-    email: target.email,
-    tempPassword,
-    loginUrl: `${baseUrl}/login`,
-  });
-  const emailRes = await sendEmail({
-    to: target.email,
-    subject: tpl.subject,
-    html: tpl.html,
-    text: tpl.text,
-  });
-
-  revalidatePath("/dashboard/staff");
-  revalidatePath(`/dashboard/staff/${staffId}`);
-  return {
-    ok: true,
-    tempPassword,
-    emailSent: emailRes.ok,
-    emailError: emailRes.ok ? undefined : emailRes.error,
-  };
-}
-
-// ---------- 5b. sendStaffPasswordResetLink ----------------------------------
-// Alternative to resetStaffPassword: issues a one-time recovery link via
-// Supabase admin.generateLink, emails it via Resend, and returns the link
-// so the dialog can show it as a copy-paste fallback when email fails.
-
-export type SendStaffPasswordResetLinkResult =
-  | {
-      ok: true;
-      resetUrl: string;
-      emailSent: boolean;
-      emailError?: string;
-    }
-  | { error: string };
-
-export async function sendStaffPasswordResetLink(
-  staffId: string,
-): Promise<SendStaffPasswordResetLinkResult> {
-  if (!z.string().uuid().safeParse(staffId).success) {
-    return { error: "Invalid staff id" };
-  }
-
-  const a = await loadActor();
-  if (!a.ok) return { error: a.error };
-  const actor = a.actor;
-
-  if (!staffCan(
-    {
-      id: actor.id,
-      role: actor.role,
-      first_name: "",
-      last_name: "",
-      email: "",
-      permission_overrides: actor.permission_overrides,
-    },
-    "reset_passwords",
-  )) {
-    return { error: "You don't have permission to reset passwords." };
-  }
-
-  const supabase = await createClient();
-  const { data: target } = await supabase
-    .schema("crm")
-    .from("staff")
-    .select("id, auth_user_id, role, first_name, email, deleted_at")
-    .eq("id", staffId)
-    .maybeSingle();
-  if (!target) return { error: "Staff not found" };
-  if (target.deleted_at) {
-    return { error: "Cannot reset password for a deactivated user." };
-  }
-  if (!canActOnRole(actor.role, target.role as Role)) {
-    return { error: "Your role cannot reset this user's password." };
-  }
-
   const baseUrl = await getBaseUrl();
   const redirectTo = `${baseUrl}/auth/callback?next=/reset-password`;
-
-  const admin = adminClient();
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
     type: "recovery",
     email: target.email,
@@ -618,9 +538,12 @@ export async function sendStaffPasswordResetLink(
     .update({ password_reset_required_at: new Date().toISOString() })
     .eq("id", staffId);
 
-  const tpl = passwordResetLinkEmail({
+  const tpl = passwordResetEmail({
     firstName: target.first_name,
+    email: target.email,
+    tempPassword,
     resetUrl,
+    loginUrl: `${baseUrl}/login`,
   });
   const emailRes = await sendEmail({
     to: target.email,
@@ -633,6 +556,7 @@ export async function sendStaffPasswordResetLink(
   revalidatePath(`/dashboard/staff/${staffId}`);
   return {
     ok: true,
+    tempPassword,
     resetUrl,
     emailSent: emailRes.ok,
     emailError: emailRes.ok ? undefined : emailRes.error,
