@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Copy, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
@@ -20,7 +20,9 @@ import {
   deactivateStaff,
   reactivateStaff,
   resetStaffPassword,
+  sendStaffPasswordResetLink,
   type ResetStaffPasswordResult,
+  type SendStaffPasswordResetLinkResult,
 } from "../actions";
 
 type Target = {
@@ -71,15 +73,26 @@ export function StaffRowActions({
 
 /* ───────────────────── Reset password ───────────────────── */
 
+type ResetResult =
+  | { kind: "link"; data: SendStaffPasswordResetLinkResult }
+  | { kind: "temp"; data: ResetStaffPasswordResult };
+
 function ResetPasswordButton({ target }: { target: Target }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [result, setResult] = useState<ResetStaffPasswordResult | null>(null);
+  const [result, setResult] = useState<ResetResult | null>(null);
 
-  function handleReset() {
+  function handleSendLink() {
+    startTransition(async () => {
+      const r = await sendStaffPasswordResetLink(target.id);
+      setResult({ kind: "link", data: r });
+    });
+  }
+
+  function handleTempPassword() {
     startTransition(async () => {
       const r = await resetStaffPassword(target.id);
-      setResult(r);
+      setResult({ kind: "temp", data: r });
     });
   }
 
@@ -87,6 +100,13 @@ function ResetPasswordButton({ target }: { target: Target }) {
     setOpen(false);
     setTimeout(() => setResult(null), 200);
   }
+
+  const success =
+    result && "ok" in result.data
+      ? result
+      : null;
+  const errorMessage =
+    result && "error" in result.data ? result.data.error : null;
 
   return (
     <>
@@ -103,42 +123,88 @@ function ResetPasswordButton({ target }: { target: Target }) {
 
       <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
         <DialogContent>
-          {result && "ok" in result ? (
-            <ResetSuccessView result={result} onClose={close} />
+          {success ? (
+            success.kind === "link" ? (
+              <ResetLinkSuccessView
+                result={success.data as Extract<SendStaffPasswordResetLinkResult, { ok: true }>}
+                onClose={close}
+              />
+            ) : (
+              <ResetTempSuccessView
+                result={success.data as Extract<ResetStaffPasswordResult, { ok: true }>}
+                onClose={close}
+              />
+            )
           ) : (
             <>
               <DialogHeader>
                 <DialogTitle>Reset password</DialogTitle>
                 <DialogDescription>
-                  Generate a new temporary password for{" "}
+                  Choose how to reset the password for{" "}
                   <strong>
                     {target.firstName} {target.lastName}
                   </strong>{" "}
-                  ({target.email}). Their next sign-in will require a reset.
+                  ({target.email}).
                 </DialogDescription>
               </DialogHeader>
-              {result && "error" in result && (
+
+              <div className="space-y-3 rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm">
+                <div>
+                  <div className="font-medium text-stone-900">
+                    Send a reset link
+                  </div>
+                  <p className="mt-0.5 text-xs text-stone-500">
+                    Emails a one-time link. They click it, set a new
+                    password, and sign in. Recommended.
+                  </p>
+                </div>
+                <div className="border-t border-stone-200 pt-3">
+                  <div className="font-medium text-stone-900">
+                    Generate a temporary password
+                  </div>
+                  <p className="mt-0.5 text-xs text-stone-500">
+                    Falls back to a one-time password you can share if
+                    the user can&apos;t receive email.
+                  </p>
+                </div>
+              </div>
+
+              {errorMessage && (
                 <p
                   role="alert"
                   className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
                 >
-                  {result.error}
+                  {errorMessage}
                 </p>
               )}
-              <DialogFooter>
-                <Button variant="outline" onClick={close} disabled={pending}>
+
+              <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+                <Button
+                  variant="outline"
+                  onClick={close}
+                  disabled={pending}
+                  className="sm:mr-auto"
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleReset} disabled={pending}>
-                  {pending ? (
-                    <>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    variant="outline"
+                    onClick={handleTempPassword}
+                    disabled={pending}
+                  >
+                    {pending ? (
                       <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                      Resetting…
-                    </>
-                  ) : (
-                    "Reset password"
-                  )}
-                </Button>
+                    ) : null}
+                    Generate temp password
+                  </Button>
+                  <Button onClick={handleSendLink} disabled={pending}>
+                    {pending ? (
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    ) : null}
+                    Send reset link
+                  </Button>
+                </div>
               </DialogFooter>
             </>
           )}
@@ -148,7 +214,71 @@ function ResetPasswordButton({ target }: { target: Target }) {
   );
 }
 
-function ResetSuccessView({
+function ResetLinkSuccessView({
+  result,
+  onClose,
+}: {
+  result: { ok: true; resetUrl: string; emailSent: boolean; emailError?: string };
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  function copy() {
+    void navigator.clipboard.writeText(result.resetUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  return (
+    <>
+      <DialogHeader>
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700">
+            <CheckCircle2 className="h-5 w-5" />
+          </span>
+          <div>
+            <DialogTitle>Reset link generated</DialogTitle>
+            <DialogDescription>
+              {result.emailSent
+                ? "Email sent with a one-time reset link."
+                : "Email could not be sent — share the link manually."}
+            </DialogDescription>
+          </div>
+        </div>
+      </DialogHeader>
+
+      <div className="space-y-2 rounded-lg border border-stone-200 bg-stone-50 p-4">
+        <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+          Reset link
+        </div>
+        <div className="flex items-center gap-2">
+          <code className="block flex-1 truncate rounded bg-white px-3 py-2 font-mono text-xs">
+            {result.resetUrl}
+          </code>
+          <Button size="sm" variant="outline" onClick={copy}>
+            <Copy className="mr-1 h-3.5 w-3.5" />
+            {copied ? "Copied" : "Copy"}
+          </Button>
+        </div>
+        {!result.emailSent && result.emailError && (
+          <p className="text-xs text-destructive">
+            Email error: {result.emailError}
+          </p>
+        )}
+        <p className="pt-1 text-[11px] text-stone-500">
+          One-time use, expires in 24 hours.
+        </p>
+      </div>
+
+      <DialogFooter>
+        <Button onClick={onClose}>Done</Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+function ResetTempSuccessView({
   result,
   onClose,
 }: {

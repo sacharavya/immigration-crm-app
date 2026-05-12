@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase/server";
 
 import { IntakeShell } from "./_components/intake-shell";
 
+export const dynamic = "force-dynamic";
+
 type Props = { params: Promise<{ id: string }> };
 
 export default async function IntakePage({ params }: Props) {
