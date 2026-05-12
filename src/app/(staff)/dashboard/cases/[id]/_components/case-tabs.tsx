@@ -4,7 +4,6 @@ import Link from "next/link";
 const TABS = [
   { key: "retainer", label: "Retainer" },
   { key: "documents", label: "Documents" },
-  { key: "intake", label: "Intake form" },
   { key: "activity", label: "Activity" },
   { key: "tasks", label: "Tasks" },
   { key: "payments", label: "Payments" },

@@ -15,7 +15,7 @@ function getClient(): Resend | null {
 
 export const FROM_ADDRESS =
   process.env.RESEND_FROM_ADDRESS ??
-  "Big Bang Immigration <crm@crm.bigbangimmigration.com>";
+  "Big Bang Immigration <noreply@bigbangimmigration.com>";
 
 export const REPLY_TO =
   process.env.RESEND_REPLY_TO ?? "info@bigbangimmigration.com";

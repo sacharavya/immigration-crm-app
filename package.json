@@ -11,6 +11,7 @@
     "db:migrate": "supabase db push",
     "db:diff": "supabase db diff -f",
     "graph:test": "tsx --env-file=.env.local scripts/test-graph.ts",
+    "mail:test": "tsx --env-file=.env.local scripts/test-resend.ts",
     "bootstrap": "tsx --env-file=.env.local scripts/bootstrap-superuser.ts",
     "wipe:checklists": "tsx --env-file=.env.local scripts/wipe-checklists.ts",
     "db:types": "supabase gen types typescript --linked --schema crm,files,portal,audit,ref"

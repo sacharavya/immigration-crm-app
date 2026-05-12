@@ -157,11 +157,31 @@ export const RETAINER_STYLES = `
 .retainer-page ol,
 .retainer-page ul {
   margin: 4px 0 12px;
-  padding-left: 26px;
+  padding-left: 28px;
+}
+
+.retainer-page ol {
+  list-style-type: decimal;
+}
+
+.retainer-page ol ol {
+  list-style-type: lower-roman;
+  margin-top: 6px;
 }
 
 .retainer-page li {
   margin: 4px 0;
+}
+
+.retainer-page li::marker {
+  font-weight: 600;
+  color: var(--rt-text);
+}
+
+/* Bolded inline variables (client name, fees, dates, etc.) so the
+   parts that change per agreement stand out from the boilerplate. */
+.retainer-page .rt-var {
+  font-weight: 700;
 }
 
 .retainer-meta {
@@ -446,15 +466,25 @@ export function RetainerDocument({
       <h1>RETAINER AGREEMENT</h1>
 
       <div className="retainer-meta">
-        <span>RCIC Membership Number: {data.rcic_membership_number}</span>
-        <span>Client File Number: {data.case_number}</span>
+        <span>
+          RCIC Membership Number:{" "}
+          <span className="rt-var">{data.rcic_membership_number}</span>
+        </span>
+        <span>
+          Client File Number:{" "}
+          <span className="rt-var">{data.case_number}</span>
+        </span>
       </div>
 
       <p>
-        This Retainer Agreement is made this {dateOfSigning}, between RCIC{" "}
-        {data.rcic_name} (the &ldquo;RCIC&rdquo;), located at{" "}
-        {data.rcic_address}, and {data.client_legal_name_full} (the
-        &ldquo;Client&rdquo;), located at {data.client_address}.
+        This Retainer Agreement is made this{" "}
+        <span className="rt-var">{dateOfSigning}</span>, between RCIC{" "}
+        <span className="rt-var">{data.rcic_name}</span> (the
+        &ldquo;RCIC&rdquo;), located at{" "}
+        <span className="rt-var">{data.rcic_address}</span>, and{" "}
+        <span className="rt-var">{data.client_legal_name_full}</span> (the
+        &ldquo;Client&rdquo;), located at{" "}
+        <span className="rt-var">{data.client_address}</span>.
       </p>
 
       <p>
@@ -485,13 +515,14 @@ export function RetainerDocument({
       <h2>2. RCIC Responsibilities and Commitments</h2>
       <p>
         The Client asked the RCIC, and the RCIC has agreed, to act for the
-        Client in the matter of {data.service_description} in Canada.
+        Client in the matter of{" "}
+        <span className="rt-var">{data.service_description}</span> in Canada.
       </p>
       <p>
         In consideration of the fees paid and the matter stated above, the
         RCIC agrees to do the following:
       </p>
-      <ol type="a">
+      <ol type="1">
         <li>
           Advise the CLIENT with respect to current Canadian Immigration
           Laws / Regulations;
@@ -538,7 +569,7 @@ export function RetainerDocument({
       </ol>
 
       <h2>3. Client Responsibilities and Commitments</h2>
-      <ol type="a">
+      <ol type="1">
         <li>
           The Client must provide, upon request from the RCIC:
           <ol type="i">
@@ -645,8 +676,11 @@ export function RetainerDocument({
         The Client agrees that the fees paid are for services indicated
         above. The Client agrees to pay the full agreed amount of this
         contract. If Client withdraws the application, the payment before
-        the start of the application ({fmtCad(data.withdrawal_refund_floor_cad)})
-        and earned fees will be non-refundable. In cases where the
+        the start of the application (
+        <span className="rt-var">
+          {fmtCad(data.withdrawal_refund_floor_cad)}
+        </span>
+        ) and earned fees will be non-refundable. In cases where the
         application is withdrawn, the balance due shall become payable
         forthwith.
       </p>
@@ -717,7 +751,7 @@ export function RetainerDocument({
       </p>
 
       <h2>10. Termination</h2>
-      <ol type="a">
+      <ol type="1">
         <li>
           This Agreement is considered terminated upon completion of tasks
           identified under section 2 of this Agreement.
@@ -731,7 +765,7 @@ export function RetainerDocument({
       </ol>
 
       <h2>11. Discharge or Withdrawal of Representation</h2>
-      <ol type="a">
+      <ol type="1">
         <li>
           The Client may discharge representation and terminate this
           Agreement, upon writing, at which time any outstanding fees or
@@ -760,7 +794,7 @@ export function RetainerDocument({
       </p>
 
       <h2>13. Miscellaneous</h2>
-      <ol type="a">
+      <ol type="1">
         <li>
           The Client expressly authorizes the RCIC to act on his/her behalf
           to the extent of the specific functions which the RCIC was

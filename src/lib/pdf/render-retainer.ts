@@ -231,11 +231,25 @@ export async function loadRetainerData(
       : caseRow.government_fee_cad !== null
         ? Number(caseRow.government_fee_cad)
         : 0;
-  // First installment defaults to the case's retainer_minimum_cad
-  // (the upfront amount staff entered in the new-case wizard); falls
-  // back to 50% of the quoted fee when the case didn't set one.
-  // Second installment is whatever's left of the quoted fee. HST is
-  // 13% of the quoted fee unless explicitly overridden on the retainer.
+  // HST is 13% of the quoted (pre-tax) fee unless explicitly overridden
+  // on the retainer. Subtotal = quoted + hst — this is what the
+  // installments add up to. Government fees are listed separately and
+  // are NOT split into the installments (they go straight to IRCC).
+  const hst =
+    retainer.hst_cad !== null
+      ? Number(retainer.hst_cad)
+      : Math.round(quoted * 0.13 * 100) / 100;
+  const subtotal = Math.round((quoted + hst) * 100) / 100;
+
+  // Installment split — three cases, all summing to the subtotal:
+  //   (a) Full fee upfront (retainer_minimum_cad >= quoted): first =
+  //       subtotal, second = 0. Tax is rolled into the single payment.
+  //   (b) Partial upfront (retainer_minimum_cad < quoted): first =
+  //       the entered amount (pre-tax), second = subtotal − first.
+  //       Tax lands on the second installment.
+  //   (c) Nothing set: 50/50 split of the subtotal across both
+  //       installments.
+  // Explicit overrides on the retainer columns win over all of this.
   // Withdrawal refund floor mirrors the first installment by default
   // (matches the .docx clause "the payment before the start of the
   // application is non-refundable").
@@ -243,18 +257,20 @@ export async function loadRetainerData(
     caseRow.retainer_minimum_cad !== null
       ? Number(caseRow.retainer_minimum_cad)
       : null;
-  const firstInst =
-    retainer.first_installment_cad !== null
-      ? Number(retainer.first_installment_cad)
-      : caseRetainerMin ?? Math.round(quoted * 0.5 * 100) / 100;
+  let firstInst: number;
+  if (retainer.first_installment_cad !== null) {
+    firstInst = Number(retainer.first_installment_cad);
+  } else if (caseRetainerMin === null) {
+    firstInst = Math.round(subtotal * 0.5 * 100) / 100;
+  } else if (caseRetainerMin >= quoted) {
+    firstInst = subtotal;
+  } else {
+    firstInst = caseRetainerMin;
+  }
   const secondInst =
     retainer.second_installment_cad !== null
       ? Number(retainer.second_installment_cad)
-      : Math.max(0, Math.round((quoted - firstInst) * 100) / 100);
-  const hst =
-    retainer.hst_cad !== null
-      ? Number(retainer.hst_cad)
-      : Math.round(quoted * 0.13 * 100) / 100;
+      : Math.max(0, Math.round((subtotal - firstInst) * 100) / 100);
   const withdrawalFloor =
     retainer.withdrawal_refund_floor_cad !== null
       ? Number(retainer.withdrawal_refund_floor_cad)
