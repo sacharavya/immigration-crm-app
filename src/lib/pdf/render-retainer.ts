@@ -24,6 +24,7 @@ import {
   type RetainerData,
 } from "@/components/retainer/retainer-document";
 import { getLetterheadLogoDataUrl } from "@/lib/retainer/logo";
+import { resolveServiceLabel } from "@/lib/retainer/service-label";
 import type { Database } from "@/lib/supabase/types";
 
 export class RetainerRenderError extends Error {
@@ -147,7 +148,7 @@ export async function loadRetainerData(
     retainer.rcic_id ??
     (await resolveRcicStaffId(supabase, caseRow.assigned_rcic));
 
-  const [{ data: client }, { data: rcic }, { data: serviceType }] =
+  const [{ data: client }, { data: rcic }, serviceLabel] =
     await Promise.all([
       supabase
         .schema("crm")
@@ -169,12 +170,7 @@ export async function loadRetainerData(
             .is("deleted_at", null)
             .maybeSingle()
         : Promise.resolve({ data: null }),
-      supabase
-        .schema("ref")
-        .from("service_types")
-        .select("name")
-        .eq("id", caseRow.service_type_id)
-        .maybeSingle(),
+      resolveServiceLabel(supabase, caseRow.service_type_id),
     ]);
 
   if (!client) {
@@ -289,7 +285,7 @@ export async function loadRetainerData(
   const data: RetainerData = {
     case_number: caseRow.case_number,
     service_description:
-      retainer.service_description ?? serviceType?.name ?? "the application",
+      retainer.service_description ?? serviceLabel ?? "the application",
 
     client_legal_name_full:
       retainer.client_legal_name_full_at_signing ?? client.legal_name_full,

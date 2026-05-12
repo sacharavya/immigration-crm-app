@@ -18,6 +18,7 @@ import {
 } from "@/lib/graph/folders";
 import { uploadFile } from "@/lib/graph/uploads";
 import { renderRetainerPdf } from "@/lib/pdf/render-retainer";
+import { resolveServiceLabel } from "@/lib/retainer/service-label";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 
@@ -437,13 +438,8 @@ export async function sendRetainerForSignature(
   // even if the case fee changes later. Fields explicitly set on the
   // retainer (very rare path, only via direct SQL) are preserved.
   const supabase = await createClient();
-  const [{ data: serviceType }, snap] = await Promise.all([
-    supabase
-      .schema("ref")
-      .from("service_types")
-      .select("name")
-      .eq("id", ctx.caseRow.service_type_id)
-      .maybeSingle(),
+  const [serviceLabel, snap] = await Promise.all([
+    resolveServiceLabel(supabase, ctx.caseRow.service_type_id),
     buildRetainerSnapshotFields({
       clientId: ctx.caseRow.client_id,
       rcicStaffId: pre.rcicStaffId,
@@ -481,7 +477,7 @@ export async function sendRetainerForSignature(
       // Snapshot
       quoted_fee_cad_at_signing: quoted,
       service_description:
-        ctx.retainer.service_description ?? serviceType?.name ?? null,
+        ctx.retainer.service_description ?? serviceLabel ?? null,
       first_installment_cad: Number(firstInst),
       second_installment_cad: Number(secondInst),
       hst_cad: Number(hst),
