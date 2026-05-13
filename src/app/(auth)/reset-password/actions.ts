@@ -85,9 +85,10 @@ export async function resetPassword(
     };
   }
 
-  // Sign the user out so they re-authenticate with their new password.
-  // Otherwise the existing session remains valid and the user lands on
-  // /dashboard without ever proving they remember what they just set.
-  await supabase.auth.signOut();
-  redirect("/login?reset=1");
+  // Hand off to /logout (route handler) which does signOut + redirect
+  // atomically. Doing signOut() + redirect() in this Server Action can
+  // race: the deletion cookies sometimes don't make it onto the
+  // redirect response, leaving the recovery session alive and the user
+  // dropped straight back to /dashboard. The route handler avoids that.
+  redirect("/logout?next=" + encodeURIComponent("/login?reset=1"));
 }
