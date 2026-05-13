@@ -198,7 +198,7 @@ function ResetSuccessView({
         </div>
       </DialogHeader>
 
-      <div className="space-y-2 rounded-lg border border-stone-200 bg-stone-50 p-4">
+      <div className="min-w-0 space-y-2 overflow-hidden rounded-lg border border-stone-200 bg-stone-50 p-4">
         <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
           Reset link · one-time, expires in 24 h
         </div>
@@ -218,7 +218,7 @@ function ResetSuccessView({
         </div>
       </div>
 
-      <div className="space-y-2 rounded-lg border border-stone-200 bg-stone-50 p-4">
+      <div className="min-w-0 space-y-2 overflow-hidden rounded-lg border border-stone-200 bg-stone-50 p-4">
         <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
           Temporary password
         </div>
