@@ -102,7 +102,7 @@ function ResetPasswordButton({ target }: { target: Target }) {
       </Button>
 
       <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           {result && "ok" in result ? (
             <ResetSuccessView result={result} onClose={close} />
           ) : (
@@ -202,11 +202,16 @@ function ResetSuccessView({
         <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
           Reset link · one-time, expires in 24 h
         </div>
-        <div className="flex items-center gap-2">
-          <code className="block flex-1 truncate rounded bg-white px-3 py-2 font-mono text-xs">
+        <div className="flex min-w-0 items-center gap-2">
+          <code className="block min-w-0 flex-1 truncate rounded bg-white px-3 py-2 font-mono text-xs">
             {result.resetUrl}
           </code>
-          <Button size="sm" variant="outline" onClick={copyLink}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={copyLink}
+            className="shrink-0"
+          >
             <Copy className="mr-1 h-3.5 w-3.5" />
             {copiedLink ? "Copied" : "Copy"}
           </Button>
@@ -217,11 +222,16 @@ function ResetSuccessView({
         <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
           Temporary password
         </div>
-        <div className="flex items-center gap-2">
-          <code className="block flex-1 rounded bg-white px-3 py-2 font-mono text-sm">
+        <div className="flex min-w-0 items-center gap-2">
+          <code className="block min-w-0 flex-1 truncate rounded bg-white px-3 py-2 font-mono text-sm">
             {result.tempPassword}
           </code>
-          <Button size="sm" variant="outline" onClick={copyPwd}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={copyPwd}
+            className="shrink-0"
+          >
             <Copy className="mr-1 h-3.5 w-3.5" />
             {copiedPwd ? "Copied" : "Copy"}
           </Button>
