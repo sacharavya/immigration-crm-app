@@ -13,6 +13,7 @@ import type { Database } from "@/lib/supabase/types";
 
 import { AddressSection } from "./address-section";
 import { BackgroundSection } from "./background-section";
+import { BiometricsSection } from "./biometrics-section";
 import { EducationSection } from "./education-section";
 import { EmploymentSection } from "./employment-section";
 import { FamilySection } from "./family-section";
@@ -33,6 +34,7 @@ const SECTION_IDS: IntakeSection[] = [
   "education",
   "employment",
   "travel",
+  "biometrics",
   "addresses",
   "background",
   "organisations",
@@ -191,6 +193,14 @@ export function IntakeShell({
             client={client}
             travel={related.travel}
             countries={countries}
+            canEdit={canEdit}
+          />
+        </SectionCard>
+
+        <SectionCard id="biometrics" title="Biometrics History">
+          <BiometricsSection
+            client={client}
+            records={related.biometrics}
             canEdit={canEdit}
           />
         </SectionCard>

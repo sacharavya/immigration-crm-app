@@ -2,11 +2,16 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ActionChip } from "@/components/cases/action-chip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
+import {
+  chipInputFromViewRow,
+  computeActionChip,
+} from "@/lib/cases/action-chip";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 
@@ -26,6 +31,7 @@ import {
   DocumentChecklist,
   type LatestDoc,
 } from "./_components/document-checklist";
+import { BiometricsCard } from "./_components/biometrics-card";
 import { OneDriveCard } from "./_components/onedrive-card";
 import {
   PaymentsTab,
@@ -58,29 +64,13 @@ const statusPill: Record<CaseStatus, { label: string; className: string }> = {
     label: "Submitted",
     className: "bg-amber-100 text-amber-800",
   },
-  biometrics_pending: {
-    label: "Biometrics",
-    className: "bg-teal-100 text-teal-800",
-  },
-  biometrics_completed: {
-    label: "Biometrics",
-    className: "bg-teal-100 text-teal-800",
-  },
-  awaiting_decision: {
-    label: "Awaiting Decision",
-    className: "bg-teal-100 text-teal-800",
-  },
   passport_requested: {
-    label: "Passport Request",
+    label: "Approved",
     className: "bg-green-100 text-green-800",
   },
   refused: {
     label: "Refused",
     className: "bg-red-100 text-red-800",
-  },
-  additional_info_requested: {
-    label: "More Info",
-    className: "bg-amber-100 text-amber-800",
   },
   closed: {
     label: "Closed",
@@ -363,6 +353,7 @@ export default async function CasePage({ params, searchParams }: Props) {
         `
           id,
           occurred_at,
+          event_type,
           description,
           event_data,
           recorder:staff!case_events_created_by_fkey(first_name, last_name)
@@ -375,6 +366,47 @@ export default async function CasePage({ params, searchParams }: Props) {
 
   const client = clientRes.data;
   const service = serviceRes.data;
+
+  // FLOW-3a: pull this case's chip-input row and compute the chip.
+  const { data: chipRow } = await supabase
+    .schema("crm")
+    .from("v_case_chip_inputs")
+    .select("*")
+    .eq("case_id", id)
+    .maybeSingle();
+  const chip = chipRow
+    ? (() => {
+        const input = chipInputFromViewRow(chipRow, new Date());
+        return input ? computeActionChip(input) : null;
+      })()
+    : null;
+
+  // FLOW-3b: biometrics card data. Linked record (if any) + the client's
+  // prior records (so "Use prior biometrics" can list them).
+  const [{ data: priorBiometricRecords }, linkedBiometricRecordRes] =
+    await Promise.all([
+      supabase
+        .schema("crm")
+        .from("client_biometric_records")
+        .select(
+          "*",
+        )
+        .eq("client_id", caseRow.client_id)
+        .is("deleted_at", null)
+        .order("date_given", { ascending: false }),
+      caseRow.biometrics_record_id
+        ? supabase
+            .schema("crm")
+            .from("client_biometric_records")
+            .select(
+              "id, date_given, location, bvn_or_reference, application_context, valid_until",
+            )
+            .eq("id", caseRow.biometrics_record_id)
+            .is("deleted_at", null)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+  const linkedBiometricRecord = linkedBiometricRecordRes.data;
 
   // Intake banner — fetch the full client row + all 8 support tables and
   // compute completeness. Adds a parallel round-trip but the banner is
@@ -448,6 +480,9 @@ export default async function CasePage({ params, searchParams }: Props) {
         organisations: intakeOrgsRes.data ?? [],
         government: intakeGovRes.data ?? [],
         military: intakeMilRes.data ?? [],
+        // priorBiometricRecords is already loaded above (FLOW-3b) for the
+        // biometrics card — reuse it for completeness without a 2nd query.
+        biometrics: priorBiometricRecords ?? [],
       })
     : null;
   const intakeMissing = intakeProgress
@@ -464,6 +499,29 @@ export default async function CasePage({ params, searchParams }: Props) {
   const payments = paymentsRes.data ?? [];
   const tasks = tasksRes.data ?? [];
   const allStaff = staffRes.data ?? [];
+
+  // FLOW-3b: latest biometrics-related event for the biometrics card's
+  // sub-line ("Requested on …" / "Scheduled for …" / "Completed on …").
+  const BIO_EVENT_TYPES: ReadonlySet<string> = new Set([
+    "biometrics_requested",
+    "biometrics_scheduled",
+    "biometrics_completed",
+  ]);
+  const latestBiometricsEvent = (() => {
+    for (const e of eventsRes.data ?? []) {
+      if (BIO_EVENT_TYPES.has(e.event_type)) {
+        return {
+          type: e.event_type,
+          occurredAt: e.occurred_at,
+          eventData:
+            e.event_data && typeof e.event_data === "object" && !Array.isArray(e.event_data)
+              ? (e.event_data as Record<string, unknown>)
+              : null,
+        };
+      }
+    }
+    return null;
+  })();
 
   // OneDrive folder UI state. Folder is "provisioning" if the most recent
   // folder-related event is `_provisioning` and no `_ready` event has
@@ -663,6 +721,7 @@ export default async function CasePage({ params, searchParams }: Props) {
               </p>
             </div>
             <div className="flex flex-col items-end gap-2">
+              {chip && <ActionChip chip={chip} />}
               <Badge
                 className={`${pill.className} shrink-0 rounded-full px-3 py-1 font-medium`}
               >
@@ -895,6 +954,15 @@ export default async function CasePage({ params, searchParams }: Props) {
                 )}
               </CardContent>
             </Card>
+
+            <BiometricsCard
+              caseId={caseRow.id}
+              status={caseRow.biometrics_status}
+              linkedRecord={linkedBiometricRecord ?? null}
+              priorRecords={priorBiometricRecords ?? []}
+              canEdit={canEditCase}
+              latestBiometricsEvent={latestBiometricsEvent}
+            />
 
             <Card>
               <CardContent className="space-y-2 p-4">

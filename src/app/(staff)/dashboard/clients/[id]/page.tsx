@@ -4,11 +4,17 @@ import { notFound } from "next/navigation";
 
 import { Check } from "lucide-react";
 
+import { ActionChip } from "@/components/cases/action-chip";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
+import {
+  chipInputFromViewRow,
+  computeActionChip,
+  type ChipOutput,
+} from "@/lib/cases/action-chip";
 import { getIntakeProgress } from "@/lib/intake/completeness";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
@@ -29,18 +35,38 @@ const clientStatusPill: Record<
   closed: { label: "Closed", className: "bg-gray-200 text-gray-700" },
 };
 
-const caseStatusLabel: Record<CaseStatus, string> = {
-  retainer_pending: "Retainer Pending",
-  documentation_in_progress: "Documentation",
-  documentation_review: "In Review",
-  submitted_to_ircc: "Submitted",
-  biometrics_pending: "Biometrics",
-  biometrics_completed: "Biometrics",
-  awaiting_decision: "Awaiting Decision",
-  passport_requested: "Passport Request",
-  refused: "Refused",
-  additional_info_requested: "More Info",
-  closed: "Closed",
+const caseStatusBadge: Record<
+  CaseStatus,
+  { label: string; className: string }
+> = {
+  retainer_pending: {
+    label: "Retainer Pending",
+    className: "bg-stone-100 text-stone-700",
+  },
+  documentation_in_progress: {
+    label: "Documentation",
+    className: "bg-stone-100 text-stone-700",
+  },
+  documentation_review: {
+    label: "In Review",
+    className: "bg-stone-100 text-stone-700",
+  },
+  submitted_to_ircc: {
+    label: "Submitted",
+    className: "bg-stone-100 text-stone-700",
+  },
+  passport_requested: {
+    label: "Approved",
+    className: "bg-green-100 text-green-800",
+  },
+  refused: {
+    label: "Refused",
+    className: "bg-red-100 text-red-800",
+  },
+  closed: {
+    label: "Closed",
+    className: "bg-stone-100 text-stone-700",
+  },
 };
 
 function Field({
@@ -105,9 +131,26 @@ export default async function ClientDetailPage({ params }: Props) {
   const serviceNameById = new Map(
     (serviceRows ?? []).map((s) => [s.id, s.name]),
   );
+  const caseIds = caseRowsList.map((c) => c.id);
+  const { data: chipRows } = caseIds.length
+    ? await supabase
+        .schema("crm")
+        .from("v_case_chip_inputs")
+        .select("*")
+        .in("case_id", caseIds)
+    : { data: [] };
+  const chipNow = new Date();
+  const chipById = new Map<string, ChipOutput>();
+  for (const row of chipRows ?? []) {
+    if (!row.case_id) continue;
+    const input = chipInputFromViewRow(row, chipNow);
+    if (input) chipById.set(row.case_id, computeActionChip(input));
+  }
+
   const cases = caseRowsList.map((c) => ({
     ...c,
     serviceName: serviceNameById.get(c.service_type_id) ?? null,
+    chip: chipById.get(c.id) ?? null,
   }));
   const pill = clientStatusPill[clientRow.status];
 
@@ -121,6 +164,7 @@ export default async function ClientDetailPage({ params }: Props) {
     orgsRes,
     govRes,
     milRes,
+    bioRes,
   ] = await Promise.all([
     supabase
       .schema("crm")
@@ -162,6 +206,12 @@ export default async function ClientDetailPage({ params }: Props) {
       .from("client_military_services")
       .select("*")
       .eq("client_id", id),
+    supabase
+      .schema("crm")
+      .from("client_biometric_records")
+      .select("*")
+      .eq("client_id", id)
+      .is("deleted_at", null),
   ]);
 
   const intakeProgress = getIntakeProgress(clientRow, {
@@ -173,6 +223,7 @@ export default async function ClientDetailPage({ params }: Props) {
     organisations: orgsRes.data ?? [],
     government: govRes.data ?? [],
     military: milRes.data ?? [],
+    biometrics: bioRes.data ?? [],
   });
   const intakeFullyComplete =
     intakeProgress.complete === intakeProgress.total;
@@ -373,8 +424,11 @@ export default async function ClientDetailPage({ params }: Props) {
                         <span>
                           {format(new Date(c.opened_at), "MMM d, yyyy")}
                         </span>
-                        <Badge className="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-medium text-stone-700">
-                          {caseStatusLabel[c.status]}
+                        {c.chip && <ActionChip chip={c.chip} size="sm" />}
+                        <Badge
+                          className={`${caseStatusBadge[c.status].className} rounded-full px-2.5 py-0.5 text-[11px] font-medium`}
+                        >
+                          {caseStatusBadge[c.status].label}
                         </Badge>
                       </div>
                     </Link>

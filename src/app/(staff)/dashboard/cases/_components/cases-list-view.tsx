@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { ActionChip } from "@/components/cases/action-chip";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import type { ChipOutput } from "@/lib/cases/action-chip";
 import { assigneeColor } from "@/lib/utils/assignee-color";
 import {
   Table,
@@ -31,6 +33,8 @@ export type CaseRow = {
   // when status is retainer_pending but the retainer is already signed.
   retainerSigned: boolean;
   retainerSatisfied: boolean;
+  // FLOW-3a: dynamic action chip; null if no view row.
+  chip: ChipOutput | null;
 };
 
 const statusPill: Record<CaseStatus, { label: string; className: string }> = {
@@ -50,29 +54,13 @@ const statusPill: Record<CaseStatus, { label: string; className: string }> = {
     label: "Submitted",
     className: "bg-amber-100 text-amber-800",
   },
-  biometrics_pending: {
-    label: "Biometrics",
-    className: "bg-teal-100 text-teal-800",
-  },
-  biometrics_completed: {
-    label: "Biometrics",
-    className: "bg-teal-100 text-teal-800",
-  },
-  awaiting_decision: {
-    label: "Awaiting Decision",
-    className: "bg-teal-100 text-teal-800",
-  },
   passport_requested: {
-    label: "Passport Request",
+    label: "Approved",
     className: "bg-green-100 text-green-800",
   },
   refused: {
     label: "Refused",
     className: "bg-red-100 text-red-800",
-  },
-  additional_info_requested: {
-    label: "More Info",
-    className: "bg-amber-100 text-amber-800",
   },
   closed: {
     label: "Closed",
@@ -188,11 +176,14 @@ export function CasesListView({ rows }: { rows: CaseRow[] }) {
                       {r.serviceName}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        className={`${pill.className} rounded-full px-3 py-1 font-medium`}
-                      >
-                        {pill.label}
-                      </Badge>
+                      <div className="flex flex-col items-start gap-1">
+                        {r.chip && <ActionChip chip={r.chip} size="sm" />}
+                        <Badge
+                          className={`${pill.className} rounded-full px-2.5 py-0.5 text-[10px] font-medium`}
+                        >
+                          {pill.label}
+                        </Badge>
+                      </div>
                     </TableCell>
                     <TableCell>
                       {r.assigneeName ? (

@@ -20,7 +20,9 @@ import {
   useTransition,
 } from "react";
 
+import { ActionChip } from "@/components/cases/action-chip";
 import { Badge } from "@/components/ui/badge";
+import type { ChipOutput } from "@/lib/cases/action-chip";
 import { assigneeColor } from "@/lib/utils/assignee-color";
 import { cn } from "@/lib/utils/index";
 import {
@@ -56,6 +58,9 @@ export type BoardCase = {
   // pending (payment) instead of "Retainer Pending".
   retainerSigned: boolean;
   retainerSatisfied: boolean;
+  // FLOW-3a: dynamic action chip. Null if the view didn't return a row
+  // for this case (shouldn't happen in practice, but fail soft).
+  chip: ChipOutput | null;
 };
 
 const statusPill: Record<CaseStatus, { label: string; className: string }> = {
@@ -72,40 +77,22 @@ const statusPill: Record<CaseStatus, { label: string; className: string }> = {
     label: "Submitted",
     className: "bg-amber-100 text-amber-800",
   },
-  biometrics_pending: {
-    label: "Biometrics pending",
-    className: "bg-teal-100 text-teal-800",
-  },
-  biometrics_completed: {
-    label: "Biometrics done",
-    className: "bg-teal-100 text-teal-800",
-  },
-  awaiting_decision: {
-    label: "Awaiting decision",
-    className: "bg-teal-100 text-teal-800",
-  },
   passport_requested: {
-    label: "Passport request",
+    label: "Approved",
     className: "bg-green-100 text-green-800",
   },
   refused: { label: "Refused", className: "bg-red-100 text-red-800" },
-  additional_info_requested: {
-    label: "More info",
-    className: "bg-amber-100 text-amber-800",
-  },
   closed: { label: "Closed", className: "bg-gray-200 text-gray-700" },
 };
 
 // Milestone recorded when a card is dropped onto a phase column,
-// FORWARD only (source phase < target phase). Phase 1 / phase 6 are
-// not drop targets — phase 1 has no "open the case" milestone, and
-// phase 6 outcomes (passport / refused / more info) are decisions
-// that need explicit choice via the timeline's record-event dialog.
+// FORWARD only (source phase < target phase). Phase 1 has no "open
+// the case" milestone, and Phase 5 outcomes (Approved / Refused) need
+// an explicit choice via the timeline's record-event dialog.
 const PHASE_FORWARD_DROP_MILESTONE: Partial<Record<number, Milestone>> = {
   2: "documents_in_progress",
   3: "review_started",
   4: "submitted_to_ircc",
-  5: "biometrics_pending",
 };
 
 // Backward drops require both the source and target phases to know
@@ -120,13 +107,13 @@ function pickBackwardDropMilestone(
   return null;
 }
 
-const PHASES = [1, 2, 3, 4, 5, 6] as const;
+const PHASES = [1, 2, 3, 4, 5] as const;
 
 function groupByPhase(cases: BoardCase[]): Record<number, BoardCase[]> {
-  const out: Record<number, BoardCase[]> = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+  const out: Record<number, BoardCase[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] };
   for (const c of cases) {
     const p = phaseIndex(c.status);
-    if (p >= 1 && p <= 6) out[p].push(c);
+    if (p !== null) out[p].push(c);
   }
   return out;
 }
@@ -193,7 +180,7 @@ export function CasesBoardView({ cases }: { cases: BoardCase[] }) {
     if (!milestone) {
       setError(
         targetPhase > sourcePhase
-          ? "Phase 6 outcomes (passport / refused / more info) need an explicit choice — open the case to record a decision event."
+          ? "Phase 5 outcomes (Approved / Refused) need an explicit choice — open the case to record a decision event."
           : "Backward drop not supported for this transition. Open the case and record an event to roll back.",
       );
       return;
@@ -244,7 +231,7 @@ export function CasesBoardView({ cases }: { cases: BoardCase[] }) {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {PHASES.map((phase) => (
             <PhaseColumn
               key={phase}
@@ -393,6 +380,11 @@ function CaseCard({
         />
         {caseRow.caseNumber}
       </div>
+      {caseRow.chip && (
+        <div className="mt-1.5">
+          <ActionChip chip={caseRow.chip} size="sm" />
+        </div>
+      )}
       <div className="mt-1">
         <Badge
           className={cn(

@@ -5,7 +5,13 @@ import { CanServer } from "@/components/auth/can-server";
 import { buttonVariants } from "@/components/ui/button";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
+import {
+  chipInputFromViewRow,
+  computeActionChip,
+  type ChipOutput,
+} from "@/lib/cases/action-chip";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/types";
 import type { CaseStatus } from "@/lib/utils/phase";
 
 import {
@@ -38,8 +44,7 @@ const PHASE_TO_STATUSES: Record<number, CaseStatus[]> = {
   2: ["documentation_in_progress"],
   3: ["documentation_review"],
   4: ["submitted_to_ircc"],
-  5: ["biometrics_pending", "biometrics_completed", "awaiting_decision"],
-  6: ["passport_requested", "refused", "additional_info_requested"],
+  5: ["passport_requested", "refused"],
 };
 
 export default async function CasesPage({ searchParams }: Props) {
@@ -55,7 +60,7 @@ export default async function CasesPage({ searchParams }: Props) {
 
   const phaseParam = Number.parseInt(sp.phase ?? "", 10);
   const phaseFilter =
-    phaseParam >= 1 && phaseParam <= 6 ? phaseParam : null;
+    phaseParam >= 1 && phaseParam <= 5 ? phaseParam : null;
   const assigneeFilter = sp.assignee?.trim() || null;
   const serviceTypeFilter = sp.service_type?.trim() || null;
 
@@ -114,6 +119,7 @@ export default async function CasesPage({ searchParams }: Props) {
     { data: serviceTypes },
     { data: allStaff },
     { data: allServiceTypes },
+    { data: chipRows },
   ] = await Promise.all([
       caseIds.length
         ? supabase
@@ -166,6 +172,19 @@ export default async function CasesPage({ searchParams }: Props) {
         .select("id, name")
         .is("deactivated_at", null)
         .order("name", { ascending: true }),
+      // Action-chip inputs for every visible case. One round-trip against
+      // crm.v_case_chip_inputs; the chip is computed per row below.
+      caseIds.length
+        ? supabase
+            .schema("crm")
+            .from("v_case_chip_inputs")
+            .select("*")
+            .in("case_id", caseIds)
+        : Promise.resolve({
+            data: [] as Array<
+              Database["crm"]["Views"]["v_case_chip_inputs"]["Row"]
+            >,
+          }),
     ]);
 
   const serviceNameById = new Map(
@@ -196,6 +215,14 @@ export default async function CasesPage({ searchParams }: Props) {
     (retainersForCases ?? []).map((r) => [r.case_id, r.status]),
   );
 
+  const chipNow = new Date();
+  const chipById = new Map<string, ChipOutput>();
+  for (const row of chipRows ?? []) {
+    if (!row.case_id) continue;
+    const input = chipInputFromViewRow(row, chipNow);
+    if (input) chipById.set(row.case_id, computeActionChip(input));
+  }
+
   // Project the same dataset into both view shapes. List needs payment
   // progress; board doesn't. Build both unconditionally — cheap on 50 rows
   // and means the toggle doesn't trigger another server roundtrip.
@@ -224,6 +251,7 @@ export default async function CasesPage({ searchParams }: Props) {
       paymentProgress: progress,
       retainerSigned,
       retainerSatisfied,
+      chip: chipById.get(c.id) ?? null,
     };
   });
 
@@ -248,6 +276,7 @@ export default async function CasesPage({ searchParams }: Props) {
       assigneeName: assigneeById.get(c.assigned_rcic) ?? null,
       retainerSigned,
       retainerSatisfied,
+      chip: chipById.get(c.id) ?? null,
     };
   });
 

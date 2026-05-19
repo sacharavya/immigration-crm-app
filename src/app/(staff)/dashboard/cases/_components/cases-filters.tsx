@@ -11,7 +11,7 @@ import type { CasesView } from "./view-toggle";
 export type StaffPick = { id: string; name: string };
 export type ServiceTypePick = { id: string; name: string };
 
-const PHASES = [1, 2, 3, 4, 5, 6] as const;
+const PHASES = [1, 2, 3, 4, 5] as const;
 
 export function CasesFilters({
   view,

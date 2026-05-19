@@ -39,6 +39,7 @@ export default async function IntakePage({ params }: Props) {
     orgsRes,
     govRes,
     milRes,
+    biometricsRes,
     countriesRes,
   ] = await Promise.all([
     supabase
@@ -91,6 +92,14 @@ export default async function IntakePage({ params }: Props) {
       .eq("client_id", id)
       .order("date_from", { ascending: false, nullsFirst: false }),
     supabase
+      .schema("crm")
+      .from("client_biometric_records")
+      .select("*")
+      .eq("client_id", id)
+      .is("deleted_at", null)
+      .order("display_order", { ascending: true })
+      .order("date_given", { ascending: false }),
+    supabase
       .schema("ref")
       .from("countries")
       .select("code, name")
@@ -107,6 +116,7 @@ export default async function IntakePage({ params }: Props) {
     organisations: orgsRes.data ?? [],
     government: govRes.data ?? [],
     military: milRes.data ?? [],
+    biometrics: biometricsRes.data ?? [],
   };
 
   const progress = getIntakeProgress(client, related);

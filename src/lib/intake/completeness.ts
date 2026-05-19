@@ -13,6 +13,8 @@ type GovernmentRow =
   Database["crm"]["Tables"]["client_government_positions"]["Row"];
 type MilitaryRow =
   Database["crm"]["Tables"]["client_military_services"]["Row"];
+type BiometricRow =
+  Database["crm"]["Tables"]["client_biometric_records"]["Row"];
 
 export type IntakeSection =
   | "personal"
@@ -22,6 +24,7 @@ export type IntakeSection =
   | "education"
   | "employment"
   | "travel"
+  | "biometrics"
   | "addresses"
   | "background"
   | "organisations"
@@ -44,6 +47,7 @@ export type IntakeRelated = {
   organisations: OrganisationRow[];
   government: GovernmentRow[];
   military: MilitaryRow[];
+  biometrics: BiometricRow[];
 };
 
 // The 11 Schedule A Section 3 background question codes.
@@ -403,6 +407,36 @@ function checkGovernment(
   };
 }
 
+function checkBiometrics(
+  client: ClientRow,
+  biometrics: BiometricRow[],
+): SectionStatus {
+  if (
+    client.has_prior_biometrics === null ||
+    client.has_prior_biometrics === undefined
+  ) {
+    return {
+      section: "biometrics",
+      label: "Biometrics History",
+      isComplete: false,
+      reason: "Confirm whether client has given biometrics before",
+    };
+  }
+  if (client.has_prior_biometrics && biometrics.length === 0) {
+    return {
+      section: "biometrics",
+      label: "Biometrics History",
+      isComplete: false,
+      reason: "Add at least one biometric record",
+    };
+  }
+  return {
+    section: "biometrics",
+    label: "Biometrics History",
+    isComplete: true,
+  };
+}
+
 function checkMilitary(
   client: ClientRow,
   military: MilitaryRow[],
@@ -445,6 +479,7 @@ export function getIntakeStatus(
     checkEducation(client, related.education),
     checkEmployment(related.employment),
     checkTravel(client, related.travel),
+    checkBiometrics(client, related.biometrics),
     checkAddresses(related.addresses),
     checkBackground(client),
     checkOrganisations(client, related.organisations),

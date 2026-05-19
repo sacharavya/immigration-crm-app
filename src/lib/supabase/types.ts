@@ -118,6 +118,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "case_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "v_case_chip_inputs"
+            referencedColumns: ["case_id"]
+          },
+          {
             foreignKeyName: "case_events_corrects_event_fkey"
             columns: ["corrects_event"]
             isOneToOne: false
@@ -164,6 +171,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "case_participants_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "v_case_chip_inputs"
+            referencedColumns: ["case_id"]
+          },
+          {
             foreignKeyName: "case_participants_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
@@ -200,6 +214,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "case_required_documents_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "v_case_chip_inputs"
+            referencedColumns: ["case_id"]
+          },
+          {
             foreignKeyName: "case_required_documents_set_by_fkey"
             columns: ["set_by"]
             isOneToOne: false
@@ -212,6 +233,8 @@ export type Database = {
         Row: {
           assigned_paralegal: string | null
           assigned_rcic: string
+          biometrics_record_id: string | null
+          biometrics_status: Database["crm"]["Enums"]["biometrics_status"]
           case_number: string
           client_id: string
           client_portal_token: string | null
@@ -245,6 +268,8 @@ export type Database = {
         Insert: {
           assigned_paralegal?: string | null
           assigned_rcic: string
+          biometrics_record_id?: string | null
+          biometrics_status?: Database["crm"]["Enums"]["biometrics_status"]
           case_number: string
           client_id: string
           client_portal_token?: string | null
@@ -278,6 +303,8 @@ export type Database = {
         Update: {
           assigned_paralegal?: string | null
           assigned_rcic?: string
+          biometrics_record_id?: string | null
+          biometrics_status?: Database["crm"]["Enums"]["biometrics_status"]
           case_number?: string
           client_id?: string
           client_portal_token?: string | null
@@ -321,6 +348,13 @@ export type Database = {
             columns: ["assigned_rcic"]
             isOneToOne: false
             referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cases_biometrics_record_id_fkey"
+            columns: ["biometrics_record_id"]
+            isOneToOne: false
+            referencedRelation: "client_biometric_records"
             referencedColumns: ["id"]
           },
           {
@@ -385,6 +419,72 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_biometric_records: {
+        Row: {
+          application_context: string | null
+          biometrics_type: string | null
+          bvn_or_reference: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          date_given: string
+          deleted_at: string | null
+          display_order: number
+          id: string
+          location: string | null
+          notes: string | null
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          application_context?: string | null
+          biometrics_type?: string | null
+          bvn_or_reference?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          date_given: string
+          deleted_at?: string | null
+          display_order?: number
+          id?: string
+          location?: string | null
+          notes?: string | null
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          application_context?: string | null
+          biometrics_type?: string | null
+          bvn_or_reference?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          date_given?: string
+          deleted_at?: string | null
+          display_order?: number
+          id?: string
+          location?: string | null
+          notes?: string | null
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_biometric_records_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_biometric_records_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
         ]
@@ -828,6 +928,7 @@ export type Database = {
           given_names: string | null
           government_position_held: boolean | null
           has_children: boolean | null
+          has_prior_biometrics: boolean | null
           has_siblings: boolean | null
           id: string
           legal_name_full: string
@@ -875,6 +976,7 @@ export type Database = {
           given_names?: string | null
           government_position_held?: boolean | null
           has_children?: boolean | null
+          has_prior_biometrics?: boolean | null
           has_siblings?: boolean | null
           id?: string
           legal_name_full: string
@@ -922,6 +1024,7 @@ export type Database = {
           given_names?: string | null
           government_position_held?: boolean | null
           has_children?: boolean | null
+          has_prior_biometrics?: boolean | null
           has_siblings?: boolean | null
           id?: string
           legal_name_full?: string
@@ -1039,6 +1142,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communications_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "v_case_chip_inputs"
+            referencedColumns: ["case_id"]
           },
           {
             foreignKeyName: "communications_client_id_fkey"
@@ -1165,6 +1275,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invoices_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "v_case_chip_inputs"
+            referencedColumns: ["case_id"]
+          },
+          {
             foreignKeyName: "invoices_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
@@ -1236,6 +1353,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "v_case_chip_inputs"
+            referencedColumns: ["case_id"]
           },
           {
             foreignKeyName: "payments_client_id_fkey"
@@ -1427,6 +1551,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retainer_agreements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: true
+            referencedRelation: "v_case_chip_inputs"
+            referencedColumns: ["case_id"]
           },
           {
             foreignKeyName: "retainer_agreements_created_by_fkey"
@@ -1646,6 +1777,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tasks_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "v_case_chip_inputs"
+            referencedColumns: ["case_id"]
+          },
+          {
             foreignKeyName: "tasks_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
@@ -1670,7 +1808,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_case_chip_inputs: {
+        Row: {
+          accepted_docs: number | null
+          biometrics_status:
+            | Database["crm"]["Enums"]["biometrics_status"]
+            | null
+          case_id: string | null
+          collected_cad: number | null
+          last_rejected_at: string | null
+          latest_event_at: string | null
+          latest_event_data: Json | null
+          latest_event_type: Database["crm"]["Enums"]["event_type"] | null
+          quoted_fee_cad: number | null
+          rejected_docs: number | null
+          required_docs: number | null
+          retainer_has_fee_breakdown: boolean | null
+          retainer_minimum_cad: number | null
+          retainer_sent_at: string | null
+          retainer_status:
+            | Database["crm"]["Enums"]["retainer_agreement_status"]
+            | null
+          status: Database["crm"]["Enums"]["case_status"] | null
+          updated_at: string | null
+          uploaded_docs: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_advance_phase: {
@@ -1702,17 +1866,22 @@ export type Database = {
       }
     }
     Enums: {
+      biometrics_status:
+        | "not_applicable"
+        | "previously_given_valid"
+        | "previously_given_expired"
+        | "pending"
+        | "requested_by_ircc"
+        | "scheduled"
+        | "completed"
+        | "exempt"
       case_status:
         | "retainer_pending"
         | "documentation_in_progress"
         | "documentation_review"
         | "submitted_to_ircc"
-        | "biometrics_pending"
-        | "biometrics_completed"
-        | "awaiting_decision"
         | "passport_requested"
         | "refused"
-        | "additional_info_requested"
         | "closed"
       client_status: "lead" | "active" | "dormant" | "closed"
       communication_channel:
@@ -1753,6 +1922,16 @@ export type Database = {
         | "retainer_voided"
         | "retainer_uploaded"
         | "retainer_resent"
+        | "biometrics_requested"
+        | "biometrics_scheduled"
+        | "biometrics_completed"
+        | "additional_info_requested"
+        | "additional_info_submitted"
+        | "interview_scheduled"
+        | "interview_completed"
+        | "application_returned"
+        | "appeal_filed"
+        | "withdrawal_requested"
       gender: "male" | "female" | "other" | "prefer_not_to_say"
       invoice_status: "draft" | "sent" | "partial" | "paid" | "void" | "overdue"
       marital_status:
@@ -2373,17 +2552,23 @@ export const Constants = {
   },
   crm: {
     Enums: {
+      biometrics_status: [
+        "not_applicable",
+        "previously_given_valid",
+        "previously_given_expired",
+        "pending",
+        "requested_by_ircc",
+        "scheduled",
+        "completed",
+        "exempt",
+      ],
       case_status: [
         "retainer_pending",
         "documentation_in_progress",
         "documentation_review",
         "submitted_to_ircc",
-        "biometrics_pending",
-        "biometrics_completed",
-        "awaiting_decision",
         "passport_requested",
         "refused",
-        "additional_info_requested",
         "closed",
       ],
       client_status: ["lead", "active", "dormant", "closed"],
@@ -2426,6 +2611,16 @@ export const Constants = {
         "retainer_voided",
         "retainer_uploaded",
         "retainer_resent",
+        "biometrics_requested",
+        "biometrics_scheduled",
+        "biometrics_completed",
+        "additional_info_requested",
+        "additional_info_submitted",
+        "interview_scheduled",
+        "interview_completed",
+        "application_returned",
+        "appeal_filed",
+        "withdrawal_requested",
       ],
       gender: ["male", "female", "other", "prefer_not_to_say"],
       invoice_status: ["draft", "sent", "partial", "paid", "void", "overdue"],

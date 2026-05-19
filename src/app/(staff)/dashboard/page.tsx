@@ -13,6 +13,11 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
+import {
+  chipInputFromViewRow,
+  computeActionChip,
+  type ChipOutput,
+} from "@/lib/cases/action-chip";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils/index";
 import {
@@ -22,19 +27,15 @@ import {
   type CaseStatus,
 } from "@/lib/utils/phase";
 
-const PHASES = [1, 2, 3, 4, 5, 6] as const;
+const PHASES = [1, 2, 3, 4, 5] as const;
 
 const statusPill: Record<CaseStatus, string> = {
   retainer_pending: "bg-gray-200 text-gray-700",
   documentation_in_progress: "bg-blue-100 text-blue-800",
   documentation_review: "bg-blue-100 text-blue-800",
   submitted_to_ircc: "bg-amber-100 text-amber-800",
-  biometrics_pending: "bg-teal-100 text-teal-800",
-  biometrics_completed: "bg-teal-100 text-teal-800",
-  awaiting_decision: "bg-teal-100 text-teal-800",
   passport_requested: "bg-green-100 text-green-800",
   refused: "bg-red-100 text-red-800",
-  additional_info_requested: "bg-amber-100 text-amber-800",
   closed: "bg-gray-200 text-gray-700",
 };
 
@@ -111,7 +112,8 @@ export default async function DashboardPage() {
 
   const monthStart = startOfMonthISO();
 
-  const [casesRes, clientCountRes, paymentsRes, tasksRes] = await Promise.all([
+  const [casesRes, clientCountRes, paymentsRes, tasksRes, chipRowsRes] =
+    await Promise.all([
     canCases
       ? supabase
           .schema("crm")
@@ -184,6 +186,9 @@ export default async function DashboardPage() {
           .order("due_date", { ascending: true, nullsFirst: false })
           .limit(10)
       : Promise.resolve({ data: [] as MyTask[] }),
+    canCases
+      ? supabase.schema("crm").from("v_case_chip_inputs").select("*")
+      : Promise.resolve({ data: [] as Array<never> }),
   ]);
 
   const cases = casesRes.data ?? [];
@@ -206,10 +211,70 @@ export default async function DashboardPage() {
     (c) => c.retained_at && c.retained_at >= monthStart,
   ).length;
 
-  const phaseCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  const phaseCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   for (const c of cases) {
     const p = phaseIndex(c.status);
-    if (p >= 1 && p <= 6) phaseCounts[p] += 1;
+    if (p !== null) phaseCounts[p] += 1;
+  }
+
+  // Aggregate chip responsibilities per phase for the dashboard pipeline
+  // strip. Each phase shows "N waiting on client", "N action on us", or
+  // "N overdue" depending on the mix. Aggregation is dashboard-only; the
+  // per-case chip lives on the board/list views.
+  const chipNow = new Date();
+  type PhaseAgg = {
+    us: number;
+    client: number;
+    ircc: number;
+    overdue: number;
+    sensitive: number;
+  };
+  const chipAggByPhase: Record<number, PhaseAgg> = {
+    1: { us: 0, client: 0, ircc: 0, overdue: 0, sensitive: 0 },
+    2: { us: 0, client: 0, ircc: 0, overdue: 0, sensitive: 0 },
+    3: { us: 0, client: 0, ircc: 0, overdue: 0, sensitive: 0 },
+    4: { us: 0, client: 0, ircc: 0, overdue: 0, sensitive: 0 },
+    5: { us: 0, client: 0, ircc: 0, overdue: 0, sensitive: 0 },
+  };
+  for (const row of chipRowsRes.data ?? []) {
+    if (!row.status) continue;
+    const phase = phaseIndex(row.status);
+    if (phase === null) continue;
+    const input = chipInputFromViewRow(row, chipNow);
+    if (!input) continue;
+    const chip: ChipOutput = computeActionChip(input);
+    const agg = chipAggByPhase[phase];
+    if (chip.urgency === "overdue") agg.overdue += 1;
+    else if (chip.urgency === "sensitive") agg.sensitive += 1;
+    if (chip.responsibility === "us") agg.us += 1;
+    else if (chip.responsibility === "client") agg.client += 1;
+    else if (chip.responsibility === "ircc") agg.ircc += 1;
+  }
+
+  // Pick the most-pressing summary line per phase.
+  function phaseSummary(agg: PhaseAgg): {
+    text: string;
+    tone: "overdue" | "sensitive" | "neutral";
+  } | null {
+    if (agg.overdue > 0) {
+      return { text: `${agg.overdue} overdue`, tone: "overdue" };
+    }
+    if (agg.sensitive > 0) {
+      return {
+        text: `${agg.sensitive} need attention`,
+        tone: "sensitive",
+      };
+    }
+    if (agg.us > 0) {
+      return { text: `${agg.us} action on us`, tone: "neutral" };
+    }
+    if (agg.client > 0) {
+      return { text: `${agg.client} waiting on client`, tone: "neutral" };
+    }
+    if (agg.ircc > 0) {
+      return { text: `${agg.ircc} waiting on IRCC`, tone: "neutral" };
+    }
+    return null;
   }
 
   let outstanding = 0;
@@ -305,25 +370,40 @@ export default async function DashboardPage() {
                 </Link>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {PHASES.map((phase) => (
-                  <Link
-                    key={phase}
-                    href="/dashboard/cases?view=board"
-                    className="group rounded-xl border border-stone-200 bg-white p-3 transition-all hover:-translate-y-0.5 hover:border-[var(--navy)]/30 hover:shadow-md"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--navy)] text-[10px] font-semibold text-white">
-                        {phase}
-                      </span>
-                      <span className="text-xs font-medium text-stone-600">
-                        {PHASE_LABELS[phase]}
-                      </span>
-                    </div>
-                    <div className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-stone-900">
-                      {phaseCounts[phase]}
-                    </div>
-                  </Link>
-                ))}
+                {PHASES.map((phase) => {
+                  const summary = phaseSummary(chipAggByPhase[phase]);
+                  return (
+                    <Link
+                      key={phase}
+                      href="/dashboard/cases?view=board"
+                      className="group rounded-xl border border-stone-200 bg-white p-3 transition-all hover:-translate-y-0.5 hover:border-[var(--navy)]/30 hover:shadow-md"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--navy)] text-[10px] font-semibold text-white">
+                          {phase}
+                        </span>
+                        <span className="text-xs font-medium text-stone-600">
+                          {PHASE_LABELS[phase]}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-stone-900">
+                        {phaseCounts[phase]}
+                      </div>
+                      {summary && (
+                        <div
+                          className={cn(
+                            "mt-1 text-[10px] font-medium",
+                            summary.tone === "overdue" && "text-red-700",
+                            summary.tone === "sensitive" && "text-amber-700",
+                            summary.tone === "neutral" && "text-stone-500",
+                          )}
+                        >
+                          {summary.text}
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
               </div>
             </section>
           )}

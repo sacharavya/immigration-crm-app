@@ -1192,7 +1192,6 @@ export async function recordEvent(
       break;
     case "passport_requested":
     case "refused":
-    case "additional_info_requested":
       updates.decided_at = occurred;
       break;
     case "closed":
@@ -1299,5 +1298,413 @@ export async function deleteCase(
 
   revalidatePath("/dashboard/cases");
   revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+// ============================================================================
+// FLOW-3b: recordCaseEvent — ad-hoc IRCC interactions + case-resolution events.
+//
+// Distinct from recordEvent() above, which is the milestone-driven phase
+// advance dialog. This action handles events that update sub-status / the
+// chip / biometrics tracking but do NOT advance the phase.
+//
+// Side effects per event type are listed inline. Side effects that fail
+// after the case_event row is committed produce a soft inconsistency the
+// user can fix via the biometrics-card "Edit status" action.
+// ============================================================================
+
+const recordCaseEventSchema = z.discriminatedUnion("event_type", [
+  z.object({
+    event_type: z.literal("biometrics_requested"),
+    occurred_at: z.string().datetime().optional(),
+    notes: z.string().max(500).optional(),
+  }),
+  z.object({
+    event_type: z.literal("biometrics_scheduled"),
+    scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    location: z.string().max(200).optional(),
+    occurred_at: z.string().datetime().optional(),
+    notes: z.string().max(500).optional(),
+  }),
+  z.object({
+    event_type: z.literal("biometrics_completed"),
+    completed_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    location: z.string().max(200).optional(),
+    bvn_or_reference: z.string().max(100).optional(),
+    valid_until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    create_client_record: z.boolean().default(true),
+    occurred_at: z.string().datetime().optional(),
+    notes: z.string().max(500).optional(),
+  }),
+  z.object({
+    event_type: z.literal("additional_info_requested"),
+    what_ircc_asked_for: z.string().min(1).max(2000),
+    due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    occurred_at: z.string().datetime().optional(),
+  }),
+  z.object({
+    event_type: z.literal("additional_info_submitted"),
+    what_was_sent: z.string().min(1).max(2000),
+    occurred_at: z.string().datetime().optional(),
+  }),
+  z.object({
+    event_type: z.literal("interview_scheduled"),
+    interview_date: z.string().datetime(),
+    location: z.string().max(200).optional(),
+    occurred_at: z.string().datetime().optional(),
+    notes: z.string().max(500).optional(),
+  }),
+  z.object({
+    event_type: z.literal("interview_completed"),
+    outcome: z.enum(["went_well", "concerns", "unsure"]).optional(),
+    occurred_at: z.string().datetime().optional(),
+    notes: z.string().max(1000).optional(),
+  }),
+  z.object({
+    event_type: z.literal("application_returned"),
+    reason_given: z.string().max(2000).optional(),
+    occurred_at: z.string().datetime().optional(),
+  }),
+  z.object({
+    event_type: z.literal("appeal_filed"),
+    appeal_reference: z.string().max(100).optional(),
+    occurred_at: z.string().datetime().optional(),
+    notes: z.string().max(1000).optional(),
+  }),
+  z.object({
+    event_type: z.literal("withdrawal_requested"),
+    reason: z.string().max(1000).optional(),
+    occurred_at: z.string().datetime().optional(),
+  }),
+]);
+
+export type RecordCaseEventInput = z.infer<typeof recordCaseEventSchema>;
+export type RecordCaseEventResult =
+  | { ok: true; event_id: string }
+  | { error: string };
+
+// Which statuses each event type is allowed from. Defence-in-depth — the
+// dialog should hide invalid options, but the action also checks.
+const EVENT_ALLOWED_FROM: Record<
+  RecordCaseEventInput["event_type"],
+  ReadonlyArray<CaseStatus>
+> = {
+  biometrics_requested: ["submitted_to_ircc"],
+  biometrics_scheduled: ["submitted_to_ircc"],
+  biometrics_completed: ["submitted_to_ircc"],
+  additional_info_requested: ["submitted_to_ircc"],
+  additional_info_submitted: ["submitted_to_ircc"],
+  interview_scheduled: ["submitted_to_ircc"],
+  interview_completed: ["submitted_to_ircc"],
+  application_returned: ["submitted_to_ircc"],
+  appeal_filed: ["refused", "submitted_to_ircc"],
+  withdrawal_requested: [
+    "retainer_pending",
+    "documentation_in_progress",
+    "documentation_review",
+    "submitted_to_ircc",
+    "refused",
+  ],
+};
+
+function eventAllowsStatus(
+  evt: RecordCaseEventInput["event_type"],
+  status: CaseStatus,
+): boolean {
+  return EVENT_ALLOWED_FROM[evt].includes(status);
+}
+
+export async function recordCaseEvent(
+  caseId: string,
+  payload: RecordCaseEventInput,
+): Promise<RecordCaseEventResult> {
+  if (!z.string().uuid().safeParse(caseId).success) {
+    return { error: "Invalid case id" };
+  }
+  const parsed = recordCaseEventSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const data = parsed.data;
+
+  const me = await getStaff();
+  if (!me) return { error: "Not authenticated" };
+  if (!staffCan(me, "edit_cases")) {
+    return { error: "Not allowed to record events on this case." };
+  }
+
+  const supabase = await createClient();
+  const { data: caseRow, error: caseErr } = await supabase
+    .schema("crm")
+    .from("cases")
+    .select("id, status, client_id, case_number, service_type_id")
+    .eq("id", caseId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (caseErr || !caseRow) return { error: "Case not found" };
+  if (caseRow.status === "closed") {
+    return { error: "Closed cases cannot have events recorded." };
+  }
+  if (!eventAllowsStatus(data.event_type, caseRow.status)) {
+    return {
+      error: `'${data.event_type}' isn't valid from the case's current status.`,
+    };
+  }
+
+  const occurred = data.occurred_at ?? new Date().toISOString();
+  const description = buildEventDescription(data);
+  // Cast through the Supabase Json type — buildEventData returns a plain
+  // record of string-keyed JSON-shaped values, but TS doesn't let us flow
+  // `Record<string, unknown>` into a `Json` column without help.
+  const eventData = buildEventData(data) as unknown as Database["crm"]["Tables"]["case_events"]["Insert"]["event_data"];
+
+  // Insert the event first.
+  const { data: inserted, error: insertErr } = await supabase
+    .schema("crm")
+    .from("case_events")
+    .insert({
+      case_id: caseId,
+      event_type: data.event_type,
+      event_data: eventData,
+      description,
+      occurred_at: occurred,
+      created_by: me.id,
+    })
+    .select("id")
+    .single();
+  if (insertErr || !inserted) {
+    return { error: insertErr?.message ?? "Could not record event" };
+  }
+
+  // Side effects per event type. Failures here are logged but don't roll
+  // back the event row — the chip will still reflect the latest event,
+  // and staff can correct via the biometrics-card "Edit status" action.
+  if (data.event_type === "biometrics_requested") {
+    await supabase
+      .schema("crm")
+      .from("cases")
+      .update({ biometrics_status: "requested_by_ircc" })
+      .eq("id", caseId);
+  } else if (data.event_type === "biometrics_scheduled") {
+    await supabase
+      .schema("crm")
+      .from("cases")
+      .update({ biometrics_status: "scheduled" })
+      .eq("id", caseId);
+  } else if (data.event_type === "biometrics_completed") {
+    await supabase
+      .schema("crm")
+      .from("cases")
+      .update({ biometrics_status: "completed" })
+      .eq("id", caseId);
+    if (data.create_client_record !== false) {
+      const validUntil =
+        data.valid_until ??
+        (() => {
+          const d = new Date(`${data.completed_date}T00:00:00Z`);
+          d.setUTCFullYear(d.getUTCFullYear() + 10);
+          return d.toISOString().slice(0, 10);
+        })();
+      const { data: bioRecord } = await supabase
+        .schema("crm")
+        .from("client_biometric_records")
+        .insert({
+          client_id: caseRow.client_id,
+          date_given: data.completed_date,
+          location: data.location ?? null,
+          bvn_or_reference: data.bvn_or_reference ?? null,
+          valid_until: validUntil,
+          application_context: `Case ${caseRow.case_number}`,
+          created_by: me.id,
+        })
+        .select("id")
+        .single();
+      if (bioRecord?.id) {
+        await supabase
+          .schema("crm")
+          .from("cases")
+          .update({ biometrics_record_id: bioRecord.id })
+          .eq("id", caseId);
+      }
+    }
+  }
+
+  revalidatePath(`/dashboard/cases/${caseId}`);
+  return { ok: true, event_id: inserted.id };
+}
+
+function buildEventDescription(data: RecordCaseEventInput): string {
+  switch (data.event_type) {
+    case "biometrics_requested":
+      return "IRCC requested biometrics";
+    case "biometrics_scheduled":
+      return `Biometrics scheduled for ${data.scheduled_date}${
+        data.location ? ` at ${data.location}` : ""
+      }`;
+    case "biometrics_completed":
+      return `Biometrics completed on ${data.completed_date}`;
+    case "additional_info_requested":
+      return `IRCC requested additional information: ${data.what_ircc_asked_for.slice(0, 140)}`;
+    case "additional_info_submitted":
+      return `Additional information submitted to IRCC`;
+    case "interview_scheduled":
+      return `Interview scheduled for ${new Date(data.interview_date).toISOString().slice(0, 10)}${
+        data.location ? ` at ${data.location}` : ""
+      }`;
+    case "interview_completed":
+      return `Interview completed${data.outcome ? ` (${data.outcome.replace("_", " ")})` : ""}`;
+    case "application_returned":
+      return `Application returned by IRCC`;
+    case "appeal_filed":
+      return `Appeal filed${data.appeal_reference ? ` (${data.appeal_reference})` : ""}`;
+    case "withdrawal_requested":
+      return `Client requested withdrawal`;
+  }
+}
+
+function buildEventData(
+  data: RecordCaseEventInput,
+): Record<string, unknown> {
+  switch (data.event_type) {
+    case "biometrics_requested":
+      return {};
+    case "biometrics_scheduled":
+      return {
+        scheduled_date: data.scheduled_date,
+        ...(data.location ? { location: data.location } : {}),
+      };
+    case "biometrics_completed":
+      return {
+        completed_date: data.completed_date,
+        ...(data.location ? { location: data.location } : {}),
+        ...(data.bvn_or_reference
+          ? { bvn_or_reference: data.bvn_or_reference }
+          : {}),
+        ...(data.valid_until ? { valid_until: data.valid_until } : {}),
+      };
+    case "additional_info_requested":
+      return {
+        what_ircc_asked_for: data.what_ircc_asked_for,
+        ...(data.due_date ? { due_date: data.due_date } : {}),
+      };
+    case "additional_info_submitted":
+      return { what_was_sent: data.what_was_sent };
+    case "interview_scheduled":
+      return {
+        interview_date: data.interview_date,
+        ...(data.location ? { location: data.location } : {}),
+      };
+    case "interview_completed":
+      return data.outcome ? { outcome: data.outcome } : {};
+    case "application_returned":
+      return data.reason_given ? { reason_given: data.reason_given } : {};
+    case "appeal_filed":
+      return data.appeal_reference
+        ? { appeal_reference: data.appeal_reference }
+        : {};
+    case "withdrawal_requested":
+      return data.reason ? { reason: data.reason } : {};
+  }
+}
+
+// ---------------------------------------------------------------------------
+// updateCaseBiometricsStatus — manual override for the biometrics card.
+// ---------------------------------------------------------------------------
+
+const BIOMETRICS_STATUS_VALUES = [
+  "not_applicable",
+  "previously_given_valid",
+  "previously_given_expired",
+  "pending",
+  "requested_by_ircc",
+  "scheduled",
+  "completed",
+  "exempt",
+] as const;
+
+export async function updateCaseBiometricsStatus(
+  caseId: string,
+  status: (typeof BIOMETRICS_STATUS_VALUES)[number],
+  recordId?: string | null,
+): Promise<{ ok: true } | { error: string }> {
+  if (!z.string().uuid().safeParse(caseId).success) {
+    return { error: "Invalid case id" };
+  }
+  if (!BIOMETRICS_STATUS_VALUES.includes(status)) {
+    return { error: "Invalid biometrics status" };
+  }
+  if (recordId && !z.string().uuid().safeParse(recordId).success) {
+    return { error: "Invalid biometric record id" };
+  }
+
+  const me = await getStaff();
+  if (!me) return { error: "Not authenticated" };
+  if (!staffCan(me, "edit_cases")) return { error: "Not allowed." };
+
+  const supabase = await createClient();
+  const updates: {
+    biometrics_status: (typeof BIOMETRICS_STATUS_VALUES)[number];
+    biometrics_record_id?: string | null;
+  } = { biometrics_status: status };
+  if (recordId !== undefined) updates.biometrics_record_id = recordId;
+
+  const { error } = await supabase
+    .schema("crm")
+    .from("cases")
+    .update(updates)
+    .eq("id", caseId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/dashboard/cases/${caseId}`);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// linkBiometricRecord — pick an existing client biometric record and use it
+// as the case's prior biometrics.
+// ---------------------------------------------------------------------------
+
+export async function linkBiometricRecord(
+  caseId: string,
+  recordId: string,
+): Promise<{ ok: true } | { error: string }> {
+  if (!z.string().uuid().safeParse(caseId).success) {
+    return { error: "Invalid case id" };
+  }
+  if (!z.string().uuid().safeParse(recordId).success) {
+    return { error: "Invalid record id" };
+  }
+  const me = await getStaff();
+  if (!me) return { error: "Not authenticated" };
+  if (!staffCan(me, "edit_cases")) return { error: "Not allowed." };
+
+  const supabase = await createClient();
+  const { data: record } = await supabase
+    .schema("crm")
+    .from("client_biometric_records")
+    .select("id, valid_until")
+    .eq("id", recordId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!record) return { error: "Biometric record not found" };
+
+  const isValid =
+    !record.valid_until ||
+    new Date(record.valid_until) >= new Date(new Date().toISOString().slice(0, 10));
+  const newStatus = isValid
+    ? "previously_given_valid"
+    : "previously_given_expired";
+
+  const { error } = await supabase
+    .schema("crm")
+    .from("cases")
+    .update({
+      biometrics_status: newStatus,
+      biometrics_record_id: recordId,
+    })
+    .eq("id", caseId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/dashboard/cases/${caseId}`);
   return { ok: true };
 }

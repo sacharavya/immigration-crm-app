@@ -10,6 +10,7 @@ import {
   type WaitingParty,
 } from "@/lib/utils/phase";
 
+import { CaseEventDialog } from "./case-event-dialog";
 import { RecordEventDialog } from "./record-event-dialog";
 
 export type TimelineEvent = {
@@ -60,12 +61,14 @@ export function TimelineActions({
   return (
     <div className="ml-2 flex items-center gap-3">
       <WaitingChip status={currentStatus} />
+      <CaseEventDialog caseId={caseId} currentStatus={currentStatus} />
       <RecordEventDialog
         caseId={caseId}
         currentStatus={currentStatus}
         quotedFeeCad={quotedFeeCad}
         retainerMinimumCad={retainerMinimumCad}
         collectedCad={collectedCad}
+        triggerLabel="+ Advance phase"
       />
     </div>
   );

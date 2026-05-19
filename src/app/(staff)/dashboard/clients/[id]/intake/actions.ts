@@ -176,6 +176,7 @@ const updateClientCoreSchema = z.object({
     organisations_member: z.boolean().nullable().optional(),
     government_position_held: z.boolean().nullable().optional(),
     military_service_held: z.boolean().nullable().optional(),
+    has_prior_biometrics: z.boolean().nullable().optional(),
   }),
 });
 
@@ -245,6 +246,7 @@ export async function updateClientCore(
     "organisations_member",
     "government_position_held",
     "military_service_held",
+    "has_prior_biometrics",
   ] as const;
 
   for (const key of passthrough) {
@@ -1187,6 +1189,177 @@ export async function removeMilitaryService(
     .schema("crm")
     .from("client_military_services")
     .delete()
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  rev(clientId);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// FLOW-3c — Biometric history (crm.client_biometric_records).
+//
+// The Yes/No gate is on crm.clients.has_prior_biometrics and rides through
+// updateClientCore. Add/Update/Remove handle individual records here. Soft
+// delete on remove so any cases referencing the record keep their link;
+// remove refuses if any active case still points at the record.
+// ---------------------------------------------------------------------------
+
+const biometricAddSchema = z.object({
+  clientId: z.string().uuid(),
+  date_given: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  location: z.string().trim().max(200).optional(),
+  biometrics_type: z.string().trim().max(100).optional(),
+  bvn_or_reference: z.string().trim().max(100).optional(),
+  application_context: z.string().trim().max(200).optional(),
+  valid_until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  notes: z.string().trim().max(1000).optional(),
+});
+
+const biometricUpdateSchema = z.object({
+  clientId: z.string().uuid(),
+  id: z.string().uuid(),
+  patch: z.object({
+    date_given: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    location: z.string().nullable().optional(),
+    biometrics_type: z.string().nullable().optional(),
+    bvn_or_reference: z.string().nullable().optional(),
+    application_context: z.string().nullable().optional(),
+    valid_until: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable()
+      .optional(),
+    notes: z.string().nullable().optional(),
+  }),
+});
+
+type BiometricInsert =
+  Database["crm"]["Tables"]["client_biometric_records"]["Insert"];
+type BiometricUpdate =
+  Database["crm"]["Tables"]["client_biometric_records"]["Update"];
+
+function plusYearsIso(iso: string, years: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCFullYear(d.getUTCFullYear() + years);
+  return d.toISOString().slice(0, 10);
+}
+
+export async function addBiometricRecord(
+  input: z.input<typeof biometricAddSchema>,
+): Promise<Result<{ id: string }>> {
+  const g = await gate();
+  if (!g.ok) return { error: g.error };
+
+  const parsed = biometricAddSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const data = parsed.data;
+
+  const supabase = await createClient();
+
+  // display_order = max existing + 10 for this client, or 100 if first.
+  const { data: existing } = await supabase
+    .schema("crm")
+    .from("client_biometric_records")
+    .select("display_order")
+    .eq("client_id", data.clientId)
+    .is("deleted_at", null)
+    .order("display_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const display_order = existing ? existing.display_order + 10 : 100;
+
+  const insert: BiometricInsert = {
+    client_id: data.clientId,
+    date_given: data.date_given,
+    location: data.location ?? null,
+    biometrics_type: data.biometrics_type ?? "Fingerprints + Photo",
+    bvn_or_reference: data.bvn_or_reference ?? null,
+    application_context: data.application_context ?? null,
+    valid_until: data.valid_until ?? plusYearsIso(data.date_given, 10),
+    notes: data.notes ?? null,
+    display_order,
+    created_by: g.me.id,
+  };
+
+  const { data: row, error } = await supabase
+    .schema("crm")
+    .from("client_biometric_records")
+    .insert(insert)
+    .select("id")
+    .single();
+  if (error || !row) return { error: error?.message ?? "Insert failed" };
+
+  rev(data.clientId);
+  return { ok: true, id: row.id };
+}
+
+export async function updateBiometricRecord(
+  input: z.input<typeof biometricUpdateSchema>,
+): Promise<{ ok: true } | { error: string }> {
+  const g = await gate();
+  if (!g.ok) return { error: g.error };
+
+  const parsed = biometricUpdateSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const { clientId, id, patch } = parsed.data;
+
+  const updates: BiometricUpdate = {};
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === undefined) continue;
+    if (typeof v === "string" && k !== "date_given" && k !== "valid_until") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (updates as any)[k] = nullish(v);
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (updates as any)[k] = v;
+    }
+  }
+  if (Object.keys(updates).length === 0) return { ok: true };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .schema("crm")
+    .from("client_biometric_records")
+    .update(updates)
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  rev(clientId);
+  return { ok: true };
+}
+
+export async function removeBiometricRecord(
+  clientId: string,
+  id: string,
+): Promise<{ ok: true } | { error: string }> {
+  const g = await gate();
+  if (!g.ok) return { error: g.error };
+
+  const supabase = await createClient();
+
+  // Refuse if any non-deleted case still references this record. Soft delete
+  // would leave dangling links otherwise, since the row stays in the table.
+  const { count } = await supabase
+    .schema("crm")
+    .from("cases")
+    .select("id", { count: "exact", head: true })
+    .eq("biometrics_record_id", id)
+    .is("deleted_at", null);
+  if ((count ?? 0) > 0) {
+    return {
+      error: `Cannot remove: ${count} case${count === 1 ? "" : "s"} reference${count === 1 ? "s" : ""} this biometric record. Unlink from each case first.`,
+    };
+  }
+
+  const { error } = await supabase
+    .schema("crm")
+    .from("client_biometric_records")
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
   if (error) return { error: error.message };
 

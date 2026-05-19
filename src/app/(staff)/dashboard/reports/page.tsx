@@ -180,10 +180,10 @@ export default async function ReportsPage({ searchParams }: Props) {
   ).length;
 
   // ---- Cases by phase ----
-  const phaseCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  const phaseCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   for (const c of activeCases) {
     const idx = phaseIndex(c.status);
-    if (idx >= 1 && idx <= 6) phaseCounts[idx] = (phaseCounts[idx] ?? 0) + 1;
+    if (idx !== null) phaseCounts[idx] = (phaseCounts[idx] ?? 0) + 1;
   }
   const phaseMax = Math.max(1, ...Object.values(phaseCounts));
 
@@ -317,7 +317,7 @@ export default async function ReportsPage({ searchParams }: Props) {
           subtitle="Active cases only — closed are excluded"
         >
           <ul className="space-y-2">
-            {[1, 2, 3, 4, 5, 6].map((idx) => {
+            {[1, 2, 3, 4, 5].map((idx) => {
               const count = phaseCounts[idx] ?? 0;
               const pct = (count / phaseMax) * 100;
               return (
