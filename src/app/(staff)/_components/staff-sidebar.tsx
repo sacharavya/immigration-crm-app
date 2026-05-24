@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  Archive,
   BarChart3,
   Briefcase,
   CheckSquare,
+  ChevronDown,
   History,
   LineChart,
   ListChecks,
@@ -15,18 +17,18 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 import { Can } from "@/components/auth/can";
 import { useStaff } from "@/lib/auth/staff-context";
 import { cn } from "@/lib/utils/index";
 
-const NAV: ReadonlyArray<{
+const PRIMARY_NAV: ReadonlyArray<{
   href: string;
   label: string;
   Icon: typeof Briefcase;
 }> = [
   { href: "/dashboard", label: "Dashboard", Icon: BarChart3 },
-  { href: "/dashboard/cases", label: "Cases", Icon: Briefcase },
   { href: "/dashboard/clients", label: "Clients", Icon: Users },
   { href: "/dashboard/tasks", label: "Tasks", Icon: CheckSquare },
 ];
@@ -67,7 +69,14 @@ export function StaffSidebar() {
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
-        {NAV.map(({ href, label, Icon }) => (
+        <NavItem
+          href={PRIMARY_NAV[0].href}
+          label={PRIMARY_NAV[0].label}
+          Icon={PRIMARY_NAV[0].Icon}
+          active={isActive(PRIMARY_NAV[0].href)}
+        />
+        <CasesSection pathname={pathname} />
+        {PRIMARY_NAV.slice(1).map(({ href, label, Icon }) => (
           <NavItem
             key={href}
             href={href}
@@ -172,6 +181,93 @@ function NavItem({
       )}
     >
       <Icon className="h-4 w-4" />
+      {label}
+    </Link>
+  );
+}
+
+// Cases parent: clicking the row toggles the dropdown. Auto-expanded when
+// the current path is under /dashboard/cases. The parent row also acts as
+// a deep link to Active (preserves discoverability — a single click on the
+// label takes staff to the most-used sub-view).
+function CasesSection({ pathname }: { pathname: string }) {
+  const sectionActive =
+    pathname === "/dashboard/cases" || pathname.startsWith("/dashboard/cases/");
+  const [open, setOpen] = useState(sectionActive);
+  const activeIsArchive = pathname.startsWith("/dashboard/cases/archive");
+  const activeIsActive = sectionActive && !activeIsArchive;
+
+  return (
+    <div>
+      <div className="flex items-center">
+        <Link
+          href="/dashboard/cases"
+          aria-current={sectionActive ? "page" : undefined}
+          className={cn(
+            "flex flex-1 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+            sectionActive
+              ? "bg-stone-200/70 font-medium text-[var(--navy)]"
+              : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
+          )}
+        >
+          <Briefcase className="h-4 w-4" />
+          Cases
+        </Link>
+        <button
+          type="button"
+          aria-label={open ? "Collapse cases menu" : "Expand cases menu"}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="ml-1 rounded-md p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+        >
+          <ChevronDown
+            className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
+          />
+        </button>
+      </div>
+      {open && (
+        <div className="ml-5 mt-0.5 space-y-0.5 border-l border-stone-200 pl-3">
+          <SubNavItem
+            href="/dashboard/cases"
+            label="Active cases"
+            Icon={Briefcase}
+            active={activeIsActive}
+          />
+          <SubNavItem
+            href="/dashboard/cases/archive"
+            label="Archive"
+            Icon={Archive}
+            active={activeIsArchive}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SubNavItem({
+  href,
+  label,
+  Icon,
+  active,
+}: {
+  href: string;
+  label: string;
+  Icon: typeof Briefcase;
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors",
+        active
+          ? "bg-stone-200/70 font-medium text-[var(--navy)]"
+          : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
+      )}
+    >
+      <Icon className="h-3.5 w-3.5" />
       {label}
     </Link>
   );

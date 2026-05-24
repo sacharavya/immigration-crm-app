@@ -35,6 +35,7 @@ const ALLOWED_FROM: Record<EventKind, ReadonlyArray<CaseStatus>> = {
   interview_scheduled: ["submitted_to_ircc"],
   interview_completed: ["submitted_to_ircc"],
   application_returned: ["submitted_to_ircc"],
+  additional_documents_requested: ["submitted_to_ircc"],
   appeal_filed: ["refused", "submitted_to_ircc"],
   withdrawal_requested: [
     "retainer_pending",
@@ -91,6 +92,12 @@ const EVENT_GROUPS: Array<{
         kind: "application_returned",
         label: "Application returned",
         description: "IRCC kicked the application back.",
+      },
+      {
+        kind: "additional_documents_requested",
+        label: "Additional documents requested",
+        description:
+          "IRCC asked for new documents — reopens the upload workflow.",
       },
     ],
   },
@@ -340,6 +347,14 @@ function EventForm({
       )}
       {kind === "withdrawal_requested" && (
         <WithdrawalRequestedForm
+          onCancel={onBack}
+          pending={pending}
+          error={error}
+          onSubmit={onSubmit}
+        />
+      )}
+      {kind === "additional_documents_requested" && (
+        <AdditionalDocumentsRequestedForm
           onCancel={onBack}
           pending={pending}
           error={error}
@@ -810,6 +825,131 @@ function AppealFiledForm({ onCancel, pending, error, onSubmit }: FormProps) {
           onSubmit({
             event_type: "appeal_filed",
             ...(ref.trim() ? { appeal_reference: ref.trim() } : {}),
+            ...(notes.trim() ? { notes: notes.trim() } : {}),
+          })
+        }
+      />
+    </div>
+  );
+}
+
+function AdditionalDocumentsRequestedForm({
+  onCancel,
+  pending,
+  error,
+  onSubmit,
+}: FormProps) {
+  type Row = { label: string; due_date: string };
+  const [rows, setRows] = useState<Row[]>([{ label: "", due_date: "" }]);
+  const [overallDue, setOverallDue] = useState("");
+  const [notes, setNotes] = useState("");
+
+  function updateRow(i: number, patch: Partial<Row>) {
+    setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+  function addRow() {
+    setRows((prev) => [...prev, { label: "", due_date: "" }]);
+  }
+  function removeRow(i: number) {
+    setRows((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
+  }
+
+  const validRows = rows.filter((r) => r.label.trim().length > 0);
+  const canSubmit = validRows.length > 0;
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="mb-1 text-xs font-medium text-stone-600">
+          What documents did IRCC ask for?
+        </div>
+        <div className="space-y-2">
+          {rows.map((row, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-2 rounded-md border border-stone-200 bg-stone-50 p-2"
+            >
+              <Input
+                value={row.label}
+                onChange={(e) => updateRow(i, { label: e.target.value })}
+                placeholder="e.g., Updated police clearance"
+                className="flex-1"
+              />
+              <Input
+                type="date"
+                value={row.due_date}
+                onChange={(e) => updateRow(i, { due_date: e.target.value })}
+                className="w-40"
+                aria-label="Due date for this document"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => removeRow(i)}
+                disabled={rows.length === 1}
+                aria-label="Remove this document"
+                className="text-stone-500"
+              >
+                ✕
+              </Button>
+            </div>
+          ))}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addRow}
+          className="mt-2"
+        >
+          + Add another document
+        </Button>
+      </div>
+
+      <FieldLabel
+        label="Overall due date (optional)"
+        hint="Applies to documents without a specific due date."
+      >
+        <Input
+          type="date"
+          value={overallDue}
+          onChange={(e) => setOverallDue(e.target.value)}
+          className="mt-1 w-48"
+        />
+      </FieldLabel>
+
+      <FieldLabel
+        label="Notes (optional)"
+        hint="Any extra context from the IRCC letter."
+      >
+        <textarea
+          rows={2}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          className="mt-1 w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/30"
+        />
+      </FieldLabel>
+
+      <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        The case stays at Phase 4 (Submitted). The client upload link
+        reactivates so the client can upload these documents directly.
+      </p>
+
+      <Footer
+        onCancel={onCancel}
+        pending={pending}
+        error={error}
+        disabled={!canSubmit}
+        submitLabel="Record request"
+        onSubmit={() =>
+          onSubmit({
+            event_type: "additional_documents_requested",
+            documents: validRows.map((r) => ({
+              label: r.label.trim(),
+              ...(r.due_date ? { due_date: r.due_date } : {}),
+            })),
+            ...(overallDue ? { overall_due_date: overallDue } : {}),
             ...(notes.trim() ? { notes: notes.trim() } : {}),
           })
         }

@@ -189,19 +189,31 @@ export type Database = {
       case_required_documents: {
         Row: {
           case_id: string
-          document_code: string
+          custom_label: string | null
+          document_code: string | null
+          due_date: string | null
+          id: string
+          requested_at_event_id: string | null
           set_at: string
           set_by: string | null
         }
         Insert: {
           case_id: string
-          document_code: string
+          custom_label?: string | null
+          document_code?: string | null
+          due_date?: string | null
+          id?: string
+          requested_at_event_id?: string | null
           set_at?: string
           set_by?: string | null
         }
         Update: {
           case_id?: string
-          document_code?: string
+          custom_label?: string | null
+          document_code?: string | null
+          due_date?: string | null
+          id?: string
+          requested_at_event_id?: string | null
           set_at?: string
           set_by?: string | null
         }
@@ -219,6 +231,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_case_chip_inputs"
             referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "case_required_documents_requested_at_event_id_fkey"
+            columns: ["requested_at_event_id"]
+            isOneToOne: false
+            referencedRelation: "case_events"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "case_required_documents_set_by_fkey"
@@ -1811,6 +1830,11 @@ export type Database = {
       v_case_chip_inputs: {
         Row: {
           accepted_docs: number | null
+          additional_docs_accepted: number | null
+          additional_docs_latest_due: string | null
+          additional_docs_requested: number | null
+          additional_docs_submitted_after_request: boolean | null
+          additional_docs_uploaded: number | null
           biometrics_status:
             | Database["crm"]["Enums"]["biometrics_status"]
             | null
@@ -1932,6 +1956,7 @@ export type Database = {
         | "application_returned"
         | "appeal_filed"
         | "withdrawal_requested"
+        | "additional_documents_requested"
       gender: "male" | "female" | "other" | "prefer_not_to_say"
       invoice_status: "draft" | "sent" | "partial" | "paid" | "void" | "overdue"
       marital_status:
@@ -2033,6 +2058,7 @@ export type Database = {
           mime_type: string | null
           notes: string | null
           rejection_reason: string | null
+          required_document_id: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           sharepoint_drive_id: string | null
@@ -2060,6 +2086,7 @@ export type Database = {
           mime_type?: string | null
           notes?: string | null
           rejection_reason?: string | null
+          required_document_id?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           sharepoint_drive_id?: string | null
@@ -2087,6 +2114,7 @@ export type Database = {
           mime_type?: string | null
           notes?: string | null
           rejection_reason?: string | null
+          required_document_id?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           sharepoint_drive_id?: string | null
@@ -2621,6 +2649,7 @@ export const Constants = {
         "application_returned",
         "appeal_filed",
         "withdrawal_requested",
+        "additional_documents_requested",
       ],
       gender: ["male", "female", "other", "prefer_not_to_say"],
       invoice_status: ["draft", "sent", "partial", "paid", "void", "overdue"],

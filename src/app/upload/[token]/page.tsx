@@ -10,6 +10,10 @@ import type { Database } from "@/lib/supabase/types";
 
 import { loadCaseByPortalToken } from "./actions";
 import { ExpiredCard } from "./_components/expired-card";
+import {
+  PortalAdditionalDocs,
+  type PortalAdditionalDocsGroup,
+} from "./_components/portal-additional-docs";
 
 // Always re-render server-side. The portal reflects review-state
 // changes that may have just been written by staff; cached HTML would
@@ -41,17 +45,21 @@ export default async function ClientUploadPage({ params }: Props) {
   const supabase = adminClient();
 
   // Fetch the case's required-doc set, the template, the client name,
-  // and any uploaded files in parallel.
+  // any uploaded files, and the additional-docs-requested events in
+  // parallel.
   const [
     { data: requiredRows },
     { data: templateRows },
     { data: client },
     { data: uploadedDocs },
+    { data: adEvents },
   ] = await Promise.all([
     supabase
       .schema("crm")
       .from("case_required_documents")
-      .select("document_code")
+      .select(
+        "id, document_code, custom_label, due_date, requested_at_event_id",
+      )
       .eq("case_id", caseRow.id),
     supabase
       .schema("ref")
@@ -82,14 +90,23 @@ export default async function ClientUploadPage({ params }: Props) {
       .schema("files")
       .from("documents")
       .select(
-        "id, document_code, status, file_name, version_number, sharepoint_web_url, rejection_reason",
+        "id, document_code, required_document_id, status, file_name, version_number, sharepoint_web_url, rejection_reason",
       )
       .eq("case_id", caseRow.id)
       .is("deleted_at", null),
+    supabase
+      .schema("crm")
+      .from("case_events")
+      .select("id, occurred_at, event_data")
+      .eq("case_id", caseRow.id)
+      .eq("event_type", "additional_documents_requested")
+      .order("occurred_at", { ascending: true }),
   ]);
 
   const requiredCodes = new Set(
-    (requiredRows ?? []).map((r) => r.document_code),
+    (requiredRows ?? [])
+      .filter((r) => r.requested_at_event_id === null && r.document_code)
+      .map((r) => r.document_code as string),
   );
   const templateDocs: TemplateDoc[] = (templateRows ?? []).map((d) => ({
     document_code: d.document_code,
@@ -103,20 +120,73 @@ export default async function ClientUploadPage({ params }: Props) {
   }));
 
   const latestByCode = new Map<string, LatestDoc>();
+  const latestByRequiredDocId = new Map<string, LatestDoc>();
   for (const doc of uploadedDocs ?? []) {
-    if (!doc.document_code) continue;
-    const existing = latestByCode.get(doc.document_code);
-    if (!existing || doc.version_number > existing.version_number) {
-      latestByCode.set(doc.document_code, {
-        id: doc.id,
-        status: doc.status,
-        file_name: doc.file_name,
-        sharepoint_web_url: doc.sharepoint_web_url,
-        version_number: doc.version_number,
-        rejection_reason: doc.rejection_reason,
-      });
+    const v: LatestDoc = {
+      id: doc.id,
+      status: doc.status,
+      file_name: doc.file_name,
+      sharepoint_web_url: doc.sharepoint_web_url,
+      version_number: doc.version_number,
+      rejection_reason: doc.rejection_reason,
+    };
+    if (doc.document_code) {
+      const ex = latestByCode.get(doc.document_code);
+      if (!ex || doc.version_number > ex.version_number) {
+        latestByCode.set(doc.document_code, v);
+      }
+    }
+    if (doc.required_document_id) {
+      const ex = latestByRequiredDocId.get(doc.required_document_id);
+      if (!ex || doc.version_number > ex.version_number) {
+        latestByRequiredDocId.set(doc.required_document_id, v);
+      }
     }
   }
+
+  // Build additional-docs groups (mirror of staff page).
+  const additionalDocsGroups: PortalAdditionalDocsGroup[] = (() => {
+    const rowsByEvent = new Map<
+      string,
+      Array<{
+        id: string;
+        customLabel: string;
+        dueDate: string | null;
+        latest: LatestDoc | null;
+      }>
+    >();
+    for (const r of requiredRows ?? []) {
+      if (!r.requested_at_event_id) continue;
+      const list = rowsByEvent.get(r.requested_at_event_id) ?? [];
+      list.push({
+        id: r.id,
+        customLabel: r.custom_label ?? "Additional document",
+        dueDate: r.due_date,
+        latest: latestByRequiredDocId.get(r.id) ?? null,
+      });
+      rowsByEvent.set(r.requested_at_event_id, list);
+    }
+    const groups: PortalAdditionalDocsGroup[] = [];
+    for (const e of adEvents ?? []) {
+      const rows = rowsByEvent.get(e.id);
+      if (!rows) continue;
+      const data =
+        e.event_data && typeof e.event_data === "object" && !Array.isArray(e.event_data)
+          ? (e.event_data as Record<string, unknown>)
+          : {};
+      groups.push({
+        eventId: e.id,
+        requestedAt: e.occurred_at,
+        overallDueDate:
+          typeof data.overall_due_date === "string"
+            ? data.overall_due_date
+            : null,
+        notes: typeof data.notes === "string" ? data.notes : null,
+        rows,
+      });
+    }
+    return groups;
+  })();
 
   const greetingName =
     client?.preferred_name?.trim() ||
@@ -125,6 +195,7 @@ export default async function ClientUploadPage({ params }: Props) {
     "there";
 
   const requiredCount = templateDocs.filter((d) => d.is_required).length;
+  const showOriginalChecklist = !caseRow.additional_docs_only;
 
   return (
     <main className="min-h-dvh bg-stone-50">
@@ -152,28 +223,40 @@ export default async function ClientUploadPage({ params }: Props) {
       <section className="mx-auto max-w-3xl space-y-5 px-6 py-8">
         <div className="rounded-xl border border-stone-200 bg-white p-5 text-sm text-stone-700">
           <p>
-            Hi {greetingName}, please upload the documents below for your
-            application. Items marked with a red <span className="text-red-600 font-semibold">*</span>{" "}
-            are required ({requiredCount} required total). Optional items
-            are welcome but not blocking.
+            Hi {greetingName},{" "}
+            {caseRow.additional_docs_only
+              ? "IRCC has requested additional documents for your application. Please upload them below."
+              : "please upload the documents below for your application."}
           </p>
+          {showOriginalChecklist && (
+            <p className="mt-2">
+              Items marked with a red{" "}
+              <span className="font-semibold text-red-600">*</span> are
+              required ({requiredCount} required total). Optional items are
+              welcome but not blocking.
+            </p>
+          )}
           <p className="mt-2 text-stone-500">
             Allowed file types: PDF, JPG, PNG, HEIC, DOC, DOCX. Max 4 MB
-            per file. If a document is rejected, you&apos;ll see a note
-            from our team explaining what to fix — just upload a new
-            version using the upload button on that row.
+            per file.
           </p>
         </div>
 
-        <DocumentChecklist
-          caseId={caseRow.id}
-          templateDocs={templateDocs}
-          latestByCode={latestByCode}
-          canEditRequired={false}
-          canReview={false}
-          canUpload={true}
-          clientPortalToken={token}
-        />
+        {additionalDocsGroups.length > 0 && (
+          <PortalAdditionalDocs token={token} groups={additionalDocsGroups} />
+        )}
+
+        {showOriginalChecklist && (
+          <DocumentChecklist
+            caseId={caseRow.id}
+            templateDocs={templateDocs}
+            latestByCode={latestByCode}
+            canEditRequired={false}
+            canReview={false}
+            canUpload={true}
+            clientPortalToken={token}
+          />
+        )}
 
         <p className="text-center text-xs text-stone-500">
           Need help? Reply to the email this link came from, or contact

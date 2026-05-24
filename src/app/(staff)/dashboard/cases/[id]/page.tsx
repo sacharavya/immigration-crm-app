@@ -31,6 +31,10 @@ import {
   DocumentChecklist,
   type LatestDoc,
 } from "./_components/document-checklist";
+import {
+  AdditionalDocumentsSection,
+  type AdditionalDocsGroup,
+} from "./_components/additional-documents-section";
 import { BiometricsCard } from "./_components/biometrics-card";
 import { OneDriveCard } from "./_components/onedrive-card";
 import {
@@ -312,13 +316,15 @@ export default async function CasePage({ params, searchParams }: Props) {
     supabase
       .schema("crm")
       .from("case_required_documents")
-      .select("document_code")
+      .select(
+        "id, document_code, custom_label, due_date, requested_at_event_id",
+      )
       .eq("case_id", id),
     supabase
       .schema("files")
       .from("documents")
       .select(
-        "id, document_code, status, file_name, version_number, sharepoint_web_url, rejection_reason, reviewed_at, reviewed_by",
+        "id, document_code, required_document_id, status, file_name, version_number, sharepoint_web_url, rejection_reason, reviewed_at, reviewed_by",
       )
       .eq("case_id", id)
       .is("deleted_at", null),
@@ -488,8 +494,14 @@ export default async function CasePage({ params, searchParams }: Props) {
   const intakeMissing = intakeProgress
     ? intakeProgress.total - intakeProgress.complete
     : 0;
+  // Phase 2 required docs have document_code; additional docs have a null
+  // document_code + a non-null requested_at_event_id. Only the Phase 2 set
+  // feeds the template checklist's "is_required" flag.
+  const requiredDocs = requiredDocsRes.data ?? [];
   const requiredDocCodes = new Set(
-    (requiredDocsRes.data ?? []).map((r) => r.document_code),
+    requiredDocs
+      .filter((r) => r.requested_at_event_id === null && r.document_code)
+      .map((r) => r.document_code as string),
   );
   const templateDocs = (templateDocsRes.data ?? []).map((d) => ({
     ...d,
@@ -612,6 +624,80 @@ export default async function CasePage({ params, searchParams }: Props) {
       });
     }
   }
+
+  // FLOW-3d: build additional-document groups.
+  // 1. Find every additional_documents_requested event for this case.
+  // 2. Per event, attach the case_required_documents rows that point at it
+  //    and their latest non-superseded files.documents (via required_document_id).
+  const latestByRequiredDocId = new Map<string, LatestDoc>();
+  for (const doc of uploadedDocs) {
+    if (!doc.required_document_id) continue;
+    const existing = latestByRequiredDocId.get(doc.required_document_id);
+    if (!existing || doc.version_number > existing.version_number) {
+      latestByRequiredDocId.set(doc.required_document_id, {
+        id: doc.id,
+        status: doc.status,
+        file_name: doc.file_name,
+        sharepoint_web_url: doc.sharepoint_web_url,
+        version_number: doc.version_number,
+        rejection_reason: doc.rejection_reason,
+      });
+    }
+  }
+
+  const additionalDocsGroups: AdditionalDocsGroup[] = (() => {
+    const rowsByEvent = new Map<
+      string,
+      Array<{
+        id: string;
+        customLabel: string;
+        dueDate: string | null;
+        latest: LatestDoc | null;
+      }>
+    >();
+    for (const r of requiredDocs) {
+      if (!r.requested_at_event_id) continue;
+      const list = rowsByEvent.get(r.requested_at_event_id) ?? [];
+      list.push({
+        id: r.id,
+        customLabel: r.custom_label ?? "Additional document",
+        dueDate: r.due_date,
+        latest: latestByRequiredDocId.get(r.id) ?? null,
+      });
+      rowsByEvent.set(r.requested_at_event_id, list);
+    }
+    if (rowsByEvent.size === 0) return [];
+
+    // Pull the corresponding events from eventsRes (already loaded) to get
+    // occurred_at, overall_due_date, notes.
+    const groups: AdditionalDocsGroup[] = [];
+    for (const e of eventsRes.data ?? []) {
+      if (e.event_type !== "additional_documents_requested") continue;
+      const rows = rowsByEvent.get(e.id);
+      if (!rows) continue;
+      const data =
+        e.event_data && typeof e.event_data === "object" && !Array.isArray(e.event_data)
+          ? (e.event_data as Record<string, unknown>)
+          : {};
+      const overallDue =
+        typeof data.overall_due_date === "string"
+          ? data.overall_due_date
+          : null;
+      const notes =
+        typeof data.notes === "string" ? data.notes : null;
+      groups.push({
+        eventId: e.id,
+        requestedAt: e.occurred_at,
+        overallDueDate: overallDue,
+        notes,
+        rows,
+      });
+    }
+    return groups.sort(
+      (a, b) =>
+        new Date(a.requestedAt).getTime() - new Date(b.requestedAt).getTime(),
+    );
+  })();
 
   const collected = payments.reduce(
     (acc, p) => acc + (p.is_refund ? -1 : 1) * Number(p.amount_cad),
@@ -835,23 +921,31 @@ export default async function CasePage({ params, searchParams }: Props) {
             </Card>
           )
         ) : tab === "documents" ? (
-          <DocumentChecklist
-            caseId={caseRow.id}
-            templateDocs={templateDocs}
-            latestByCode={latestByCode}
-            canEditRequired={me ? staffCan(me, "review_documents") : false}
-            canReview={me ? staffCan(me, "review_documents") : false}
-            canUpload={me ? staffCan(me, "upload_documents") : false}
-            shareButtonSlot={
-              me && staffCan(me, "upload_documents") ? (
-                <ShareLinkDialog
-                  caseId={caseRow.id}
-                  initialToken={caseRow.client_portal_token ?? null}
-                  clientEmail={client?.email ?? null}
-                />
-              ) : null
-            }
-          />
+          <div className="space-y-4">
+            <DocumentChecklist
+              caseId={caseRow.id}
+              templateDocs={templateDocs}
+              latestByCode={latestByCode}
+              canEditRequired={me ? staffCan(me, "review_documents") : false}
+              canReview={me ? staffCan(me, "review_documents") : false}
+              canUpload={me ? staffCan(me, "upload_documents") : false}
+              shareButtonSlot={
+                me && staffCan(me, "upload_documents") ? (
+                  <ShareLinkDialog
+                    caseId={caseRow.id}
+                    initialToken={caseRow.client_portal_token ?? null}
+                    clientEmail={client?.email ?? null}
+                  />
+                ) : null
+              }
+            />
+            <AdditionalDocumentsSection
+              caseId={caseRow.id}
+              groups={additionalDocsGroups}
+              canUpload={me ? staffCan(me, "upload_documents") : false}
+              canReview={me ? staffCan(me, "review_documents") : false}
+            />
+          </div>
         ) : tab === "activity" ? (
           <Card>
             <CardContent className="space-y-3 p-6">

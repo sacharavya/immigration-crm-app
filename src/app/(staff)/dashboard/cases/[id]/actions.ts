@@ -300,6 +300,186 @@ export async function uploadDocument(
   };
 }
 
+// ============================================================================
+// FLOW-3d: uploadAdditionalDocument — upload against an ad-hoc IRCC-requested
+// case_required_documents row (custom_label, document_code IS NULL). Mirrors
+// uploadDocument minus the template lookup; the row's id is the link.
+//
+// OneDrive routing: files land in the case root folder (no category match
+// since there's no template group). The filename is prefixed with the
+// required-doc id so OneDrive listing stays distinct.
+// ============================================================================
+
+export async function uploadAdditionalDocument(
+  caseId: string,
+  requiredDocumentId: string,
+  formData: FormData,
+): Promise<UploadDocumentResult> {
+  if (!z.string().uuid().safeParse(caseId).success) {
+    return { error: "Invalid case id" };
+  }
+  if (!z.string().uuid().safeParse(requiredDocumentId).success) {
+    return { error: "Invalid required document id" };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) return { error: "No file provided" };
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return {
+      error: `File exceeds the 4MB limit (${formatBytesMb(file.size)} MB).`,
+    };
+  }
+  if (!ALLOWED_MIME_TYPES_SET.has(file.type)) {
+    return {
+      error: `File type ${file.type || "unknown"} is not allowed. Use ${ALLOWED_EXTENSIONS_HUMAN}.`,
+    };
+  }
+
+  const supabase = await createClient();
+  const me = await getStaff();
+  if (!me) return { error: "Not authenticated" };
+
+  const { data: caseRow } = await supabase
+    .schema("crm")
+    .from("cases")
+    .select("id, client_id, sharepoint_folder_id")
+    .eq("id", caseId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!caseRow) return { error: "Case not found" };
+  if (!caseRow.sharepoint_folder_id) {
+    return {
+      error:
+        "Documents folder is still being created — please try again in a few seconds.",
+    };
+  }
+
+  // Confirm the required-doc row belongs to this case and is ad-hoc.
+  const { data: reqDoc } = await supabase
+    .schema("crm")
+    .from("case_required_documents")
+    .select("id, case_id, custom_label, requested_at_event_id")
+    .eq("id", requiredDocumentId)
+    .maybeSingle();
+  if (!reqDoc || reqDoc.case_id !== caseId) {
+    return { error: "Required document row not found for this case." };
+  }
+  if (!reqDoc.requested_at_event_id) {
+    return {
+      error:
+        "This document is part of the Phase 2 checklist — use the regular upload action.",
+    };
+  }
+  const displayName = reqDoc.custom_label ?? "Additional document";
+
+  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
+  if (!driveId) return { error: "GRAPH_DOCUMENT_LIBRARY_ID is not set" };
+
+  const sanitizedOriginalName = sanitizeFileName(file.name);
+  const uploadName = `additional_${requiredDocumentId.slice(0, 8)}_${sanitizedOriginalName}`;
+
+  let uploadResponse: { id: string; name: string; webUrl: string; size: number };
+  try {
+    uploadResponse = await uploadFile(
+      driveId,
+      caseRow.sharepoint_folder_id,
+      uploadName,
+      file,
+      file.type,
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: `Upload to OneDrive failed: ${message}` };
+  }
+
+  // Supersede previous uploads for this required-doc row.
+  const { data: existing } = await supabase
+    .schema("files")
+    .from("documents")
+    .select("id, version_number, status")
+    .eq("required_document_id", requiredDocumentId)
+    .is("deleted_at", null);
+
+  const priorRows = existing ?? [];
+  const maxVersion = priorRows.reduce(
+    (m, d) => Math.max(m, d.version_number),
+    0,
+  );
+  const nextVersion = maxVersion + 1;
+  const priorId =
+    priorRows.length > 0
+      ? priorRows.reduce((latest, d) =>
+          d.version_number > latest.version_number ? d : latest,
+        ).id
+      : null;
+  if (priorRows.length > 0) {
+    const idsToSupersede = priorRows
+      .filter((d) => d.status !== "superseded")
+      .map((d) => d.id);
+    if (idsToSupersede.length > 0) {
+      await supabase
+        .schema("files")
+        .from("documents")
+        .update({ status: "superseded" })
+        .in("id", idsToSupersede);
+    }
+  }
+
+  const { data: newDoc, error: insertErr } = await supabase
+    .schema("files")
+    .from("documents")
+    .insert({
+      case_id: caseId,
+      client_id: caseRow.client_id,
+      document_code: null,
+      required_document_id: requiredDocumentId,
+      display_name: displayName,
+      category: "Additional",
+      sharepoint_drive_id: driveId,
+      sharepoint_item_id: uploadResponse.id,
+      sharepoint_web_url: uploadResponse.webUrl,
+      file_name: uploadName,
+      file_size_bytes: file.size,
+      mime_type: file.type,
+      status: "uploaded",
+      version_number: nextVersion,
+      supersedes: priorId,
+      uploaded_by_staff: me.id,
+      uploaded_by_client: false,
+    })
+    .select("id")
+    .single();
+  if (insertErr || !newDoc) {
+    return {
+      error: `Could not record document: ${insertErr?.message ?? "unknown"}`,
+    };
+  }
+
+  await supabase
+    .schema("crm")
+    .from("case_events")
+    .insert({
+      case_id: caseId,
+      event_type: "document_received",
+      event_data: {
+        required_document_id: requiredDocumentId,
+        document_id: newDoc.id,
+        version_number: nextVersion,
+        file_name: uploadName,
+      },
+      description: `Additional document received: ${displayName} (v${nextVersion})`,
+      visible_to_client: false,
+      created_by: me.id,
+    });
+
+  revalidatePath(`/dashboard/cases/${caseId}`);
+  return {
+    ok: true,
+    documentId: newDoc.id,
+    sharepointWebUrl: uploadResponse.webUrl,
+  };
+}
+
 export type RecordPaymentResult =
   | { ok: true }
   | { error: string; fieldErrors?: Record<string, string[]> };
@@ -1376,6 +1556,27 @@ const recordCaseEventSchema = z.discriminatedUnion("event_type", [
     reason: z.string().max(1000).optional(),
     occurred_at: z.string().datetime().optional(),
   }),
+  z.object({
+    event_type: z.literal("additional_documents_requested"),
+    documents: z
+      .array(
+        z.object({
+          label: z.string().min(1).max(200),
+          due_date: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/)
+            .optional(),
+        }),
+      )
+      .min(1)
+      .max(20),
+    overall_due_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    notes: z.string().max(2000).optional(),
+    occurred_at: z.string().datetime().optional(),
+  }),
 ]);
 
 export type RecordCaseEventInput = z.infer<typeof recordCaseEventSchema>;
@@ -1405,6 +1606,7 @@ const EVENT_ALLOWED_FROM: Record<
     "submitted_to_ircc",
     "refused",
   ],
+  additional_documents_requested: ["submitted_to_ircc"],
 };
 
 function eventAllowsStatus(
@@ -1527,6 +1729,38 @@ export async function recordCaseEvent(
           .eq("id", caseId);
       }
     }
+  } else if (data.event_type === "additional_documents_requested") {
+    // Insert one case_required_documents row per requested doc, linked to
+    // this event. document_code stays null so the row is identified by
+    // custom_label + id (matched by required_document_id on upload).
+    const rows = data.documents.map((d) => ({
+      case_id: caseId,
+      document_code: null,
+      custom_label: d.label,
+      due_date: d.due_date ?? data.overall_due_date ?? null,
+      requested_at_event_id: inserted.id,
+      set_by: me.id,
+    }));
+    await supabase.schema("crm").from("case_required_documents").insert(rows);
+
+    // Reactivate the public upload portal if its token is missing. We don't
+    // rotate a still-valid token here — clients may already hold the URL.
+    const { data: portalRow } = await supabase
+      .schema("crm")
+      .from("cases")
+      .select("client_portal_token")
+      .eq("id", caseId)
+      .maybeSingle();
+    if (!portalRow?.client_portal_token) {
+      await supabase
+        .schema("crm")
+        .from("cases")
+        .update({
+          client_portal_token: randomUUID(),
+          client_portal_token_created_at: new Date().toISOString(),
+        })
+        .eq("id", caseId);
+    }
   }
 
   revalidatePath(`/dashboard/cases/${caseId}`);
@@ -1559,6 +1793,18 @@ function buildEventDescription(data: RecordCaseEventInput): string {
       return `Appeal filed${data.appeal_reference ? ` (${data.appeal_reference})` : ""}`;
     case "withdrawal_requested":
       return `Client requested withdrawal`;
+    case "additional_documents_requested": {
+      const count = data.documents.length;
+      const names = data.documents
+        .map((d) => d.label)
+        .slice(0, 3)
+        .join(", ");
+      const suffix = data.documents.length > 3 ? ", and more" : "";
+      const due = data.overall_due_date
+        ? ` Due ${data.overall_due_date}.`
+        : "";
+      return `IRCC requested ${count} additional document${count === 1 ? "" : "s"}: ${names}${suffix}.${due}`;
+    }
   }
 }
 
@@ -1604,6 +1850,14 @@ function buildEventData(
         : {};
     case "withdrawal_requested":
       return data.reason ? { reason: data.reason } : {};
+    case "additional_documents_requested":
+      return {
+        documents: data.documents,
+        ...(data.overall_due_date
+          ? { overall_due_date: data.overall_due_date }
+          : {}),
+        ...(data.notes ? { notes: data.notes } : {}),
+      };
   }
 }
 

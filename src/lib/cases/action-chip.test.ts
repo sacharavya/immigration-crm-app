@@ -29,6 +29,7 @@ function makeInput(overrides: {
   payments?: Partial<ChipInput["payments"]>;
   documents?: Partial<ChipInput["documents"]>;
   latest_event?: ChipInput["latest_event"];
+  additional_docs?: ChipInput["additional_docs"];
   now?: Date;
 }): ChipInput {
   return {
@@ -53,6 +54,8 @@ function makeInput(overrides: {
     },
     latest_event:
       overrides.latest_event === undefined ? null : overrides.latest_event,
+    additional_docs:
+      overrides.additional_docs === undefined ? null : overrides.additional_docs,
     now: overrides.now ?? FIXED_NOW,
   };
 }
@@ -388,6 +391,92 @@ describe("computeActionChip", () => {
       );
       assert.equal(r.text, "Review returned application");
       assert.equal(r.responsibility, "us");
+    });
+
+    it("returns 'Upload additional documents · due …' (sensitive) when request is open and on-time", () => {
+      const r = computeActionChip(
+        makeInput({
+          ...base,
+          additional_docs: {
+            requested: 2,
+            uploaded: 0,
+            accepted: 0,
+            latest_request_due: "2026-06-30",
+            submitted_after_request: false,
+          },
+        }),
+      );
+      assert.match(r.text, /^Upload additional documents · due /);
+      assert.equal(r.responsibility, "client");
+      assert.equal(r.urgency, "sensitive");
+    });
+
+    it("returns 'Upload additional documents · due …' (overdue) when the due date has passed", () => {
+      const r = computeActionChip(
+        makeInput({
+          ...base,
+          additional_docs: {
+            requested: 2,
+            uploaded: 1,
+            accepted: 0,
+            latest_request_due: "2026-04-01",
+            submitted_after_request: false,
+          },
+        }),
+      );
+      assert.equal(r.urgency, "overdue");
+      assert.equal(r.responsibility, "client");
+    });
+
+    it("returns 'Review additional documents' when all uploaded but not all accepted", () => {
+      const r = computeActionChip(
+        makeInput({
+          ...base,
+          additional_docs: {
+            requested: 2,
+            uploaded: 2,
+            accepted: 1,
+            latest_request_due: null,
+            submitted_after_request: false,
+          },
+        }),
+      );
+      assert.equal(r.text, "Review additional documents");
+      assert.equal(r.responsibility, "us");
+    });
+
+    it("returns 'Submit additional documents to IRCC' when all accepted", () => {
+      const r = computeActionChip(
+        makeInput({
+          ...base,
+          additional_docs: {
+            requested: 2,
+            uploaded: 2,
+            accepted: 2,
+            latest_request_due: null,
+            submitted_after_request: false,
+          },
+        }),
+      );
+      assert.equal(r.text, "Submit additional documents to IRCC");
+      assert.equal(r.responsibility, "us");
+      assert.equal(r.urgency, "sensitive");
+    });
+
+    it("falls back to 'Awaiting IRCC response' after additional_info_submitted closes out the request", () => {
+      const r = computeActionChip(
+        makeInput({
+          ...base,
+          additional_docs: {
+            requested: 2,
+            uploaded: 2,
+            accepted: 2,
+            latest_request_due: null,
+            submitted_after_request: true,
+          },
+        }),
+      );
+      assert.equal(r.text, "Awaiting IRCC response");
     });
 
     it("falls back to 'Awaiting IRCC response' after biometrics_completed", () => {

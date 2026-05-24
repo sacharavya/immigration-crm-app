@@ -51,6 +51,15 @@ export type ChipInput = {
     occurred_at: string;
     event_data: Record<string, unknown>;
   } | null;
+  // FLOW-3d: ad-hoc IRCC document requests, while the case stays at
+  // submitted_to_ircc. Null when no such requests exist.
+  additional_docs: {
+    requested: number;
+    uploaded: number;
+    accepted: number;
+    latest_request_due: string | null;
+    submitted_after_request: boolean;
+  } | null;
   now: Date;
 };
 
@@ -188,6 +197,46 @@ export function computeActionChip(input: ChipInput): ChipOutput {
     if (evt === "application_returned") {
       return {
         text: "Review returned application",
+        responsibility: "us",
+        urgency: "sensitive",
+        waiting_days: null,
+      };
+    }
+
+    // Additional-documents request takes priority over the generic
+    // "awaiting IRCC" default. Falls through once additional_info_submitted
+    // has been recorded after the most recent request.
+    const ad = input.additional_docs;
+    if (
+      ad &&
+      ad.requested > 0 &&
+      !ad.submitted_after_request
+    ) {
+      const due = ad.latest_request_due;
+      const isOverdue =
+        due !== null && new Date(due).getTime() < now.getTime();
+
+      if (ad.uploaded < ad.requested) {
+        return {
+          text: due
+            ? `Upload additional documents · due ${formatShortDate(due)}`
+            : "Upload additional documents",
+          responsibility: "client",
+          urgency: isOverdue ? "overdue" : "sensitive",
+          waiting_days: null,
+        };
+      }
+      if (ad.accepted < ad.requested) {
+        return {
+          text: "Review additional documents",
+          responsibility: "us",
+          urgency: "normal",
+          waiting_days: null,
+        };
+      }
+      // All uploaded and accepted — staff needs to send them back to IRCC.
+      return {
+        text: "Submit additional documents to IRCC",
         responsibility: "us",
         urgency: "sensitive",
         waiting_days: null,
@@ -421,6 +470,17 @@ export function chipInputFromViewRow(
               : {},
         }
       : null,
+    additional_docs:
+      (row.additional_docs_requested ?? 0) > 0
+        ? {
+            requested: row.additional_docs_requested ?? 0,
+            uploaded: row.additional_docs_uploaded ?? 0,
+            accepted: row.additional_docs_accepted ?? 0,
+            latest_request_due: row.additional_docs_latest_due,
+            submitted_after_request:
+              row.additional_docs_submitted_after_request ?? false,
+          }
+        : null,
     now,
   };
 }
