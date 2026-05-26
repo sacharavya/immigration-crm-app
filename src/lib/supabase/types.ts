@@ -520,6 +520,7 @@ export type Database = {
           field_of_study: string | null
           id: string
           institution: string
+          level: string | null
           notes: string | null
           province_state: string | null
         }
@@ -534,6 +535,7 @@ export type Database = {
           field_of_study?: string | null
           id?: string
           institution: string
+          level?: string | null
           notes?: string | null
           province_state?: string | null
         }
@@ -548,6 +550,7 @@ export type Database = {
           field_of_study?: string | null
           id?: string
           institution?: string
+          level?: string | null
           notes?: string | null
           province_state?: string | null
         }

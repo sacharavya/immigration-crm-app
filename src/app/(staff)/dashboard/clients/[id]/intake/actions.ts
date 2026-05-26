@@ -442,9 +442,17 @@ export async function removeFamilyMember(
 // Education
 // ---------------------------------------------------------------------------
 
+const EDUCATION_LEVELS = [
+  "elementary",
+  "secondary",
+  "post_secondary",
+  "trade_other",
+] as const;
+
 const educationAddSchema = z.object({
   clientId: z.string().uuid(),
   institution: z.string().trim().min(1).max(300),
+  level: z.enum(EDUCATION_LEVELS).optional(),
 });
 
 const educationUpdateSchema = z.object({
@@ -459,6 +467,7 @@ const educationUpdateSchema = z.object({
     province_state: optionalText,
     country_code: optionalCountry,
     notes: optionalText,
+    level: z.enum(EDUCATION_LEVELS).nullable().optional(),
   }),
 });
 
@@ -477,6 +486,7 @@ export async function addEducation(
   const insert: EducationInsert = {
     client_id: parsed.data.clientId,
     institution: parsed.data.institution,
+    ...(parsed.data.level ? { level: parsed.data.level } : {}),
   };
   const { data, error } = await supabase
     .schema("crm")

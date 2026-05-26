@@ -225,25 +225,33 @@ function checkSiblings(
 }
 
 function checkEducation(
-  client: ClientRow,
+  _client: ClientRow,
   education: EducationRow[],
 ): SectionStatus {
-  const secondary = client.years_secondary ?? 0;
-  const post = client.years_post_secondary ?? 0;
-  if (secondary <= 0 && post <= 0) {
+  if (education.length === 0) {
     return {
       section: "education",
       label: "Education",
       isComplete: false,
-      reason: "Set years of secondary or post-secondary",
+      reason: "Add at least one education entry",
     };
   }
-  if (post > 0 && education.length === 0) {
+  // Each row should have a level + institution + a usable date range so
+  // the auto-computed years summary has something to show.
+  const hasUsable = education.some(
+    (e) =>
+      e.level !== null &&
+      e.institution !== null &&
+      e.institution.trim() !== "" &&
+      e.date_from !== null &&
+      e.date_to !== null,
+  );
+  if (!hasUsable) {
     return {
       section: "education",
       label: "Education",
       isComplete: false,
-      reason: "Add a post-secondary institution",
+      reason: "Set level + institution + dates on at least one entry",
     };
   }
   return {
