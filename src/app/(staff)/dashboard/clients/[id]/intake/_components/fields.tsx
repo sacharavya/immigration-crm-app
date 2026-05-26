@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
 
@@ -14,6 +14,30 @@ import { useDebouncedAutosave } from "./use-autosave";
 type SaveFn<T> = (
   value: T,
 ) => Promise<{ ok: true } | { error: string }>;
+
+// Sync incoming `initial` to local state only when the user hasn't typed
+// past it since the last sync. Prevents the autosave → revalidatePath →
+// re-render → reset cycle from clobbering in-flight keystrokes (see
+// FLOW-bug: typing "Khairahani 32 Chitwan Parsa Nepal" became
+// "Khairahani 32 Chitarsaepal" because mid-typing pauses triggered an
+// autosave whose server-rendered `initial` overwrote later characters).
+function useSyncedInitial<T>(
+  initial: T,
+  value: T,
+  setValue: (v: T) => void,
+) {
+  const lastSeen = useRef<T>(initial);
+  useEffect(() => {
+    if (Object.is(lastSeen.current, initial)) return;
+    // Only adopt if local value still matches the previous initial — i.e.
+    // the user hasn't touched the field. Otherwise let the in-flight
+    // edits win; autosave will reconcile on the next debounce.
+    if (Object.is(value, lastSeen.current)) {
+      setValue(initial);
+    }
+    lastSeen.current = initial;
+  }, [initial, value, setValue]);
+}
 
 export function TextField({
   label,
@@ -33,9 +57,7 @@ export function TextField({
   helper?: string;
 }) {
   const [value, setValue] = useState<string>(initial ?? "");
-  useEffect(() => {
-    setValue(initial ?? "");
-  }, [initial]);
+  useSyncedInitial(initial ?? "", value, setValue);
 
   const { state, error } = useDebouncedAutosave<string | null>(
     value.trim() === "" ? null : value,
@@ -80,14 +102,10 @@ export function NumberField({
   max?: number;
   disabled?: boolean;
 }) {
-  const [value, setValue] = useState<string>(
-    initial === null || initial === undefined ? "" : String(initial),
-  );
-  useEffect(() => {
-    setValue(
-      initial === null || initial === undefined ? "" : String(initial),
-    );
-  }, [initial]);
+  const initialStr =
+    initial === null || initial === undefined ? "" : String(initial);
+  const [value, setValue] = useState<string>(initialStr);
+  useSyncedInitial(initialStr, value, setValue);
 
   const parsed: number | null =
     value.trim() === "" ? null : Number(value);
@@ -136,9 +154,7 @@ export function SelectField<V extends string>({
   allowEmpty?: boolean;
 }) {
   const [value, setValue] = useState<string>(initial ?? "");
-  useEffect(() => {
-    setValue(initial ?? "");
-  }, [initial]);
+  useSyncedInitial(initial ?? "", value, setValue);
 
   const next = value === "" ? null : (value as V);
   const { state, error } = useDebouncedAutosave<V | null>(next, save, {
@@ -242,9 +258,7 @@ export function TextareaField({
   rows?: number;
 }) {
   const [value, setValue] = useState<string>(initial ?? "");
-  useEffect(() => {
-    setValue(initial ?? "");
-  }, [initial]);
+  useSyncedInitial(initial ?? "", value, setValue);
 
   const { state, error } = useDebouncedAutosave<string | null>(
     value.trim() === "" ? null : value,
