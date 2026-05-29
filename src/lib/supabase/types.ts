@@ -72,6 +72,299 @@ export type Database = {
   }
   crm: {
     Tables: {
+      appointment_settings: {
+        Row: {
+          booking_mode: string
+          buffer_between_appointments_minutes: number
+          default_online_instructions: string | null
+          graph_calendar_owner_email: string
+          hours_by_weekday: Json
+          id: string
+          maximum_horizon_days: number
+          minimum_lead_time_hours: number
+          office_address: string
+          office_arrival_instructions: string | null
+          public_booking_enabled: boolean
+          slot_increment_minutes: number
+          teams_auto_create: boolean
+          timezone: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          booking_mode?: string
+          buffer_between_appointments_minutes?: number
+          default_online_instructions?: string | null
+          graph_calendar_owner_email?: string
+          hours_by_weekday?: Json
+          id?: string
+          maximum_horizon_days?: number
+          minimum_lead_time_hours?: number
+          office_address?: string
+          office_arrival_instructions?: string | null
+          public_booking_enabled?: boolean
+          slot_increment_minutes?: number
+          teams_auto_create?: boolean
+          timezone?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          booking_mode?: string
+          buffer_between_appointments_minutes?: number
+          default_online_instructions?: string | null
+          graph_calendar_owner_email?: string
+          hours_by_weekday?: Json
+          id?: string
+          maximum_horizon_days?: number
+          minimum_lead_time_hours?: number
+          office_address?: string
+          office_arrival_instructions?: string | null
+          public_booking_enabled?: boolean
+          slot_increment_minutes?: number
+          teams_auto_create?: boolean
+          timezone?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_types: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          default_location_type: string
+          deleted_at: string | null
+          description: string | null
+          display_order: number
+          duration_minutes: number
+          fee_cad: number | null
+          id: string
+          is_public: boolean
+          name: string
+          requires_case: boolean
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          default_location_type?: string
+          deleted_at?: string | null
+          description?: string | null
+          display_order?: number
+          duration_minutes: number
+          fee_cad?: number | null
+          id?: string
+          is_public?: boolean
+          name: string
+          requires_case?: boolean
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          default_location_type?: string
+          deleted_at?: string | null
+          description?: string | null
+          display_order?: number
+          duration_minutes?: number
+          fee_cad?: number | null
+          id?: string
+          is_public?: boolean
+          name?: string
+          requires_case?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      appointments: {
+        Row: {
+          appointment_type_id: string
+          assigned_staff_id: string | null
+          booking_source: Database["crm"]["Enums"]["appointment_booking_source"]
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          case_id: string | null
+          client_id: string | null
+          confirmation_email_sent_at: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          ends_at: string
+          graph_event_etag: string | null
+          graph_event_id: string | null
+          graph_sync_error: string | null
+          graph_sync_status: string | null
+          graph_synced_at: string | null
+          id: string
+          location_type: string
+          management_token: string | null
+          management_token_expires_at: string | null
+          online_link: string | null
+          onsite_address: string | null
+          reason: string | null
+          reminder_email_sent_at: string | null
+          rescheduled_to: string | null
+          snapshot_client_email: string
+          snapshot_client_name: string
+          snapshot_client_phone: string | null
+          staff_notes: string | null
+          starts_at: string
+          status: Database["crm"]["Enums"]["appointment_status"]
+          teams_join_url: string | null
+          teams_meeting_id: string | null
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_type_id: string
+          assigned_staff_id?: string | null
+          booking_source?: Database["crm"]["Enums"]["appointment_booking_source"]
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          case_id?: string | null
+          client_id?: string | null
+          confirmation_email_sent_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          ends_at: string
+          graph_event_etag?: string | null
+          graph_event_id?: string | null
+          graph_sync_error?: string | null
+          graph_sync_status?: string | null
+          graph_synced_at?: string | null
+          id?: string
+          location_type: string
+          management_token?: string | null
+          management_token_expires_at?: string | null
+          online_link?: string | null
+          onsite_address?: string | null
+          reason?: string | null
+          reminder_email_sent_at?: string | null
+          rescheduled_to?: string | null
+          snapshot_client_email: string
+          snapshot_client_name: string
+          snapshot_client_phone?: string | null
+          staff_notes?: string | null
+          starts_at: string
+          status?: Database["crm"]["Enums"]["appointment_status"]
+          teams_join_url?: string | null
+          teams_meeting_id?: string | null
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_type_id?: string
+          assigned_staff_id?: string | null
+          booking_source?: Database["crm"]["Enums"]["appointment_booking_source"]
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          case_id?: string | null
+          client_id?: string | null
+          confirmation_email_sent_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          ends_at?: string
+          graph_event_etag?: string | null
+          graph_event_id?: string | null
+          graph_sync_error?: string | null
+          graph_sync_status?: string | null
+          graph_synced_at?: string | null
+          id?: string
+          location_type?: string
+          management_token?: string | null
+          management_token_expires_at?: string | null
+          online_link?: string | null
+          onsite_address?: string | null
+          reason?: string | null
+          reminder_email_sent_at?: string | null
+          rescheduled_to?: string | null
+          snapshot_client_email?: string
+          snapshot_client_name?: string
+          snapshot_client_phone?: string | null
+          staff_notes?: string | null
+          starts_at?: string
+          status?: Database["crm"]["Enums"]["appointment_status"]
+          teams_join_url?: string | null
+          teams_meeting_id?: string | null
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_appointment_type_id_fkey"
+            columns: ["appointment_type_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_assigned_staff_id_fkey"
+            columns: ["assigned_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "v_case_chip_inputs"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "appointments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_rescheduled_to_fkey"
+            columns: ["rescheduled_to"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_events: {
         Row: {
           case_id: string
@@ -1864,6 +2157,14 @@ export type Database = {
       }
     }
     Functions: {
+      appointment_slot_is_free: {
+        Args: {
+          p_ends_at: string
+          p_exclude_appointment_id?: string
+          p_starts_at: string
+        }
+        Returns: boolean
+      }
       can_advance_phase: {
         Args: {
           p_case_id: string
@@ -1893,6 +2194,13 @@ export type Database = {
       }
     }
     Enums: {
+      appointment_booking_source: "staff" | "public_portal" | "manual_import"
+      appointment_status:
+        | "confirmed"
+        | "rescheduled"
+        | "cancelled"
+        | "completed"
+        | "no_show"
       biometrics_status:
         | "not_applicable"
         | "previously_given_valid"
@@ -2583,6 +2891,14 @@ export const Constants = {
   },
   crm: {
     Enums: {
+      appointment_booking_source: ["staff", "public_portal", "manual_import"],
+      appointment_status: [
+        "confirmed",
+        "rescheduled",
+        "cancelled",
+        "completed",
+        "no_show",
+      ],
       biometrics_status: [
         "not_applicable",
         "previously_given_valid",
