@@ -1,0 +1,34 @@
+// Rendered when `appointment_settings.public_booking_enabled` is false OR
+// no `is_public` types exist. Returned by the page server component; the
+// page itself stays 200 (better UX than a blanket 404, and lets the firm
+// drop the URL in marketing copy without breaking it during the off state).
+
+const DEFAULT_MESSAGE =
+  "Online booking is temporarily unavailable. Please contact us directly to schedule an appointment.";
+
+export function BookingDisabled({ message }: { message?: string } = {}) {
+  return (
+    <div className="rounded-md border border-stone-200 bg-white px-6 py-12 text-center shadow-sm">
+      <h1 className="text-xl font-semibold text-stone-900">
+        Booking is currently unavailable
+      </h1>
+      <p className="mx-auto mt-3 max-w-md text-sm text-stone-600">
+        {message ?? DEFAULT_MESSAGE}
+      </p>
+      <div className="mx-auto mt-6 inline-flex flex-col items-center gap-1 text-sm">
+        <a
+          href="mailto:info@bigbangimmigration.com"
+          className="text-[var(--navy)] underline-offset-2 hover:underline"
+        >
+          info@bigbangimmigration.com
+        </a>
+        <a
+          href="tel:+14163865351"
+          className="text-[var(--navy)] underline-offset-2 hover:underline"
+        >
+          +1 416-386-5351
+        </a>
+      </div>
+    </div>
+  );
+}
