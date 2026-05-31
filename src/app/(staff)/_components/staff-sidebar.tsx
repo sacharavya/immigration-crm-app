@@ -4,6 +4,7 @@ import {
   Archive,
   BarChart3,
   Briefcase,
+  CalendarDays,
   CheckSquare,
   ChevronDown,
   History,
@@ -91,6 +92,14 @@ export function StaffSidebar() {
             label="Payments"
             Icon={Receipt}
             active={isActive("/dashboard/payments")}
+          />
+        </Can>
+        <Can permission="manage_appointments">
+          <NavItem
+            href="/dashboard/appointments"
+            label="Appointments"
+            Icon={CalendarDays}
+            active={isActive("/dashboard/appointments")}
           />
         </Can>
         <Can permission="manage_templates">

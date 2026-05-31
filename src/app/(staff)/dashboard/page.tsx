@@ -27,6 +27,9 @@ import {
   type CaseStatus,
 } from "@/lib/utils/phase";
 
+import type { AppointmentRow } from "./appointments/_components/types";
+import { UpcomingAppointmentsCard } from "./appointments/_components/upcoming-appointments-card";
+
 const PHASES = [1, 2, 3, 4, 5] as const;
 
 const statusPill: Record<CaseStatus, string> = {
@@ -195,6 +198,40 @@ export default async function DashboardPage() {
   const clientCount = "count" in clientCountRes ? (clientCountRes.count ?? 0) : 0;
   const payments = paymentsRes.data ?? [];
   const tasks = (tasksRes.data ?? []) as MyTask[];
+
+  // APPT-3 dashboard widget: next 5 confirmed appointments across the
+  // firm. Only fetched when the staff can see appointments at all.
+  const canAppointments = staffCan(me, "manage_appointments");
+  const upcomingAppointments = canAppointments
+    ? (
+        await supabase
+          .schema("crm")
+          .from("appointments")
+          .select(
+            `
+              id, starts_at, ends_at, timezone, location_type, online_link,
+              onsite_address, status, reason, staff_notes, graph_sync_status,
+              graph_sync_error, cancellation_reason, snapshot_client_name,
+              snapshot_client_email, snapshot_client_phone,
+              appointment_type:appointment_types!appointments_appointment_type_id_fkey(
+                id, name, duration_minutes, default_location_type
+              ),
+              client:clients!appointments_client_id_fkey(
+                id, given_names, family_name, email
+              ),
+              case:cases!appointments_case_id_fkey(id, case_number),
+              assigned_staff:staff!appointments_assigned_staff_id_fkey(
+                id, first_name, last_name
+              )
+            `,
+          )
+          .eq("status", "confirmed")
+          .is("deleted_at", null)
+          .gte("starts_at", new Date().toISOString())
+          .order("starts_at", { ascending: true })
+          .limit(5)
+      ).data ?? []
+    : [];
 
   const collectedByCase = new Map<string, number>();
   for (const p of payments) {
@@ -477,7 +514,16 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {canTasks && <MyTasksPanel tasks={tasks} />}
+        <div className="space-y-4">
+          {canTasks && <MyTasksPanel tasks={tasks} />}
+          {canAppointments && (
+            <UpcomingAppointmentsCard
+              title="Upcoming appointments"
+              appointments={upcomingAppointments as unknown as AppointmentRow[]}
+              viewAllHref="/dashboard/appointments"
+            />
+          )}
+        </div>
       </div>
     </main>
   );

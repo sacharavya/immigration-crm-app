@@ -35,6 +35,14 @@ import {
   AdditionalDocumentsSection,
   type AdditionalDocsGroup,
 } from "./_components/additional-documents-section";
+import { NewAppointmentDialog } from "../../appointments/_components/new-appointment-dialog";
+import type {
+  AppointmentRow,
+  AppointmentTypeOption,
+  LocationType,
+} from "../../appointments/_components/types";
+import { UpcomingAppointmentsCard } from "../../appointments/_components/upcoming-appointments-card";
+
 import { BiometricsCard } from "./_components/biometrics-card";
 import { OneDriveCard } from "./_components/onedrive-card";
 import {
@@ -512,6 +520,76 @@ export default async function CasePage({ params, searchParams }: Props) {
   const tasks = tasksRes.data ?? [];
   const allStaff = staffRes.data ?? [];
 
+  // APPT-3: appointment types, default office address, and the next 3
+  // upcoming appointments linked to this case. Used by the "Schedule
+  // meeting" button and the "Upcoming appointments" sidebar card.
+  const [
+    appointmentTypesRes,
+    appointmentSettingsRes,
+    caseAppointmentsRes,
+  ] = await Promise.all([
+    supabase
+      .schema("crm")
+      .from("appointment_types")
+      .select(
+        "id, name, code, duration_minutes, requires_case, default_location_type",
+      )
+      .eq("active", true)
+      .is("deleted_at", null)
+      .order("display_order"),
+    supabase
+      .schema("crm")
+      .from("appointment_settings")
+      .select("office_address")
+      .maybeSingle(),
+    supabase
+      .schema("crm")
+      .from("appointments")
+      .select(
+        `
+          id, starts_at, ends_at, timezone, location_type, online_link,
+          onsite_address, status, reason, staff_notes, graph_sync_status,
+          graph_sync_error, cancellation_reason, snapshot_client_name,
+          snapshot_client_email, snapshot_client_phone,
+          appointment_type:appointment_types!appointments_appointment_type_id_fkey(
+            id, name, duration_minutes, default_location_type
+          ),
+          client:clients!appointments_client_id_fkey(
+            id, given_names, family_name, email
+          ),
+          case:cases!appointments_case_id_fkey(id, case_number),
+          assigned_staff:staff!appointments_assigned_staff_id_fkey(
+            id, first_name, last_name
+          )
+        `,
+      )
+      .eq("case_id", caseRow.id)
+      .eq("status", "confirmed")
+      .is("deleted_at", null)
+      .gte("starts_at", new Date().toISOString())
+      .order("starts_at", { ascending: true })
+      .limit(3),
+  ]);
+
+  const appointmentTypes: AppointmentTypeOption[] = (
+    appointmentTypesRes.data ?? []
+  ).map((t) => ({
+    id: t.id,
+    name: t.name,
+    code: t.code,
+    duration_minutes: t.duration_minutes,
+    requires_case: t.requires_case,
+    default_location_type: t.default_location_type as LocationType,
+  }));
+  const officeAddress =
+    appointmentSettingsRes.data?.office_address ??
+    "211-2390 Eglinton Avenue East, Toronto, ON M1K 2P5";
+  const caseAppointments = (caseAppointmentsRes.data ??
+    []) as unknown as AppointmentRow[];
+  const clientNameForPrefill =
+    client?.legal_name_full ??
+    [client?.given_names, client?.family_name].filter(Boolean).join(" ").trim();
+
   // FLOW-3b: latest biometrics-related event for the biometrics card's
   // sub-line ("Requested on …" / "Scheduled for …" / "Completed on …").
   const BIO_EVENT_TYPES: ReadonlySet<string> = new Set([
@@ -813,6 +891,24 @@ export default async function CasePage({ params, searchParams }: Props) {
               >
                 {pill.label}
               </Badge>
+              {me && staffCan(me, "manage_appointments") && (
+                <NewAppointmentDialog
+                  types={appointmentTypes}
+                  officeAddress={officeAddress}
+                  prefilledClient={{
+                    id: caseRow.client_id,
+                    name: clientNameForPrefill,
+                    email: client?.email ?? "",
+                    phone: null,
+                  }}
+                  prefilledCase={{
+                    id: caseRow.id,
+                    case_number: caseRow.case_number,
+                  }}
+                  triggerLabel="Schedule meeting"
+                  triggerVariant="outline"
+                />
+              )}
               {me && canEditCase && staffCan(me, "delete_cases") && (
                 <DeleteCaseTrigger
                   caseId={caseRow.id}
@@ -1071,6 +1167,12 @@ export default async function CasePage({ params, searchParams }: Props) {
                 />
               </CardContent>
             </Card>
+
+            <UpcomingAppointmentsCard
+              title="Upcoming appointments"
+              appointments={caseAppointments}
+              viewAllHref="/dashboard/appointments"
+            />
           </aside>
         </div>
       </main>

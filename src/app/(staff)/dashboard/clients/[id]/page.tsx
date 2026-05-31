@@ -20,6 +20,14 @@ import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils/index";
 
+import { NewAppointmentDialog } from "../../appointments/_components/new-appointment-dialog";
+import type {
+  AppointmentRow,
+  AppointmentTypeOption,
+  LocationType,
+} from "../../appointments/_components/types";
+import { UpcomingAppointmentsCard } from "../../appointments/_components/upcoming-appointments-card";
+
 import { DeleteClientTrigger } from "./_components/delete-client-trigger";
 
 type ClientStatus = Database["crm"]["Enums"]["client_status"];
@@ -242,6 +250,79 @@ export default async function ClientDetailPage({ params }: Props) {
 
   const canDelete = staffCan(me, "delete_clients");
   const canCreateCases = staffCan(me, "create_cases");
+  const canSchedule = staffCan(me, "manage_appointments");
+
+  // APPT-3: appointment infrastructure for the "Schedule meeting" button
+  // and the "Upcoming appointments" sidebar card on the client page.
+  const [
+    appointmentTypesRes,
+    appointmentSettingsRes,
+    clientAppointmentsRes,
+  ] = await Promise.all([
+    supabase
+      .schema("crm")
+      .from("appointment_types")
+      .select(
+        "id, name, code, duration_minutes, requires_case, default_location_type",
+      )
+      .eq("active", true)
+      .is("deleted_at", null)
+      .order("display_order"),
+    supabase
+      .schema("crm")
+      .from("appointment_settings")
+      .select("office_address")
+      .maybeSingle(),
+    supabase
+      .schema("crm")
+      .from("appointments")
+      .select(
+        `
+          id, starts_at, ends_at, timezone, location_type, online_link,
+          onsite_address, status, reason, staff_notes, graph_sync_status,
+          graph_sync_error, cancellation_reason, snapshot_client_name,
+          snapshot_client_email, snapshot_client_phone,
+          appointment_type:appointment_types!appointments_appointment_type_id_fkey(
+            id, name, duration_minutes, default_location_type
+          ),
+          client:clients!appointments_client_id_fkey(
+            id, given_names, family_name, email
+          ),
+          case:cases!appointments_case_id_fkey(id, case_number),
+          assigned_staff:staff!appointments_assigned_staff_id_fkey(
+            id, first_name, last_name
+          )
+        `,
+      )
+      .eq("client_id", id)
+      .eq("status", "confirmed")
+      .is("deleted_at", null)
+      .gte("starts_at", new Date().toISOString())
+      .order("starts_at", { ascending: true })
+      .limit(3),
+  ]);
+
+  const appointmentTypes: AppointmentTypeOption[] = (
+    appointmentTypesRes.data ?? []
+  ).map((t) => ({
+    id: t.id,
+    name: t.name,
+    code: t.code,
+    duration_minutes: t.duration_minutes,
+    requires_case: t.requires_case,
+    default_location_type: t.default_location_type as LocationType,
+  }));
+  const officeAddress =
+    appointmentSettingsRes.data?.office_address ??
+    "211-2390 Eglinton Avenue East, Toronto, ON M1K 2P5";
+  const clientAppointments = (clientAppointmentsRes.data ??
+    []) as unknown as AppointmentRow[];
+  // Open cases the client may link a new appointment to (closed/refused
+  // cases stay in the Cases section but aren't selectable as future meeting
+  // targets).
+  const availableCases = caseRowsList
+    .filter((c) => c.status !== "closed" && c.status !== "refused")
+    .map((c) => ({ id: c.id, case_number: c.case_number }));
 
   return (
     <div className="min-h-dvh bg-stone-50">
@@ -278,6 +359,21 @@ export default async function ClientDetailPage({ params }: Props) {
               >
                 {pill.label}
               </Badge>
+              {canSchedule && (
+                <NewAppointmentDialog
+                  types={appointmentTypes}
+                  officeAddress={officeAddress}
+                  prefilledClient={{
+                    id: clientRow.id,
+                    name: clientRow.legal_name_full,
+                    email: clientRow.email ?? "",
+                    phone: clientRow.phone_primary,
+                  }}
+                  availableCases={availableCases}
+                  triggerLabel="Schedule meeting"
+                  triggerVariant="outline"
+                />
+              )}
               {canDelete && (
                 <DeleteClientTrigger
                   clientId={clientRow.id}
@@ -438,6 +534,12 @@ export default async function ClientDetailPage({ params }: Props) {
             )}
           </CardContent>
         </Card>
+
+        <UpcomingAppointmentsCard
+          title="Upcoming appointments"
+          appointments={clientAppointments}
+          viewAllHref="/dashboard/appointments"
+        />
       </main>
     </div>
   );

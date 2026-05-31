@@ -55,7 +55,11 @@ export type Permission =
   // RET-1: retainer agreement + signature management.
   | "manage_retainers"
   | "void_retainers"
-  | "manage_own_signature";
+  | "manage_own_signature"
+  // APPT-1: appointments module. Mirrors crm.staff_can() in
+  // 20260528000001_appointments_module.sql. super_user + admin + rcic +
+  // reception have it; document_officer + readonly do not.
+  | "manage_appointments";
 
 export type StaffWithOverrides = {
   id: string;
@@ -105,6 +109,7 @@ const ALL_PERMISSIONS: ReadonlyArray<Permission> = [
   "manage_retainers",
   "void_retainers",
   "manage_own_signature",
+  "manage_appointments",
 ];
 
 const ADMIN_DENIED: ReadonlySet<Permission> = new Set([
@@ -142,6 +147,7 @@ const RCIC_PERMS: ReadonlyArray<Permission> = [
   "manage_retainers",
   "void_retainers",
   "manage_own_signature",
+  "manage_appointments",
 ];
 
 const DOCUMENT_OFFICER_PERMS: ReadonlyArray<Permission> = [
@@ -172,6 +178,7 @@ const RECEPTION_PERMS: ReadonlyArray<Permission> = [
   "view_communications",
   "create_communications",
   "view_tasks",
+  "manage_appointments",
 ];
 
 const READONLY_PERMS: ReadonlyArray<Permission> = [
