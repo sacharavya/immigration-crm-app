@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/cron/appointment-reminders",
-      "schedule": "0 * * * *"
+      "schedule": "0 13 * * *"
     },
     {
       "path": "/api/cron/abandoned-paid-bookings",

@@ -4,15 +4,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendAppointmentReminder } from "@/lib/email/appointments";
 import type { Database } from "@/lib/supabase/types";
 
-// Hourly cron driven by vercel.json's "crons" entry. Vercel attaches
+// Daily cron driven by vercel.json's "crons" entry (Vercel Hobby tier
+// caps schedules at one per day). Vercel attaches
 // `Authorization: Bearer ${CRON_SECRET}` automatically to scheduled
 // invocations; reject anything that doesn't carry it.
 //
-// Each run sweeps appointments whose starts_at falls in a 23–25 hour
-// window from "now". The 2-hour width is intentional slack — if the
-// cron runs late by up to an hour, no appointment is missed. The
-// reminder_email_sent_at NULL check de-duplicates across overlapping
-// windows, so the same appointment never gets two reminders.
+// Each daily run sweeps appointments whose starts_at falls in the next
+// ~30 hours. The window is wider than 24h so an appointment scheduled
+// shortly after one run still gets caught by the next day's run. The
+// reminder_email_sent_at NULL check de-duplicates so each appointment
+// only ever receives one reminder regardless of overlapping windows.
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -49,8 +50,11 @@ export async function GET(req: NextRequest) {
 
   const supabase = adminClient();
   const now = new Date();
-  const windowStart = new Date(now.getTime() + 23 * 60 * 60 * 1000);
-  const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000);
+  // Look ahead 30 hours. Daily cadence + 30h horizon + NULL dedup gives
+  // every appointment exactly one reminder, fired between 0 and ~30h
+  // before the start time (average ~24h).
+  const windowStart = now;
+  const windowEnd = new Date(now.getTime() + 30 * 60 * 60 * 1000);
 
   const { data: upcoming, error } = await supabase
     .schema("crm")
