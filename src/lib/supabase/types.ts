@@ -77,6 +77,7 @@ export type Database = {
           booking_mode: string
           buffer_between_appointments_minutes: number
           default_online_instructions: string | null
+          default_online_link: string | null
           graph_calendar_owner_email: string
           hours_by_weekday: Json
           id: string
@@ -95,6 +96,7 @@ export type Database = {
           booking_mode?: string
           buffer_between_appointments_minutes?: number
           default_online_instructions?: string | null
+          default_online_link?: string | null
           graph_calendar_owner_email?: string
           hours_by_weekday?: Json
           id?: string
@@ -113,6 +115,7 @@ export type Database = {
           booking_mode?: string
           buffer_between_appointments_minutes?: number
           default_online_instructions?: string | null
+          default_online_link?: string | null
           graph_calendar_owner_email?: string
           hours_by_weekday?: Json
           id?: string
@@ -151,6 +154,7 @@ export type Database = {
           id: string
           is_public: boolean
           name: string
+          preparation_notes: string | null
           requires_case: boolean
           updated_at: string
         }
@@ -167,6 +171,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           name: string
+          preparation_notes?: string | null
           requires_case?: boolean
           updated_at?: string
         }
@@ -183,6 +188,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           name?: string
+          preparation_notes?: string | null
           requires_case?: boolean
           updated_at?: string
         }
@@ -203,17 +209,24 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           ends_at: string
+          fee_cad_at_booking: number | null
           graph_event_etag: string | null
           graph_event_id: string | null
           graph_sync_error: string | null
           graph_sync_status: string | null
           graph_synced_at: string | null
           id: string
+          linked_payment_id: string | null
           location_type: string
           management_token: string | null
           management_token_expires_at: string | null
           online_link: string | null
           onsite_address: string | null
+          payment_rejection_reason: string | null
+          payment_reviewed_at: string | null
+          payment_reviewed_by: string | null
+          payment_screenshot_id: string | null
+          payment_uploaded_at: string | null
           reason: string | null
           reminder_email_sent_at: string | null
           rescheduled_to: string | null
@@ -242,17 +255,24 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           ends_at: string
+          fee_cad_at_booking?: number | null
           graph_event_etag?: string | null
           graph_event_id?: string | null
           graph_sync_error?: string | null
           graph_sync_status?: string | null
           graph_synced_at?: string | null
           id?: string
+          linked_payment_id?: string | null
           location_type: string
           management_token?: string | null
           management_token_expires_at?: string | null
           online_link?: string | null
           onsite_address?: string | null
+          payment_rejection_reason?: string | null
+          payment_reviewed_at?: string | null
+          payment_reviewed_by?: string | null
+          payment_screenshot_id?: string | null
+          payment_uploaded_at?: string | null
           reason?: string | null
           reminder_email_sent_at?: string | null
           rescheduled_to?: string | null
@@ -281,17 +301,24 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           ends_at?: string
+          fee_cad_at_booking?: number | null
           graph_event_etag?: string | null
           graph_event_id?: string | null
           graph_sync_error?: string | null
           graph_sync_status?: string | null
           graph_synced_at?: string | null
           id?: string
+          linked_payment_id?: string | null
           location_type?: string
           management_token?: string | null
           management_token_expires_at?: string | null
           online_link?: string | null
           onsite_address?: string | null
+          payment_rejection_reason?: string | null
+          payment_reviewed_at?: string | null
+          payment_reviewed_by?: string | null
+          payment_screenshot_id?: string | null
+          payment_uploaded_at?: string | null
           reason?: string | null
           reminder_email_sent_at?: string | null
           rescheduled_to?: string | null
@@ -352,6 +379,20 @@ export type Database = {
           {
             foreignKeyName: "appointments_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_linked_payment_id_fkey"
+            columns: ["linked_payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_payment_reviewed_by_fkey"
+            columns: ["payment_reviewed_by"]
             isOneToOne: false
             referencedRelation: "staff"
             referencedColumns: ["id"]
@@ -1617,6 +1658,7 @@ export type Database = {
           amount_cad: number
           case_id: string | null
           client_id: string
+          consultation_payment_nature: string | null
           created_at: string
           deleted_at: string | null
           id: string
@@ -1633,6 +1675,7 @@ export type Database = {
           amount_cad: number
           case_id?: string | null
           client_id: string
+          consultation_payment_nature?: string | null
           created_at?: string
           deleted_at?: string | null
           id?: string
@@ -1649,6 +1692,7 @@ export type Database = {
           amount_cad?: number
           case_id?: string | null
           client_id?: string
+          consultation_payment_nature?: string | null
           created_at?: string
           deleted_at?: string | null
           id?: string
@@ -2201,6 +2245,8 @@ export type Database = {
         | "cancelled"
         | "completed"
         | "no_show"
+        | "pending_payment"
+        | "awaiting_review"
       biometrics_status:
         | "not_applicable"
         | "previously_given_valid"
@@ -2898,6 +2944,8 @@ export const Constants = {
         "cancelled",
         "completed",
         "no_show",
+        "pending_payment",
+        "awaiting_review",
       ],
       biometrics_status: [
         "not_applicable",

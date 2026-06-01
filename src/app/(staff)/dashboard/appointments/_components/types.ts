@@ -7,7 +7,10 @@ export type AppointmentStatus =
   | "rescheduled"
   | "cancelled"
   | "completed"
-  | "no_show";
+  | "no_show"
+  // APPT-8: paid-consultation flow states.
+  | "pending_payment"
+  | "awaiting_review";
 
 export type LocationType = "online" | "onsite";
 
@@ -46,6 +49,7 @@ export type AppointmentRow = {
   location_type: LocationType;
   online_link: string | null;
   onsite_address: string | null;
+  teams_join_url: string | null;
   status: AppointmentStatus;
   reason: string;
   staff_notes: string | null;
@@ -55,12 +59,25 @@ export type AppointmentRow = {
   snapshot_client_name: string;
   snapshot_client_email: string;
   snapshot_client_phone: string | null;
+  // APPT-8: paid-consultation review fields. The proof URL is denormalised
+  // by the page-level loader from the linked files.documents row (cross-
+  // schema embed isn't reliable in supabase-js typings) — only the main
+  // appointments page populates it. On case/client/dashboard surfaces this
+  // stays null and the screenshot link is just hidden.
+  fee_cad_at_booking: string | number | null;
+  payment_uploaded_at: string | null;
+  payment_screenshot_id: string | null;
+  payment_screenshot_url: string | null;
+  payment_reviewed_at: string | null;
+  payment_rejection_reason: string | null;
+  linked_payment_id: string | null;
   appointment_type:
     | {
         id: string;
         name: string;
         duration_minutes: number;
         default_location_type: LocationType;
+        preparation_notes: string | null;
       }
     | null;
   client: {
@@ -83,6 +100,8 @@ export const STATUS_LABEL: Record<AppointmentStatus, string> = {
   cancelled: "Cancelled",
   completed: "Completed",
   no_show: "No-show",
+  pending_payment: "Pending payment",
+  awaiting_review: "Awaiting review",
 };
 
 export const STATUS_TONE: Record<AppointmentStatus, string> = {
@@ -91,4 +110,6 @@ export const STATUS_TONE: Record<AppointmentStatus, string> = {
   cancelled: "bg-stone-100 text-stone-500 border-stone-200",
   completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
   no_show: "bg-amber-50 text-amber-700 border-amber-200",
+  pending_payment: "bg-amber-50 text-amber-700 border-amber-200",
+  awaiting_review: "bg-purple-50 text-purple-700 border-purple-200",
 };

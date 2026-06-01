@@ -29,6 +29,7 @@ type ApptSyncRow = {
   onsite_address: string | null;
   reason: string | null;
   graph_event_id: string | null;
+  teams_join_url: string | null;
   appointment_type: { name: string } | null;
 };
 
@@ -43,6 +44,18 @@ async function loadAppt(
     .eq("id", appointmentId)
     .single();
   return (data as unknown as ApptSyncRow) ?? null;
+}
+
+// APPT-7: read the firm-wide teams_auto_create flag. Singleton row, so a
+// straight maybeSingle() is fine; defaults to false on any failure so the
+// rest of the flow degrades to plain events.
+async function loadTeamsAutoCreate(supabase: ServiceClient): Promise<boolean> {
+  const { data } = await supabase
+    .schema("crm")
+    .from("appointment_settings")
+    .select("teams_auto_create")
+    .maybeSingle();
+  return data?.teams_auto_create === true;
 }
 
 function locationLine(appt: ApptSyncRow): string {
@@ -62,6 +75,16 @@ export async function syncAppointmentCreate(
   const appt = await loadAppt(supabase, appointmentId);
   if (!appt) return;
 
+  // APPT-7: attach a Teams meeting only when (a) the firm has flipped
+  // teams_auto_create on, (b) the appointment is online, and (c) staff
+  // didn't already paste a manual link (Zoom/Meet/etc) into online_link.
+  // The manual link wins so staff can override per-appointment.
+  const teamsAutoCreate = await loadTeamsAutoCreate(supabase);
+  const shouldCreateTeams =
+    teamsAutoCreate &&
+    appt.location_type === "online" &&
+    !appt.online_link;
+
   try {
     const result = await createAppointmentEvent({
       subject: subjectLine(appt),
@@ -72,6 +95,7 @@ export async function syncAppointmentCreate(
       location: locationLine(appt),
       attendeeEmail: appt.snapshot_client_email,
       attendeeName: appt.snapshot_client_name,
+      createTeamsMeeting: shouldCreateTeams,
     });
 
     await supabase
@@ -83,6 +107,19 @@ export async function syncAppointmentCreate(
         graph_sync_status: "synced",
         graph_synced_at: new Date().toISOString(),
         graph_sync_error: null,
+        // Only set Teams fields when Graph actually returned a join URL
+        // — degrades gracefully when OnlineMeetings.ReadWrite.All isn't
+        // granted (event still gets created as a plain event).
+        ...(result.teamsJoinUrl
+          ? {
+              teams_join_url: result.teamsJoinUrl,
+              teams_meeting_id: result.teamsMeetingId,
+              // The Teams URL becomes the online_link of record when we
+              // created a Teams meeting; if Graph couldn't create one,
+              // leave whatever the user typed alone.
+              online_link: result.teamsJoinUrl,
+            }
+          : {}),
       })
       .eq("id", appointmentId);
   } catch (err) {

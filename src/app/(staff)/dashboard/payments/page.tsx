@@ -22,6 +22,7 @@ import {
   type PaymentMethod,
 } from "@/lib/validators/payment";
 
+import { ConsultationOutcomeCell } from "./_components/consultation-outcome-cell";
 import { PaymentsFilters } from "./_components/payments-filters";
 
 const cadFormatter = new Intl.NumberFormat("en-CA", {
@@ -52,6 +53,8 @@ export default async function PaymentsPage({ searchParams }: Props) {
   if (!staffCan(me, "view_financials")) {
     redirect("/dashboard?error=forbidden_view_financials");
   }
+  // APPT-8: only staff with review_payments can flip the consultation outcome.
+  const canReviewPayments = staffCan(me, "review_payments");
 
   const sp = await searchParams;
   const from = isIsoDate(sp.from) ? sp.from! : null;
@@ -82,6 +85,7 @@ export default async function PaymentsPage({ searchParams }: Props) {
         proof_document_id,
         case_id,
         client_id,
+        consultation_payment_nature,
         case:cases(id, case_number, client:clients(legal_name_full))
       `,
     )
@@ -289,7 +293,21 @@ export default async function PaymentsPage({ searchParams }: Props) {
                         p.method}
                     </TableCell>
                     <TableCell className="text-stone-500">
-                      {p.reference || "—"}
+                      <div>{p.reference || "—"}</div>
+                      {p.consultation_payment_nature && (
+                        <div className="mt-1">
+                          <ConsultationOutcomeCell
+                            paymentId={p.id}
+                            initial={
+                              p.consultation_payment_nature as
+                                | "pending_decision"
+                                | "applied_as_deposit"
+                                | "kept_as_consultation_fee"
+                            }
+                            canEdit={canReviewPayments}
+                          />
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       {p.case?.id ? (

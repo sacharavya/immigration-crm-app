@@ -31,6 +31,12 @@ type GetScheduleResponse = {
 type GraphEvent = {
   id: string;
   "@odata.etag"?: string;
+  // Populated when isOnlineMeeting=true was passed AND the calendar owner
+  // has the OnlineMeetings.ReadWrite.All Application permission granted.
+  onlineMeeting?: {
+    joinUrl?: string;
+    conferenceId?: string;
+  };
 };
 
 // Graph's getSchedule returns dateTime strings in the requested timeZone
@@ -92,47 +98,67 @@ export type CreateAppointmentEventInput = {
   location: string;
   attendeeEmail: string;
   attendeeName: string;
+  // APPT-7: when true, attach a Teams meeting via isOnlineMeeting +
+  // onlineMeetingProvider on the same create-event call. Requires the
+  // calendar owner's mailbox to have OnlineMeetings.ReadWrite.All
+  // Application permission granted in Azure. When the permission is
+  // missing the event is still created — just without onlineMeeting in
+  // the response, and teamsJoinUrl falls back to null.
+  createTeamsMeeting?: boolean;
 };
 
 export type GraphEventResult = {
   id: string;
   etag: string;
+  teamsJoinUrl: string | null;
+  teamsMeetingId: string | null;
 };
 
 /**
- * Create a calendar event on info@'s calendar. Plain event, no Teams.
- * Throws on failure (caller marks appointment graph_sync_status='failed').
+ * Create a calendar event on info@'s calendar. When createTeamsMeeting is
+ * true, the event has a Teams meeting attached and the returned
+ * teamsJoinUrl / teamsMeetingId are populated (or null if the Azure
+ * permission isn't there — the event itself still gets created).
+ * Throws on Graph failure; caller marks graph_sync_status='failed'.
  */
 export async function createAppointmentEvent(
   input: CreateAppointmentEventInput,
 ): Promise<GraphEventResult> {
+  const body: Record<string, unknown> = {
+    subject: input.subject,
+    body: { contentType: "HTML", content: input.bodyHtml },
+    start: { dateTime: input.startISO, timeZone: input.timezone },
+    end: { dateTime: input.endISO, timeZone: input.timezone },
+    location: { displayName: input.location },
+    attendees: [
+      {
+        emailAddress: {
+          address: input.attendeeEmail,
+          name: input.attendeeName,
+        },
+        type: "required",
+      },
+    ],
+  };
+  if (input.createTeamsMeeting) {
+    body.isOnlineMeeting = true;
+    body.onlineMeetingProvider = "teamsForBusiness";
+  }
+
   const event = await graphFetch<GraphEvent>(
     `/users/${CALENDAR_OWNER}/calendar/events`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        subject: input.subject,
-        body: { contentType: "HTML", content: input.bodyHtml },
-        start: { dateTime: input.startISO, timeZone: input.timezone },
-        end: { dateTime: input.endISO, timeZone: input.timezone },
-        location: { displayName: input.location },
-        attendees: [
-          {
-            emailAddress: {
-              address: input.attendeeEmail,
-              name: input.attendeeName,
-            },
-            type: "required",
-          },
-        ],
-      }),
+      body: JSON.stringify(body),
     },
   );
 
   return {
     id: event.id,
     etag: event["@odata.etag"] ?? "",
+    teamsJoinUrl: event.onlineMeeting?.joinUrl ?? null,
+    teamsMeetingId: event.onlineMeeting?.conferenceId ?? null,
   };
 }
 

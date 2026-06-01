@@ -548,11 +548,13 @@ export default async function CasePage({ params, searchParams }: Props) {
       .select(
         `
           id, starts_at, ends_at, timezone, location_type, online_link,
-          onsite_address, status, reason, staff_notes, graph_sync_status,
+          onsite_address, teams_join_url, status, reason, staff_notes, graph_sync_status,
+          fee_cad_at_booking, payment_uploaded_at, payment_screenshot_id,
+          payment_reviewed_at, payment_rejection_reason, linked_payment_id,
           graph_sync_error, cancellation_reason, snapshot_client_name,
           snapshot_client_email, snapshot_client_phone,
           appointment_type:appointment_types!appointments_appointment_type_id_fkey(
-            id, name, duration_minutes, default_location_type
+            id, name, duration_minutes, default_location_type, preparation_notes
           ),
           client:clients!appointments_client_id_fkey(
             id, given_names, family_name, email

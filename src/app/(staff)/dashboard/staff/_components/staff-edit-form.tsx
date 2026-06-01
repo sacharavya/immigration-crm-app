@@ -94,6 +94,8 @@ const PERMISSION_LABEL: Record<Permission, string> = {
   void_retainers: "Void retainers",
   manage_own_signature: "Manage own signature",
   manage_appointments: "Manage appointments",
+  manage_settings: "Manage appointment settings",
+  review_payments: "Review consultation payments",
 };
 
 type OverrideChoice = "default" | "allow" | "deny";

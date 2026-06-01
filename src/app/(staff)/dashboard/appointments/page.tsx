@@ -52,11 +52,13 @@ export default async function AppointmentsPage({
     .select(
       `
         id, starts_at, ends_at, timezone, location_type, online_link,
-        onsite_address, status, reason, staff_notes, graph_sync_status,
+        onsite_address, teams_join_url, status, reason, staff_notes, graph_sync_status,
+        fee_cad_at_booking, payment_uploaded_at, payment_screenshot_id,
+        payment_reviewed_at, payment_rejection_reason, linked_payment_id,
         graph_sync_error, cancellation_reason, snapshot_client_name,
         snapshot_client_email, snapshot_client_phone,
         appointment_type:appointment_types!appointments_appointment_type_id_fkey(
-          id, name, duration_minutes, default_location_type
+          id, name, duration_minutes, default_location_type, preparation_notes
         ),
         client:clients!appointments_client_id_fkey(
           id, given_names, family_name, email
@@ -75,7 +77,13 @@ export default async function AppointmentsPage({
   if (statusFilter !== "all") {
     query = query.eq(
       "status",
-      statusFilter as "confirmed" | "cancelled" | "completed" | "no_show",
+      statusFilter as
+        | "confirmed"
+        | "cancelled"
+        | "completed"
+        | "no_show"
+        | "pending_payment"
+        | "awaiting_review",
     );
   }
   if (params.type) query = query.eq("appointment_type_id", params.type);
@@ -83,7 +91,44 @@ export default async function AppointmentsPage({
 
   const { data: appointmentRows } = await query;
 
-  const appointments = (appointmentRows ?? []) as unknown as AppointmentRow[];
+  // APPT-8: denormalise the payment-proof SharePoint URL into the row so
+  // the detail dialog can render a "View screenshot" link without a
+  // cross-schema embed. Only fetched for awaiting_review rows since that
+  // is the only state where staff actually needs to look at the proof.
+  const screenshotIds = (appointmentRows ?? [])
+    .filter((r) => r.status === "awaiting_review" && r.payment_screenshot_id)
+    .map((r) => r.payment_screenshot_id as string);
+  const screenshotUrlById = new Map<string, string>();
+  if (screenshotIds.length > 0) {
+    const { data: docs } = await supabase
+      .schema("files")
+      .from("documents")
+      .select("id, sharepoint_web_url")
+      .in("id", screenshotIds);
+    for (const doc of docs ?? []) {
+      if (doc.sharepoint_web_url) {
+        screenshotUrlById.set(doc.id, doc.sharepoint_web_url);
+      }
+    }
+  }
+  const appointments = (
+    (appointmentRows ?? []) as unknown as AppointmentRow[]
+  ).map((row) => ({
+    ...row,
+    payment_screenshot_url: row.payment_screenshot_id
+      ? (screenshotUrlById.get(row.payment_screenshot_id) ?? null)
+      : null,
+  }));
+
+  // APPT-8: standing banner when there are payment proofs awaiting review.
+  // We count regardless of the current filter so staff sees the work
+  // queue even while browsing confirmed bookings.
+  const { count: awaitingReviewCount } = await supabase
+    .schema("crm")
+    .from("appointments")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "awaiting_review")
+    .is("deleted_at", null);
 
   const { data: typeRows } = await supabase
     .schema("crm")
@@ -143,6 +188,24 @@ export default async function AppointmentsPage({
           officeAddress={officeAddress}
         />
       </header>
+
+      {!!awaitingReviewCount && awaitingReviewCount > 0 && (
+        <a
+          href="/dashboard/appointments?status=awaiting_review"
+          className="flex items-center justify-between gap-3 rounded-md border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900 hover:bg-purple-100"
+        >
+          <span>
+            <strong>
+              {awaitingReviewCount} payment proof
+              {awaitingReviewCount === 1 ? "" : "s"} awaiting your review
+            </strong>
+            <span className="ml-2 text-xs text-purple-700">
+              Accept or reject from the appointment detail
+            </span>
+          </span>
+          <span className="text-xs font-medium">Review now →</span>
+        </a>
+      )}
 
       <AppointmentFilters
         currentView={view}

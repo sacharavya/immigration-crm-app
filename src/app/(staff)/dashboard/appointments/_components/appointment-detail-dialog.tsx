@@ -27,9 +27,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import {
+  acceptAppointmentPayment,
   cancelAppointment,
   markCompleted,
   markNoShow,
+  rejectAppointmentPayment,
   rescheduleAppointment,
   retryCalendarSync,
   updateAppointmentNotes,
@@ -37,7 +39,7 @@ import {
 
 import { STATUS_LABEL, STATUS_TONE, type AppointmentRow } from "./types";
 
-type Mode = "view" | "reschedule" | "cancel" | "notes";
+type Mode = "view" | "reschedule" | "cancel" | "notes" | "reject_payment";
 
 const TORONTO_TZ = "America/Toronto";
 
@@ -129,7 +131,36 @@ export function AppointmentDetailDialog({
         </DialogHeader>
 
         {mode === "view" && (
-          <ViewMode appointment={appointment} />
+          <>
+            {/* APPT-8: payment review surfaces above the rest of the dialog
+                so accept/reject is the obvious action when staff opens an
+                awaiting_review row. */}
+            {appointment.status === "awaiting_review" && (
+              <PaymentReviewSection
+                appointment={appointment}
+                pending={pending}
+                onAccept={() =>
+                  handleResult(acceptAppointmentPayment(appointment.id))
+                }
+                onReject={() => setMode("reject_payment")}
+              />
+            )}
+            {appointment.status === "pending_payment" && (
+              <PendingPaymentSection appointment={appointment} />
+            )}
+            <ViewMode appointment={appointment} />
+          </>
+        )}
+        {mode === "reject_payment" && (
+          <RejectPaymentMode
+            pending={pending}
+            onBack={() => setMode("view")}
+            onSubmit={(reason) =>
+              handleResult(
+                rejectAppointmentPayment({ id: appointment.id, reason }),
+              )
+            }
+          />
         )}
         {mode === "reschedule" && (
           <RescheduleMode
@@ -312,21 +343,9 @@ function ViewMode({ appointment }: { appointment: AppointmentRow }) {
 
       <DetailRow label="Location">
         {appointment.location_type === "online" ? (
-          <>
-            Online
-            {appointment.online_link && (
-              <a
-                href={appointment.online_link}
-                target="_blank"
-                rel="noreferrer"
-                className="ml-2 text-xs text-[var(--navy)] underline-offset-2 hover:underline"
-              >
-                Join link
-              </a>
-            )}
-          </>
+          <LocationOnline appointment={appointment} />
         ) : (
-          appointment.onsite_address ?? "Onsite"
+          (appointment.onsite_address ?? "Onsite")
         )}
       </DetailRow>
 
@@ -352,6 +371,17 @@ function ViewMode({ appointment }: { appointment: AppointmentRow }) {
         <DetailRow label="Cancellation reason">
           {appointment.cancellation_reason}
         </DetailRow>
+      )}
+
+      {appointment.appointment_type?.preparation_notes && (
+        <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+            What to prepare for this appointment
+          </div>
+          <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">
+            {appointment.appointment_type.preparation_notes}
+          </p>
+        </div>
       )}
     </div>
   );
@@ -547,5 +577,233 @@ function DetailRow({
       </div>
       <div className="text-sm text-stone-800">{children}</div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// APPT-8 payment-review surfaces
+// ---------------------------------------------------------------------------
+
+function formatFeeCad(value: string | number | null): string {
+  if (value === null) return "—";
+  const n = typeof value === "string" ? Number(value) : value;
+  if (Number.isNaN(n)) return "—";
+  return new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency: "CAD",
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+function formatUploadedAgo(iso: string | null): string {
+  if (!iso) return "—";
+  const ms = Date.now() - new Date(iso).getTime();
+  const hours = Math.floor(ms / 3600000);
+  if (hours < 1) return "just now";
+  if (hours === 1) return "1 hour ago";
+  if (hours < 24) return `${hours} hours ago`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "1 day ago" : `${days} days ago`;
+}
+
+function PaymentReviewSection({
+  appointment,
+  pending,
+  onAccept,
+  onReject,
+}: {
+  appointment: AppointmentRow;
+  pending: boolean;
+  onAccept: () => void;
+  onReject: () => void;
+}) {
+  const ref = appointment.id.slice(0, 8);
+  return (
+    <div className="space-y-3 rounded-md border border-purple-200 bg-purple-50/40 p-4">
+      <div className="text-xs font-semibold uppercase tracking-wider text-purple-700">
+        Payment review
+      </div>
+      <dl className="grid grid-cols-2 gap-y-1 text-sm text-stone-800">
+        <dt className="text-stone-500">Fee</dt>
+        <dd className="font-medium tabular-nums">
+          {formatFeeCad(appointment.fee_cad_at_booking)}
+        </dd>
+        <dt className="text-stone-500">Uploaded</dt>
+        <dd>{formatUploadedAgo(appointment.payment_uploaded_at)} by client</dd>
+        <dt className="text-stone-500">Expected sender</dt>
+        <dd className="break-all">{appointment.snapshot_client_email}</dd>
+        <dt className="text-stone-500">Reference</dt>
+        <dd className="font-mono text-xs">{ref}</dd>
+      </dl>
+      {appointment.payment_screenshot_url ? (
+        <a
+          href={appointment.payment_screenshot_url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center rounded-md border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100"
+        >
+          Open screenshot →
+        </a>
+      ) : (
+        <p className="text-[11px] text-stone-500">
+          Screenshot URL not loaded — open this appointment from{" "}
+          <code className="font-mono">/dashboard/appointments</code> to view it.
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2 pt-1">
+        <Button
+          size="sm"
+          onClick={onAccept}
+          disabled={pending}
+          className="bg-emerald-600 hover:bg-emerald-700"
+        >
+          ✓ Accept payment
+        </Button>
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={onReject}
+          disabled={pending}
+        >
+          ✗ Reject payment
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function PendingPaymentSection({
+  appointment,
+}: {
+  appointment: AppointmentRow;
+}) {
+  return (
+    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+      <strong>Awaiting payment proof from client.</strong>
+      <p className="mt-1 text-xs text-amber-800">
+        Fee: {formatFeeCad(appointment.fee_cad_at_booking)} · Reference{" "}
+        <code className="font-mono">{appointment.id.slice(0, 8)}</code>. The
+        slot will be released automatically if not received by end of day.
+      </p>
+    </div>
+  );
+}
+
+function RejectPaymentMode({
+  pending,
+  onBack,
+  onSubmit,
+}: {
+  pending: boolean;
+  onBack: () => void;
+  onSubmit: (reason: string) => void;
+}) {
+  const COMMON_REASONS = [
+    "Amount does not match",
+    "Wrong recipient",
+    "Cannot verify transfer",
+    "Other",
+  ];
+  const [reason, setReason] = useState<string>(COMMON_REASONS[0]);
+  const [otherText, setOtherText] = useState("");
+
+  const effective = reason === "Other" ? otherText.trim() : reason;
+
+  return (
+    <div className="space-y-3">
+      <Label className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+        Reason for rejection
+      </Label>
+      <select
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        disabled={pending}
+        className="h-9 w-full rounded-md border border-stone-200 bg-white px-3 text-sm"
+      >
+        {COMMON_REASONS.map((r) => (
+          <option key={r} value={r}>
+            {r}
+          </option>
+        ))}
+      </select>
+      {reason === "Other" && (
+        <textarea
+          value={otherText}
+          onChange={(e) => setOtherText(e.target.value)}
+          rows={3}
+          disabled={pending}
+          placeholder="Tell the client what went wrong."
+          className="w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm"
+        />
+      )}
+      <DialogFooter>
+        <Button variant="outline" onClick={onBack} disabled={pending}>
+          Back
+        </Button>
+        <Button
+          variant="destructive"
+          onClick={() => onSubmit(effective)}
+          disabled={pending || !effective}
+        >
+          {pending ? (
+            <>
+              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              Rejecting…
+            </>
+          ) : (
+            "Confirm rejection"
+          )}
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+// APPT-7: prominent join button when a Teams meeting is attached, with
+// the full URL shown in monospace below for copy-paste. Falls back to
+// the manual online_link, and finally to a "no link set yet" message.
+function LocationOnline({ appointment }: { appointment: AppointmentRow }) {
+  if (appointment.teams_join_url) {
+    return (
+      <div className="space-y-2">
+        <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+          Microsoft Teams meeting
+        </div>
+        <a
+          href={appointment.teams_join_url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 rounded-md bg-[var(--navy)] px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-[var(--navy)]/90"
+        >
+          Join meeting →
+        </a>
+        <div className="break-all font-mono text-[11px] text-stone-500">
+          {appointment.teams_join_url}
+        </div>
+      </div>
+    );
+  }
+  if (appointment.online_link) {
+    return (
+      <div className="space-y-1">
+        <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+          Online meeting
+        </div>
+        <a
+          href={appointment.online_link}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 rounded-md border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100"
+        >
+          Join link →
+        </a>
+        <div className="break-all font-mono text-[11px] text-stone-500">
+          {appointment.online_link}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <span className="text-stone-500">Online — no link set yet</span>
   );
 }

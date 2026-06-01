@@ -158,6 +158,40 @@ export async function ensureCaseRetainerFolder(
 }
 
 /**
+ * Returns the drive id + the parent item id of the
+ * "Consultation Payments/{year}" folder, creating the path lazily.
+ *
+ * APPT-8: consultation appointments booked via /book don't have a case
+ * folder yet (the prospect isn't a client until they retain), so their
+ * Interac e-transfer screenshots need to live somewhere outside the
+ * case hierarchy. They land under
+ * GRAPH_ROOT_FOLDER/Consultation Payments/{year}/ so the firm can
+ * browse them by year without polluting case folders.
+ */
+export async function ensureConsultationPaymentsFolder(
+  year: string,
+): Promise<{ driveId: string; folderItemId: string }> {
+  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
+  if (!driveId) {
+    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
+  }
+
+  const rootFolder = process.env.GRAPH_ROOT_FOLDER?.trim() ?? "";
+  const rootParts = rootFolder
+    ? rootFolder.split("/").map((p) => p.trim()).filter(Boolean).map(sanitize)
+    : [];
+
+  const root = await graphFetch<DriveItem>(`/drives/${driveId}/root`);
+  let parent: DriveItem = root;
+  for (const part of rootParts) {
+    parent = await ensureFolder(driveId, parent.id, part);
+  }
+  parent = await ensureFolder(driveId, parent.id, "Consultation Payments");
+  parent = await ensureFolder(driveId, parent.id, sanitize(year));
+  return { driveId, folderItemId: parent.id };
+}
+
+/**
  * Returns the case folder + the "00 Payments" subfolder, creating the
  * subfolder lazily if it doesn't exist yet. Same numeric "00 " prefix
  * pattern as 00 Retainer so both pin to the top of the case folder

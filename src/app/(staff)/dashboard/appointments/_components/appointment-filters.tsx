@@ -15,6 +15,9 @@ const STATUS_OPTIONS: Array<{
 }> = [
   { value: "confirmed", label: "Confirmed" },
   { value: "all", label: "All statuses" },
+  // APPT-8: paid-consultation queue surfaces.
+  { value: "awaiting_review", label: "Needs review" },
+  { value: "pending_payment", label: "Pending payment" },
   { value: "cancelled", label: "Cancelled" },
   { value: "completed", label: "Completed" },
   { value: "no_show", label: "No-show" },

@@ -7,6 +7,10 @@ import {
   syncAppointmentDelete,
   syncAppointmentUpdate,
 } from "@/lib/appointments/sync";
+import {
+  sendAppointmentCancellation,
+  sendAppointmentReschedule,
+} from "@/lib/email/appointments";
 import type { Database } from "@/lib/supabase/types";
 
 // Public reschedule/cancel actions invoked from /book/manage/[token].
@@ -106,10 +110,7 @@ export async function publicReschedule(
   if (updErr) return { error: updErr.message };
 
   await syncAppointmentUpdate(supabase, appt.id);
-
-  console.log(
-    `[book/manage] reschedule email queued (placeholder) for ${appt.id}`,
-  );
+  await sendAppointmentReschedule(supabase, appt.id, appt.starts_at);
 
   return { ok: true };
 }
@@ -155,10 +156,7 @@ export async function publicCancel(raw: unknown): Promise<ManageResult> {
   if (updErr) return { error: updErr.message };
 
   await syncAppointmentDelete(supabase, appt.id);
-
-  console.log(
-    `[book/manage] cancellation email queued (placeholder) for ${appt.id}`,
-  );
+  await sendAppointmentCancellation(supabase, appt.id);
 
   return { ok: true };
 }

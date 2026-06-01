@@ -2,6 +2,7 @@
 
 import { CalendarCheck, MapPin, Video } from "lucide-react";
 
+import { PaymentUploadCard } from "./payment-upload-card";
 import type {
   BookingResult,
   PublicBookingType,
@@ -45,6 +46,34 @@ export function StepConfirmation({
         onPickAnotherSlot={onPickAnotherSlot}
         onEditDetails={onEditDetails}
         firmTimezone={firmTimezone}
+      />
+    );
+  }
+
+  // APPT-8: paid bookings land here in pending_payment with payment_required
+  // = true. The shared PaymentUploadCard renders the exact spec copy +
+  // accepts the screenshot upload via the uploadPaymentProof action.
+  if (result.payment_required && result.fee_cad !== null) {
+    return (
+      <PaymentUploadCard
+        token={result.management_token}
+        typeName={type.name}
+        dateDisplay={new Date(slot.start_utc).toLocaleDateString("en-CA", {
+          timeZone: firmTimezone,
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })}
+        timeDisplay={new Date(slot.start_utc).toLocaleTimeString("en-CA", {
+          timeZone: firmTimezone,
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })}
+        durationMinutes={result.duration_minutes}
+        feeCad={result.fee_cad}
+        referenceCode={result.appointment_short_id}
       />
     );
   }

@@ -59,7 +59,16 @@ export type Permission =
   // APPT-1: appointments module. Mirrors crm.staff_can() in
   // 20260528000001_appointments_module.sql. super_user + admin + rcic +
   // reception have it; document_officer + readonly do not.
-  | "manage_appointments";
+  | "manage_appointments"
+  // APPT-1 / APPT-6: appointment types + booking settings. super_user +
+  // admin only — no per-role allowlist entry needed (admin inherits via
+  // NOT-IN catch-all; super_user via ALL).
+  | "manage_settings"
+  // APPT-8: accept/reject Interac e-transfer proofs for paid consultations.
+  // super_user + admin + rcic + reception have it (mirrors crm.staff_can in
+  // 20260531000004_paid_consult_tables.sql). document_officer + readonly do
+  // not.
+  | "review_payments";
 
 export type StaffWithOverrides = {
   id: string;
@@ -110,6 +119,8 @@ const ALL_PERMISSIONS: ReadonlyArray<Permission> = [
   "void_retainers",
   "manage_own_signature",
   "manage_appointments",
+  "manage_settings",
+  "review_payments",
 ];
 
 const ADMIN_DENIED: ReadonlySet<Permission> = new Set([
@@ -148,6 +159,7 @@ const RCIC_PERMS: ReadonlyArray<Permission> = [
   "void_retainers",
   "manage_own_signature",
   "manage_appointments",
+  "review_payments",
 ];
 
 const DOCUMENT_OFFICER_PERMS: ReadonlyArray<Permission> = [
@@ -179,6 +191,7 @@ const RECEPTION_PERMS: ReadonlyArray<Permission> = [
   "create_communications",
   "view_tasks",
   "manage_appointments",
+  "review_payments",
 ];
 
 const READONLY_PERMS: ReadonlyArray<Permission> = [

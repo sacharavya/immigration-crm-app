@@ -2,6 +2,8 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/supabase/types";
 
+import { PaymentUploadCard } from "../../_components/payment-upload-card";
+
 import { ManageAppointment } from "./_components/manage-appointment";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +40,7 @@ export default async function ManagePage({
       `
         id, starts_at, ends_at, timezone, location_type, online_link,
         onsite_address, status, reason, management_token_expires_at,
-        appointment_type_id,
+        appointment_type_id, fee_cad_at_booking,
         appointment_type:appointment_types!appointments_appointment_type_id_fkey(
           name, duration_minutes
         )
@@ -56,6 +58,46 @@ export default async function ManagePage({
     new Date(appt.management_token_expires_at) < now
   ) {
     return <TokenExpired />;
+  }
+
+  // APPT-8: pending_payment routes to the upload UI (same component as the
+  // booking-confirmation step). awaiting_review shows a "we're verifying"
+  // holding screen. confirmed is the usual reschedule/cancel flow.
+  if (appt.status === "pending_payment") {
+    const fee = Number(appt.fee_cad_at_booking ?? 0);
+    if (fee <= 0) {
+      // Defensive: pending_payment with no fee snapshot is a bug; fall back
+      // to the "not active" rendering rather than a busted upload UI.
+      return <AppointmentNotActive status={appt.status} />;
+    }
+    const dateDisplay = new Date(appt.starts_at).toLocaleDateString("en-CA", {
+      timeZone: appt.timezone,
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+    const timeDisplay = new Date(appt.starts_at).toLocaleTimeString("en-CA", {
+      timeZone: appt.timezone,
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    return (
+      <PaymentUploadCard
+        token={token}
+        typeName={appt.appointment_type?.name ?? "Consultation"}
+        dateDisplay={dateDisplay}
+        timeDisplay={timeDisplay}
+        durationMinutes={appt.appointment_type?.duration_minutes ?? 30}
+        feeCad={fee}
+        referenceCode={appt.id.slice(0, 8)}
+      />
+    );
+  }
+
+  if (appt.status === "awaiting_review") {
+    return <AwaitingReview />;
   }
 
   if (appt.status !== "confirmed") {
@@ -78,6 +120,20 @@ export default async function ManagePage({
         duration_minutes: appt.appointment_type?.duration_minutes ?? 30,
       }}
     />
+  );
+}
+
+function AwaitingReview() {
+  return (
+    <div className="rounded-md border border-stone-200 bg-white px-6 py-12 text-center shadow-sm">
+      <h1 className="text-xl font-semibold text-stone-900">
+        We have your payment proof
+      </h1>
+      <p className="mx-auto mt-3 max-w-md text-sm text-stone-600">
+        Our team is reviewing it now and will confirm your appointment by email
+        as soon as it&apos;s verified.
+      </p>
+    </div>
   );
 }
 

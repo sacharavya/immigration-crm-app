@@ -12,7 +12,9 @@ import {
   ListChecks,
   LogOut,
   Receipt,
+  Settings as SettingsIcon,
   Shield,
+  Tags,
   Users,
 } from "lucide-react";
 import Image from "next/image";
@@ -95,12 +97,7 @@ export function StaffSidebar() {
           />
         </Can>
         <Can permission="manage_appointments">
-          <NavItem
-            href="/dashboard/appointments"
-            label="Appointments"
-            Icon={CalendarDays}
-            active={isActive("/dashboard/appointments")}
-          />
+          <AppointmentsSection pathname={pathname} />
         </Can>
         <Can permission="manage_templates">
           <NavItem
@@ -248,6 +245,80 @@ function CasesSection({ pathname }: { pathname: string }) {
             Icon={Archive}
             active={activeIsArchive}
           />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Appointments parent: Calendar + Types + Settings. Calendar visible to
+// anyone with manage_appointments; Types/Settings are admin-only via
+// manage_settings (mirrors the SQL policy on appointment_settings and
+// appointment_types). Auto-expanded when the current path is under
+// /dashboard/appointments.
+function AppointmentsSection({ pathname }: { pathname: string }) {
+  const sectionActive =
+    pathname === "/dashboard/appointments" ||
+    pathname.startsWith("/dashboard/appointments/");
+  const [open, setOpen] = useState(sectionActive);
+  const activeIsTypes = pathname.startsWith("/dashboard/appointments/types");
+  const activeIsSettings = pathname.startsWith(
+    "/dashboard/appointments/settings",
+  );
+  const activeIsCalendar = sectionActive && !activeIsTypes && !activeIsSettings;
+
+  return (
+    <div>
+      <div className="flex items-center">
+        <Link
+          href="/dashboard/appointments"
+          aria-current={sectionActive ? "page" : undefined}
+          className={cn(
+            "flex flex-1 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+            sectionActive
+              ? "bg-stone-200/70 font-medium text-[var(--navy)]"
+              : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
+          )}
+        >
+          <CalendarDays className="h-4 w-4" />
+          Appointments
+        </Link>
+        <button
+          type="button"
+          aria-label={open ? "Collapse appointments menu" : "Expand appointments menu"}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="ml-1 rounded-md p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+        >
+          <ChevronDown
+            className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
+          />
+        </button>
+      </div>
+      {open && (
+        <div className="ml-5 mt-0.5 space-y-0.5 border-l border-stone-200 pl-3">
+          <SubNavItem
+            href="/dashboard/appointments"
+            label="Calendar"
+            Icon={CalendarDays}
+            active={activeIsCalendar}
+          />
+          <Can permission="manage_settings">
+            <SubNavItem
+              href="/dashboard/appointments/types"
+              label="Types"
+              Icon={Tags}
+              active={activeIsTypes}
+            />
+          </Can>
+          <Can permission="manage_settings">
+            <SubNavItem
+              href="/dashboard/appointments/settings"
+              label="Settings"
+              Icon={SettingsIcon}
+              active={activeIsSettings}
+            />
+          </Can>
         </div>
       )}
     </div>

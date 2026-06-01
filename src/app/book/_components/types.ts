@@ -7,6 +7,7 @@ export type PublicBookingType = {
   name: string;
   code: string;
   description: string | null;
+  preparation_notes: string | null;
   duration_minutes: number;
   fee_cad: number | null;
   default_location_type: LocationType;
@@ -27,6 +28,13 @@ export type BookingSuccess = {
   online_link: string | null;
   duration_minutes: number;
   type_name: string;
+  // APPT-8: paid-flow signal. When true the confirmation page renders the
+  // upload UI + e-transfer instructions instead of the "you're booked"
+  // state; the appointment is in pending_payment status and no calendar
+  // event / Teams meeting / confirmation email has fired yet.
+  payment_required: boolean;
+  fee_cad: number | null;
+  appointment_short_id: string; // first 8 chars of appointment.id
 };
 
 export type BookingErrorCode =

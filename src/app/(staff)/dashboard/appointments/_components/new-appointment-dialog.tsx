@@ -93,6 +93,7 @@ export function NewAppointmentDialog({
   const [reason, setReason] = useState("");
   const [staffNotes, setStaffNotes] = useState("");
   const [sendEmail, setSendEmail] = useState(true);
+  const [caseFieldError, setCaseFieldError] = useState<string | null>(null);
 
   const [slotDays, setSlotDays] = useState<DayOfSlots[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -154,8 +155,13 @@ export function NewAppointmentDialog({
       setError("Pick an appointment type.");
       return;
     }
+    // Case-required validation: surface inline on the field instead of as
+    // a banner. This is the APPT-7 fix — the previous "appointment type
+    // requires a linked case" toast came from a missing field, not a
+    // wrong submission.
     if (selectedType.requires_case && !caseId) {
-      setError("This appointment type requires a linked case.");
+      setCaseFieldError("Pick a case for this appointment.");
+      setError(null);
       return;
     }
     if (locationType === "onsite" && !onsiteAddress.trim()) {
@@ -168,6 +174,7 @@ export function NewAppointmentDialog({
     }
 
     setError(null);
+    setCaseFieldError(null);
     startTransition(async () => {
       const result = await createAppointment({
         appointment_type_id: selectedType.id,
@@ -199,7 +206,18 @@ export function NewAppointmentDialog({
   const slotsForDate =
     slotDays.find((d) => d.date === date)?.slots ?? [];
 
-  const caseSelector = availableCases && availableCases.length > 0 && !prefilledCase;
+  // Case field rendering decision tree:
+  // - prefilledCase set (Schedule meeting from a case page): locked display.
+  // - availableCases populated (from a client page): dropdown of open cases.
+  // - availableCases is []: client has no open cases — surface that.
+  // - availableCases undefined (standalone) + requires_case: surface that
+  //   this type can't be booked without case context.
+  // - requires_case false and no context: hide the field entirely.
+  const requiresCase = selectedType?.requires_case ?? false;
+  const showCaseField =
+    !!prefilledCase ||
+    (availableCases && availableCases.length > 0) ||
+    requiresCase;
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
@@ -312,24 +330,60 @@ export function NewAppointmentDialog({
             />
           </Field>
 
-          {prefilledCase ? (
-            <Field label="Case">
+          {showCaseField && prefilledCase ? (
+            <Field label="Case (linked)">
               <Input value={prefilledCase.case_number} disabled />
+              <p className="mt-1 text-[11px] text-stone-500">
+                Linked to this case.
+              </p>
             </Field>
-          ) : caseSelector ? (
-            <Field label="Case (optional)">
+          ) : showCaseField && availableCases && availableCases.length > 0 ? (
+            <Field
+              label={requiresCase ? "Linked case (required)" : "Case (optional)"}
+            >
               <select
                 value={caseId ?? ""}
-                onChange={(e) => setCaseId(e.target.value || null)}
-                className="h-9 w-full rounded-md border border-stone-200 bg-white px-3 text-sm"
+                onChange={(e) => {
+                  setCaseId(e.target.value || null);
+                  if (e.target.value) setCaseFieldError(null);
+                }}
+                className={`h-9 w-full rounded-md border bg-white px-3 text-sm ${
+                  caseFieldError ? "border-rose-300" : "border-stone-200"
+                }`}
               >
-                <option value="">— None —</option>
+                <option value="">{requiresCase ? "— Pick a case —" : "— None —"}</option>
                 {availableCases!.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.case_number}
                   </option>
                 ))}
               </select>
+              {caseFieldError && (
+                <p className="mt-1 text-[11px] text-rose-700">
+                  {caseFieldError}
+                </p>
+              )}
+            </Field>
+          ) : showCaseField && availableCases && availableCases.length === 0 ? (
+            // Client is in scope but has no open cases yet.
+            <Field label="Linked case (required)">
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                This client has no open cases. Open a case first, then book
+                this appointment type.
+              </div>
+            </Field>
+          ) : showCaseField && requiresCase ? (
+            // Standalone launch with no client/case context.
+            <Field label="Linked case (required)">
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                This appointment type requires a linked case. Open the case
+                detail page and use Schedule meeting from there.
+              </div>
+              {caseFieldError && (
+                <p className="mt-1 text-[11px] text-rose-700">
+                  {caseFieldError}
+                </p>
+              )}
             </Field>
           ) : null}
 
