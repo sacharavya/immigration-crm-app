@@ -111,10 +111,35 @@ export function NewCaseWizard({
   const [rcicId, setRcicId] = useState<string>(
     rcicOptions.length === 1 ? rcicOptions[0].id : "",
   );
+  // HST control. The checkbox starts auto-derived from the client's country
+  // of residence (CA or unknown => HST on; anything else => HST off). Once
+  // staff toggles it manually, the user value sticks for the rest of the
+  // wizard even if they edit the client's address.
+  const [applyHst, setApplyHst] = useState(true);
+  const [hstUserToggled, setHstUserToggled] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const selectedService = variants.find((s) => s.id === serviceTypeId);
+
+  // Derive the residence-country signal for the HST default. Existing
+  // client: country_of_residence (ISO-2 from the clients row). New client:
+  // the address country_code captured on step 1.
+  const residenceCountry: string | null = !client
+    ? null
+    : client.kind === "existing"
+      ? (client.client.country_of_residence ?? null)
+      : client.data.country_code?.trim()
+        ? client.data.country_code.trim().toUpperCase()
+        : null;
+  const autoApplyHst =
+    residenceCountry === null || residenceCountry === "CA";
+  const effectiveApplyHst = hstUserToggled ? applyHst : autoApplyHst;
+
+  function setApplyHstManual(v: boolean) {
+    setApplyHst(v);
+    setHstUserToggled(true);
+  }
 
   function handleSubmit() {
     if (!client) {
@@ -146,6 +171,7 @@ export function NewCaseWizard({
             retainer_minimum_cad: min,
             government_fee_cad: gov,
             retained_at: retainedAtInput,
+            apply_hst: effectiveApplyHst,
           }
         : {
             client_kind: "new",
@@ -156,6 +182,7 @@ export function NewCaseWizard({
             retainer_minimum_cad: min,
             government_fee_cad: gov,
             retained_at: retainedAtInput,
+            apply_hst: effectiveApplyHst,
           };
 
     startTransition(async () => {
@@ -207,10 +234,21 @@ export function NewCaseWizard({
             retainerMin={retainerMin}
             governmentFee={governmentFee}
             retainedAt={retainedAt}
+            applyHst={effectiveApplyHst}
+            hstAutoReason={
+              hstUserToggled
+                ? null
+                : residenceCountry === null
+                  ? "Client residence not set — defaults to applying HST."
+                  : residenceCountry === "CA"
+                    ? "Auto-selected: client is a Canadian resident."
+                    : "Auto-cleared: client resides outside Canada."
+            }
             onQuotedFeeChange={setQuotedFee}
             onRetainerMinChange={setRetainerMin}
             onGovernmentFeeChange={setGovernmentFee}
             onRetainedAtChange={setRetainedAt}
+            onApplyHstChange={setApplyHstManual}
             onBack={() => setStep(2)}
             onNext={() => setStep(4)}
           />
@@ -852,10 +890,13 @@ function FeeStep({
   retainerMin,
   governmentFee,
   retainedAt,
+  applyHst,
+  hstAutoReason,
   onQuotedFeeChange,
   onRetainerMinChange,
   onGovernmentFeeChange,
   onRetainedAtChange,
+  onApplyHstChange,
   onBack,
   onNext,
 }: {
@@ -863,10 +904,13 @@ function FeeStep({
   retainerMin: string;
   governmentFee: string;
   retainedAt: string;
+  applyHst: boolean;
+  hstAutoReason: string | null;
   onQuotedFeeChange: (v: string) => void;
   onRetainerMinChange: (v: string) => void;
   onGovernmentFeeChange: (v: string) => void;
   onRetainedAtChange: (v: string) => void;
+  onApplyHstChange: (v: boolean) => void;
   onBack: () => void;
   onNext: () => void;
 }) {
@@ -927,6 +971,27 @@ function FeeStep({
         ) : (
           <FieldDescription>The total fee quoted to the client.</FieldDescription>
         )}
+      </Field>
+
+      <Field>
+        <label className="flex items-start gap-2 text-sm text-stone-700">
+          <input
+            id="apply_hst"
+            type="checkbox"
+            checked={applyHst}
+            onChange={(e) => onApplyHstChange(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-stone-300"
+          />
+          <span>
+            <span className="font-medium">Apply HST (13%)</span>
+            <span className="block text-xs text-stone-500">
+              {hstAutoReason ??
+                (applyHst
+                  ? "HST will be added to the retainer."
+                  : "No HST will be added to the retainer.")}
+            </span>
+          </span>
+        </label>
       </Field>
 
       <Field>

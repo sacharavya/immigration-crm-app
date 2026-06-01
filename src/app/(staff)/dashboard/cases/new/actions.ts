@@ -14,6 +14,10 @@ export type ClientSearchResult = {
   client_number: string;
   legal_name_full: string;
   email: string | null;
+  // Drives the HST checkbox default on the Fee step. Null when the client
+  // hasn't filled in residence yet; treated as Canadian (HST on) so brand-
+  // new files don't accidentally drop GST/HST.
+  country_of_residence: string | null;
 };
 
 export async function searchClients(
@@ -29,7 +33,7 @@ export async function searchClients(
   const { data } = await supabase
     .schema("crm")
     .from("clients")
-    .select("id, client_number, legal_name_full, email")
+    .select("id, client_number, legal_name_full, email, country_of_residence")
     .is("deleted_at", null)
     .or(`legal_name_full.ilike.%${safe}%,email.ilike.%${safe}%`)
     .limit(10);
@@ -181,10 +185,18 @@ export async function createCase(
   // chosen RCIC even before the agreement is sent — without this it
   // would have to fall through to assigned_rcic, which works, but
   // setting both is cheap defense in depth and keeps intent explicit.
+  //
+  // When the wizard's HST checkbox was cleared (typically because the
+  // client lives outside Canada), set hst_cad=0 here so the renderer
+  // and installment math drop the tax line. Default (apply_hst=true)
+  // leaves hst_cad NULL so render-retainer.ts computes 13%.
   await supabase
     .schema("crm")
     .from("retainer_agreements")
-    .update({ rcic_id: parsed.data.rcic_id })
+    .update({
+      rcic_id: parsed.data.rcic_id,
+      ...(parsed.data.apply_hst === false ? { hst_cad: 0 } : {}),
+    })
     .eq("case_id", newCase.id)
     .is("deleted_at", null);
 

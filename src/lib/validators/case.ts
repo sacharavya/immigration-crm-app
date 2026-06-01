@@ -64,6 +64,11 @@ const feeFields = {
     .min(0, "Government fee cannot be negative")
     .optional(),
   retained_at: optionalDate,
+  // When false, the auto-created retainer gets hst_cad = 0 so the renderer
+  // doesn't apply the default 13%. Defaults to true; the wizard pre-flips
+  // it based on the client's country_of_residence (CA / unknown stays on,
+  // anything else flips off) and staff can override either way.
+  apply_hst: z.boolean().default(true),
 };
 
 export const newCaseSchema = z.discriminatedUnion("client_kind", [

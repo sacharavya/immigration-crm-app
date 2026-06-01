@@ -138,7 +138,7 @@ export default async function NewCasePage({ searchParams }: Props) {
     const { data } = await supabase
       .schema("crm")
       .from("clients")
-      .select("id, client_number, legal_name_full, email")
+      .select("id, client_number, legal_name_full, email, country_of_residence")
       .eq("id", sp.client_id)
       .is("deleted_at", null)
       .maybeSingle();
