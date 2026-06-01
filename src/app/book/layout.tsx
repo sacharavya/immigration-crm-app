@@ -3,6 +3,8 @@
 // just wraps the page content in a minimal public chrome (header + footer)
 // with no staff theming, no auth helpers, no sidebar.
 
+import Image from "next/image";
+
 export default function BookLayout({
   children,
 }: {
@@ -12,6 +14,14 @@ export default function BookLayout({
     <div className="min-h-dvh bg-stone-50 text-stone-900">
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-6 py-4">
+          <Image
+            src="/logo.png"
+            alt="Big Bang Immigration"
+            width={40}
+            height={40}
+            priority
+            className="h-10 w-10 rounded-lg"
+          />
           <span className="text-lg font-semibold text-[var(--navy)]">
             Big Bang Immigration
           </span>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { use, useActionState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,15 @@ export default function LoginPage({ searchParams }: Props) {
   return (
     <main className="flex min-h-dvh items-center justify-center px-6 py-12">
       <Card className="w-full max-w-sm">
-        <CardHeader className="space-y-2 text-center">
+        <CardHeader className="space-y-3 text-center">
+          <Image
+            src="/logo.png"
+            alt="Big Bang Immigration"
+            width={64}
+            height={64}
+            priority
+            className="mx-auto h-16 w-16 rounded-xl"
+          />
           <CardTitle className="text-2xl text-[var(--navy)]">
             Big Bang Immigration
           </CardTitle>

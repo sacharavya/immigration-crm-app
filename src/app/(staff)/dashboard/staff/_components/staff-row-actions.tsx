@@ -115,9 +115,8 @@ function ResetPasswordButton({ target }: { target: Target }) {
                     {target.firstName} {target.lastName}
                   </strong>{" "}
                   ({target.email}). They&rsquo;ll receive an email with a
-                  one-time reset link <em>and</em> a temporary password —
-                  whichever they use, they&rsquo;ll land on the reset page
-                  to choose a new password.
+                  temporary password and will be required to choose a new
+                  one on next sign-in.
                 </DialogDescription>
               </DialogHeader>
               {result && "error" in result && (
@@ -158,21 +157,13 @@ function ResetSuccessView({
   result: {
     ok: true;
     tempPassword: string;
-    resetUrl: string;
     emailSent: boolean;
     emailError?: string;
   };
   onClose: () => void;
 }) {
-  const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPwd, setCopiedPwd] = useState(false);
 
-  function copyLink() {
-    void navigator.clipboard.writeText(result.resetUrl).then(() => {
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 1500);
-    });
-  }
   function copyPwd() {
     void navigator.clipboard.writeText(result.tempPassword).then(() => {
       setCopiedPwd(true);
@@ -191,32 +182,12 @@ function ResetSuccessView({
             <DialogTitle>Password reset</DialogTitle>
             <DialogDescription>
               {result.emailSent
-                ? "Email sent with both the reset link and a temporary password."
-                : "Email could not be sent — share the link or password manually."}
+                ? "Email sent with the temporary password."
+                : "Email could not be sent — share the temporary password manually."}
             </DialogDescription>
           </div>
         </div>
       </DialogHeader>
-
-      <div className="min-w-0 space-y-2 overflow-hidden rounded-lg border border-stone-200 bg-stone-50 p-4">
-        <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-          Reset link · one-time, expires in 24 h
-        </div>
-        <div className="flex min-w-0 items-center gap-2">
-          <code className="block min-w-0 flex-1 truncate rounded bg-white px-3 py-2 font-mono text-xs">
-            {result.resetUrl}
-          </code>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={copyLink}
-            className="shrink-0"
-          >
-            <Copy className="mr-1 h-3.5 w-3.5" />
-            {copiedLink ? "Copied" : "Copy"}
-          </Button>
-        </div>
-      </div>
 
       <div className="min-w-0 space-y-2 overflow-hidden rounded-lg border border-stone-200 bg-stone-50 p-4">
         <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">

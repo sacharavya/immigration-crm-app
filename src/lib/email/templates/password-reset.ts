@@ -4,7 +4,6 @@ type Args = {
   firstName: string;
   email: string;
   tempPassword: string;
-  resetUrl: string;
   loginUrl: string;
 };
 
@@ -16,15 +15,8 @@ export function passwordResetEmail(args: Args): {
   const subject = `Your Big Bang Immigration CRM password was reset`;
 
   const bodyHtml = `<p style="margin:0 0 12px 0;">Hi ${escapeHtml(args.firstName)},</p>
-<p style="margin:0 0 12px 0;">An administrator has reset your password. You have two ways to sign in — pick whichever is easier:</p>
+<p style="margin:0 0 12px 0;">An administrator has reset your password. Sign in with the temporary password below — you&rsquo;ll be asked to choose a new password on first login.</p>
 
-<h3 style="margin:18px 0 6px 0;font-size:15px;color:#0f172a;">Option 1 — Use the reset link</h3>
-<p style="margin:0 0 8px 0;">Click the button below to set a new password directly. The link is one-time use and expires in 24 hours.</p>
-${buttonHtml("Reset password", args.resetUrl)}
-<p style="margin:8px 0 0 0;color:#57534e;font-size:12px;word-break:break-all;">If the button doesn&rsquo;t work, paste this into your browser:<br /><a href="${escapeHtml(args.resetUrl)}" style="color:#1d4ed8;">${escapeHtml(args.resetUrl)}</a></p>
-
-<h3 style="margin:24px 0 6px 0;font-size:15px;color:#0f172a;">Option 2 — Sign in with a temporary password</h3>
-<p style="margin:0 0 8px 0;">If the link above doesn&rsquo;t work for you, sign in normally with the credentials below. You&rsquo;ll be asked to choose a new password on first login.</p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0;background:#fafaf9;border:1px solid #e7e5e4;border-radius:8px;">
   <tr>
     <td style="padding:14px 18px;font-size:14px;color:#1c1917;">
@@ -39,16 +31,11 @@ ${buttonHtml("Sign in", args.loginUrl)}
 
   const text = `Hi ${args.firstName},
 
-An administrator has reset your password. Two ways to sign in:
+An administrator has reset your password. Sign in with the temporary password below — you'll be asked to choose a new password on first login.
 
-Option 1 — Reset link (one-time use, expires in 24 hours):
-${args.resetUrl}
-
-Option 2 — Temporary password:
-  Sign in at:   ${args.loginUrl}
-  Email:        ${args.email}
+  Sign in at:    ${args.loginUrl}
+  Email:         ${args.email}
   Temp password: ${args.tempPassword}
-  You'll be asked to set a new password on first login.
 
 If you didn't expect this, contact your administrator immediately.
 
@@ -57,7 +44,7 @@ Big Bang Immigration Consulting Inc.`;
   return {
     subject,
     html: emailLayout({
-      previewText: "Your CRM password has been reset — click to set a new one.",
+      previewText: "Your CRM password has been reset — sign in with the temporary password.",
       bodyHtml,
     }),
     text,

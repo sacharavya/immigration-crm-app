@@ -449,18 +449,18 @@ export async function reactivateStaff(
 }
 
 // ---------- 5. resetStaffPassword -------------------------------------------
-// Generates BOTH a temporary password and a one-time recovery link in one
-// shot, and emails the recipient with both options. The recipient picks
-// whichever works for them — click the link for the smooth path, or sign
-// in with the temp password if email links are blocked. Both paths land
-// at /reset-password (the link via /auth/callback, the temp password via
-// /login + the password_reset_required_at gate).
+// Issues a temporary password, stamps password_reset_required_at on the
+// staff row, and emails the recipient with the temp password. On next
+// /login the password_reset_required_at gate forces them through
+// /reset-password before any other page loads. We deliberately do NOT
+// issue a Supabase recovery link — that flow varied between PKCE and
+// implicit across environments, and a single deterministic path (temp
+// password → forced reset) is simpler to support.
 
 export type ResetStaffPasswordResult =
   | {
       ok: true;
       tempPassword: string;
-      resetUrl: string;
       emailSent: boolean;
       emailError?: string;
     }
@@ -518,31 +518,17 @@ export async function resetStaffPassword(
   );
   if (updateErr) return { error: updateErr.message };
 
-  const baseUrl = await getBaseUrl();
-  const redirectTo = `${baseUrl}/auth/callback?next=/reset-password`;
-  const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-    type: "recovery",
-    email: target.email,
-    options: { redirectTo },
-  });
-  if (linkErr || !linkData?.properties?.action_link) {
-    return {
-      error: `Could not generate reset link: ${linkErr?.message ?? "no link returned"}`,
-    };
-  }
-  const resetUrl = linkData.properties.action_link;
-
   await supabase
     .schema("crm")
     .from("staff")
     .update({ password_reset_required_at: new Date().toISOString() })
     .eq("id", staffId);
 
+  const baseUrl = await getBaseUrl();
   const tpl = passwordResetEmail({
     firstName: target.first_name,
     email: target.email,
     tempPassword,
-    resetUrl,
     loginUrl: `${baseUrl}/login`,
   });
   const emailRes = await sendEmail({
@@ -557,7 +543,6 @@ export async function resetStaffPassword(
   return {
     ok: true,
     tempPassword,
-    resetUrl,
     emailSent: emailRes.ok,
     emailError: emailRes.ok ? undefined : emailRes.error,
   };

@@ -58,11 +58,11 @@ export default async function PublicSigningPage({ params }: Props) {
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
           <Image
-            src="/Maple_Leaf.svg"
-            alt=""
-            width={28}
-            height={28}
-            aria-hidden
+            src="/logo.png"
+            alt="Big Bang Immigration"
+            width={40}
+            height={40}
+            className="h-10 w-10 rounded-lg"
           />
           <div>
             <div className="text-sm font-semibold text-[var(--navy)]">
