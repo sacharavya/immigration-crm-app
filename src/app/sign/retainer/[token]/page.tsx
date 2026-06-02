@@ -60,9 +60,9 @@ export default async function PublicSigningPage({ params }: Props) {
           <Image
             src="/logo.png"
             alt="Big Bang Immigration"
-            width={40}
-            height={40}
-            className="h-10 w-10 rounded-lg"
+            width={1933}
+            height={537}
+            className="h-10 w-auto"
           />
           <div>
             <div className="text-sm font-semibold text-[var(--navy)]">

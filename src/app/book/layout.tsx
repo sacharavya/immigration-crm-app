@@ -17,10 +17,10 @@ export default function BookLayout({
           <Image
             src="/logo.png"
             alt="Big Bang Immigration"
-            width={40}
-            height={40}
+            width={1933}
+            height={537}
             priority
-            className="h-10 w-10 rounded-lg"
+            className="h-10 w-auto"
           />
           <span className="text-lg font-semibold text-[var(--navy)]">
             Big Bang Immigration

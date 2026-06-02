@@ -48,10 +48,10 @@ export default function LoginPage({ searchParams }: Props) {
           <Image
             src="/logo.png"
             alt="Big Bang Immigration"
-            width={64}
-            height={64}
+            width={1933}
+            height={537}
             priority
-            className="mx-auto h-16 w-16 rounded-xl"
+            className="mx-auto h-14 w-auto"
           />
           <CardTitle className="text-2xl text-[var(--navy)]">
             Big Bang Immigration

@@ -39,17 +39,7 @@ export function emailLayout(args: { previewText?: string; bodyHtml: string }): s
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;border-radius:12px;border:1px solid #e7e5e4;overflow:hidden;">
             <tr>
               <td style="padding:28px 32px 16px 32px;">
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                  <tr>
-                    <td style="vertical-align:middle;padding-right:14px;">
-                      <img src="${escapeHtml(logo)}" alt="Big Bang Immigration" width="48" height="48" style="display:block;border:0;outline:none;text-decoration:none;width:48px;height:48px;border-radius:8px;" />
-                    </td>
-                    <td style="vertical-align:middle;">
-                      <div style="font-weight:700;font-size:18px;color:#0c0a09;letter-spacing:-0.01em;line-height:1.2;">Big Bang Immigration</div>
-                      <div style="font-size:12px;color:#78716c;margin-top:2px;line-height:1.2;">Consulting Inc.</div>
-                    </td>
-                  </tr>
-                </table>
+                <img src="${escapeHtml(logo)}" alt="Big Bang Immigration" width="180" height="50" style="display:block;border:0;outline:none;text-decoration:none;width:auto;max-width:220px;height:50px;" />
               </td>
             </tr>
             <tr>
