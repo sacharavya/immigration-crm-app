@@ -29,6 +29,7 @@ import type {
 import { UpcomingAppointmentsCard } from "../../appointments/_components/upcoming-appointments-card";
 
 import { DeleteClientTrigger } from "./_components/delete-client-trigger";
+import { IntakeShareDialog } from "./_components/intake-share-dialog";
 
 type ClientStatus = Database["crm"]["Enums"]["client_status"];
 type CaseStatus = Database["crm"]["Enums"]["case_status"];
@@ -251,6 +252,7 @@ export default async function ClientDetailPage({ params }: Props) {
   const canDelete = staffCan(me, "delete_clients");
   const canCreateCases = staffCan(me, "create_cases");
   const canSchedule = staffCan(me, "manage_appointments");
+  const canEdit = staffCan(me, "edit_clients");
 
   // APPT-3: appointment infrastructure for the "Schedule meeting" button
   // and the "Upcoming appointments" sidebar card on the client page.
@@ -468,18 +470,38 @@ export default async function ClientDetailPage({ params }: Props) {
                   </div>
                 )}
               </div>
-              <Link
-                href={`/dashboard/clients/${clientRow.id}/intake`}
-                className={cn(
-                  buttonVariants({
-                    size: "sm",
-                    variant: intakeFullyComplete ? "outline" : "default",
-                  }),
+              <div className="flex flex-wrap items-center gap-2">
+                {canEdit && (
+                  <IntakeShareDialog
+                    clientId={clientRow.id}
+                    initialToken={clientRow.intake_portal_token ?? null}
+                    submittedAt={clientRow.intake_submitted_at ?? null}
+                    clientEmail={clientRow.email ?? null}
+                  />
                 )}
-              >
-                Open intake form
-              </Link>
+                <Link
+                  href={`/dashboard/clients/${clientRow.id}/intake`}
+                  className={cn(
+                    buttonVariants({
+                      size: "sm",
+                      variant: intakeFullyComplete ? "outline" : "default",
+                    }),
+                  )}
+                >
+                  Open intake form
+                </Link>
+              </div>
             </div>
+            {clientRow.intake_submitted_at && (
+              <p className="text-xs text-amber-700">
+                Submitted by client on{" "}
+                {format(
+                  new Date(clientRow.intake_submitted_at),
+                  "MMM d, yyyy",
+                )}
+                .
+              </p>
+            )}
           </CardContent>
         </Card>
 
