@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { getPortalActor, type PortalActor } from "@/lib/auth/intake-portal";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
 import { BACKGROUND_QUESTION_CODES } from "@/lib/intake/completeness";
@@ -45,16 +46,40 @@ type Result<T = undefined> = T extends undefined
   ? { ok: true } | { error: string }
   : ({ ok: true } & T) | { error: string };
 
-async function gate() {
+// Dual-mode auth: portal-cookie path (client filling /intake/<token>)
+// OR staff session. The caller passes the clientId the action is going
+// to write to — the portal branch verifies the cookie token resolves
+// to THAT same clientId, so a portal session can't be reused to write
+// for a different client.
+//
+// Portal hard-lock: getPortalActor() returns null when the client has
+// already submitted, so by the time we get here a portal request
+// against a submitted form is indistinguishable from no portal at
+// all — we then fall through to the staff path, which correctly
+// rejects (no staff session present on the public route).
+async function gate(
+  clientId: string,
+): Promise<
+  | {
+      ok: true;
+      actor:
+        | { kind: "staff"; me: Awaited<ReturnType<typeof getStaff>> }
+        | PortalActor;
+    }
+  | { ok: false; error: string }
+> {
+  const portal = await getPortalActor(clientId);
+  if (portal) return { ok: true, actor: portal };
+
   const me = await getStaff();
-  if (!me) return { ok: false as const, error: "Not authenticated" };
+  if (!me) return { ok: false, error: "Not authenticated" };
   if (!staffCan(me, "edit_clients")) {
     return {
-      ok: false as const,
+      ok: false,
       error: "You don't have permission to edit this client.",
     };
   }
-  return { ok: true as const, me };
+  return { ok: true, actor: { kind: "staff", me } };
 }
 
 function rev(clientId: string) {
@@ -183,7 +208,7 @@ const updateClientCoreSchema = z.object({
 export async function updateClientCore(
   input: z.input<typeof updateClientCoreSchema>,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = updateClientCoreSchema.safeParse(input);
@@ -284,7 +309,7 @@ const backgroundResponseSchema = z.object({
 export async function updateBackgroundResponse(
   input: z.input<typeof backgroundResponseSchema>,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = backgroundResponseSchema.safeParse(input);
@@ -356,7 +381,7 @@ const familyUpdateSchema = z.object({
 export async function addFamilyMember(
   input: z.input<typeof familyAddSchema>,
 ): Promise<Result<{ id: string }>> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = familyAddSchema.safeParse(input);
@@ -385,7 +410,7 @@ export async function addFamilyMember(
 export async function updateFamilyMember(
   input: z.input<typeof familyUpdateSchema>,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = familyUpdateSchema.safeParse(input);
@@ -423,7 +448,7 @@ export async function removeFamilyMember(
   clientId: string,
   id: string,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
   const supabase = await createClient();
@@ -474,7 +499,7 @@ const educationUpdateSchema = z.object({
 export async function addEducation(
   input: z.input<typeof educationAddSchema>,
 ): Promise<Result<{ id: string }>> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = educationAddSchema.safeParse(input);
@@ -503,7 +528,7 @@ export async function addEducation(
 export async function updateEducation(
   input: z.input<typeof educationUpdateSchema>,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = educationUpdateSchema.safeParse(input);
@@ -541,7 +566,7 @@ export async function removeEducation(
   clientId: string,
   id: string,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
   const supabase = await createClient();
@@ -585,7 +610,7 @@ const employmentUpdateSchema = z.object({
 export async function addEmployment(
   input: z.input<typeof employmentAddSchema>,
 ): Promise<Result<{ id: string }>> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = employmentAddSchema.safeParse(input);
@@ -613,7 +638,7 @@ export async function addEmployment(
 export async function updateEmployment(
   input: z.input<typeof employmentUpdateSchema>,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = employmentUpdateSchema.safeParse(input);
@@ -651,7 +676,7 @@ export async function removeEmployment(
   clientId: string,
   id: string,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
   const supabase = await createClient();
@@ -692,7 +717,7 @@ const travelUpdateSchema = z.object({
 export async function addTravel(
   input: z.input<typeof travelAddSchema>,
 ): Promise<Result<{ id: string }>> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = travelAddSchema.safeParse(input);
@@ -724,7 +749,7 @@ export async function addTravel(
 export async function updateTravel(
   input: z.input<typeof travelUpdateSchema>,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = travelUpdateSchema.safeParse(input);
@@ -762,7 +787,7 @@ export async function removeTravel(
   clientId: string,
   id: string,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
   const supabase = await createClient();
@@ -803,7 +828,7 @@ const addressUpdateSchema = z.object({
 export async function addAddress(
   input: z.input<typeof addressAddSchema>,
 ): Promise<Result<{ id: string }>> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = addressAddSchema.safeParse(input);
@@ -831,7 +856,7 @@ export async function addAddress(
 export async function updateAddress(
   input: z.input<typeof addressUpdateSchema>,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = addressUpdateSchema.safeParse(input);
@@ -869,7 +894,7 @@ export async function removeAddress(
   clientId: string,
   id: string,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
   const supabase = await createClient();
@@ -913,7 +938,7 @@ const orgUpdateSchema = z.object({
 export async function addOrganisation(
   input: z.input<typeof orgAddSchema>,
 ): Promise<Result<{ id: string }>> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = orgAddSchema.safeParse(input);
@@ -941,7 +966,7 @@ export async function addOrganisation(
 export async function updateOrganisation(
   input: z.input<typeof orgUpdateSchema>,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = orgUpdateSchema.safeParse(input);
@@ -979,7 +1004,7 @@ export async function removeOrganisation(
   clientId: string,
   id: string,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
   const supabase = await createClient();
@@ -1022,7 +1047,7 @@ const govUpdateSchema = z.object({
 export async function addGovernmentPosition(
   input: z.input<typeof govAddSchema>,
 ): Promise<Result<{ id: string }>> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = govAddSchema.safeParse(input);
@@ -1047,7 +1072,7 @@ export async function addGovernmentPosition(
 export async function updateGovernmentPosition(
   input: z.input<typeof govUpdateSchema>,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = govUpdateSchema.safeParse(input);
@@ -1085,7 +1110,7 @@ export async function removeGovernmentPosition(
   clientId: string,
   id: string,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
   const supabase = await createClient();
@@ -1128,7 +1153,7 @@ const milUpdateSchema = z.object({
 export async function addMilitaryService(
   input: z.input<typeof milAddSchema>,
 ): Promise<Result<{ id: string }>> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = milAddSchema.safeParse(input);
@@ -1153,7 +1178,7 @@ export async function addMilitaryService(
 export async function updateMilitaryService(
   input: z.input<typeof milUpdateSchema>,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = milUpdateSchema.safeParse(input);
@@ -1191,7 +1216,7 @@ export async function removeMilitaryService(
   clientId: string,
   id: string,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
   const supabase = await createClient();
@@ -1258,7 +1283,7 @@ function plusYearsIso(iso: string, years: number): string {
 export async function addBiometricRecord(
   input: z.input<typeof biometricAddSchema>,
 ): Promise<Result<{ id: string }>> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = biometricAddSchema.safeParse(input);
@@ -1291,7 +1316,9 @@ export async function addBiometricRecord(
     valid_until: data.valid_until ?? plusYearsIso(data.date_given, 10),
     notes: data.notes ?? null,
     display_order,
-    created_by: g.me.id,
+    // Portal-created biometric records have no staff author; created_by
+    // stays null and the audit trail (DB trigger) is the only attribution.
+    created_by: g.actor.kind === "staff" ? g.actor.me?.id ?? null : null,
   };
 
   const { data: row, error } = await supabase
@@ -1309,7 +1336,7 @@ export async function addBiometricRecord(
 export async function updateBiometricRecord(
   input: z.input<typeof biometricUpdateSchema>,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(input.clientId);
   if (!g.ok) return { error: g.error };
 
   const parsed = biometricUpdateSchema.safeParse(input);
@@ -1347,7 +1374,7 @@ export async function removeBiometricRecord(
   clientId: string,
   id: string,
 ): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
+  const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
   const supabase = await createClient();

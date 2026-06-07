@@ -1287,6 +1287,9 @@ export type Database = {
           has_prior_biometrics: boolean | null
           has_siblings: boolean | null
           id: string
+          intake_portal_token: string | null
+          intake_portal_token_created_at: string | null
+          intake_submitted_at: string | null
           legal_name_full: string
           marital_status: Database["crm"]["Enums"]["marital_status"] | null
           military_service_held: boolean | null
@@ -1335,6 +1338,9 @@ export type Database = {
           has_prior_biometrics?: boolean | null
           has_siblings?: boolean | null
           id?: string
+          intake_portal_token?: string | null
+          intake_portal_token_created_at?: string | null
+          intake_submitted_at?: string | null
           legal_name_full: string
           marital_status?: Database["crm"]["Enums"]["marital_status"] | null
           military_service_held?: boolean | null
@@ -1383,6 +1389,9 @@ export type Database = {
           has_prior_biometrics?: boolean | null
           has_siblings?: boolean | null
           id?: string
+          intake_portal_token?: string | null
+          intake_portal_token_created_at?: string | null
+          intake_submitted_at?: string | null
           legal_name_full?: string
           marital_status?: Database["crm"]["Enums"]["marital_status"] | null
           military_service_held?: boolean | null
