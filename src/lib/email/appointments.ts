@@ -108,17 +108,22 @@ function formatForClient(iso: string, timezone: string) {
   };
 }
 
-function managementUrl(token: string | null): string | null {
+// getBaseUrl() is async (it reads request headers as a fallback when
+// NEXT_PUBLIC_APP_URL is missing). Forgetting to await it stringifies
+// the Promise into the email body — every recipient gets a link like
+// `[object Promise]/book/manage/<token>`. Keep these helpers async to
+// force every caller through await at the type level.
+async function managementUrl(token: string | null): Promise<string | null> {
   if (!token) return null;
-  return `${getBaseUrl()}/book/manage/${token}`;
+  return `${await getBaseUrl()}/book/manage/${token}`;
 }
 
-function rebookUrl(): string {
-  return `${getBaseUrl()}/book`;
+async function rebookUrl(): Promise<string> {
+  return `${await getBaseUrl()}/book`;
 }
 
-function dashboardUrl(appointmentId: string): string {
-  return `${getBaseUrl()}/dashboard/appointments?id=${appointmentId}`;
+async function dashboardUrl(appointmentId: string): Promise<string> {
+  return `${await getBaseUrl()}/dashboard/appointments?id=${appointmentId}`;
 }
 
 function locationLineForIcs(row: AppointmentEmailRow): string {
@@ -188,7 +193,7 @@ export async function sendAppointmentConfirmation(
     onlineLink: row.online_link,
     onsiteAddress: row.onsite_address,
     teamsJoinUrl: row.teams_join_url,
-    managementUrl: managementUrl(row.management_token),
+    managementUrl: await managementUrl(row.management_token),
   });
 
   const res = await sendEmail({
@@ -256,7 +261,7 @@ export async function sendAppointmentReschedule(
     onlineLink: row.online_link,
     onsiteAddress: row.onsite_address,
     teamsJoinUrl: row.teams_join_url,
-    managementUrl: managementUrl(row.management_token),
+    managementUrl: await managementUrl(row.management_token),
   });
 
   const res = await sendEmail({
@@ -318,7 +323,7 @@ export async function sendAppointmentCancellation(
     timezoneDisplay: dates.timezoneDisplay,
     // Rebook URL only makes sense when /book is reachable to this prospect;
     // safe to always include since the page itself respects the feature flag.
-    rebookUrl: rebookUrl(),
+    rebookUrl: await rebookUrl(),
   });
 
   const res = await sendEmail({
@@ -385,7 +390,7 @@ export async function sendAppointmentReminder(
     onlineLink: row.online_link,
     onsiteAddress: row.onsite_address,
     teamsJoinUrl: row.teams_join_url,
-    managementUrl: managementUrl(row.management_token),
+    managementUrl: await managementUrl(row.management_token),
   });
 
   const res = await sendEmail({
@@ -456,7 +461,7 @@ export async function sendInternalNotification(
     locationType: row.location_type,
     reason: row.reason,
     bookingSource: row.booking_source,
-    dashboardUrl: dashboardUrl(row.id),
+    dashboardUrl: await dashboardUrl(row.id),
   });
 
   const res = await sendEmail({
@@ -530,7 +535,9 @@ export async function sendPaymentPending(
     feeCad: fee,
     feeRecipientEmail: PAYMENT_RECIPIENT_EMAIL,
     referenceCode: row.id.slice(0, 8),
-    managementUrl: managementUrl(row.management_token) ?? `${getBaseUrl()}/book`,
+    managementUrl:
+      (await managementUrl(row.management_token)) ??
+      `${await getBaseUrl()}/book`,
   });
 
   const res = await sendEmail({
@@ -583,7 +590,7 @@ export async function sendPaymentStaffNotification(
     timezoneDisplay: dates.timezoneDisplay,
     feeCad: fee,
     referenceCode: row.id.slice(0, 8),
-    reviewUrl: dashboardUrl(row.id),
+    reviewUrl: await dashboardUrl(row.id),
   });
 
   const res = await sendEmail({
@@ -630,7 +637,7 @@ export async function sendPaymentRejected(
     timeDisplay: dates.timeDisplay,
     timezoneDisplay: dates.timezoneDisplay,
     rejectionReason,
-    bookAgainUrl: rebookUrl(),
+    bookAgainUrl: await rebookUrl(),
   });
   const res = await sendEmail({
     to: row.snapshot_client_email,
@@ -673,7 +680,7 @@ export async function sendAbandonedBooking(
     dateDisplay: dates.dateDisplay,
     timeDisplay: dates.timeDisplay,
     timezoneDisplay: dates.timezoneDisplay,
-    bookAgainUrl: rebookUrl(),
+    bookAgainUrl: await rebookUrl(),
   });
   const res = await sendEmail({
     to: row.snapshot_client_email,

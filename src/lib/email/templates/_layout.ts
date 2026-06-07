@@ -14,8 +14,12 @@ export function escapeHtml(s: string): string {
 // most strip data URIs. Resolved from NEXT_PUBLIC_APP_URL so dev (Vercel
 // preview / localhost-tunnel) and prod each point at their own /logo.png.
 function logoUrl(): string {
+  // Sync env-only read because emailLayout itself is sync. The fallback
+  // must point at the actual prod domain — crm.bigbangimmigration.com
+  // does not resolve, so a missing NEXT_PUBLIC_APP_URL there means the
+  // logo never loads in any client.
   const base =
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://crm.bigbangimmigration.com";
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://app.bigbangimmigration.com";
   return `${base.replace(/\/$/, "")}/logo.png`;
 }
 
