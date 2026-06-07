@@ -1,9 +1,17 @@
 import { type NextRequest } from "next/server";
 
+import { maybeSetIntakePortalCookie } from "@/lib/auth/intake-portal-proxy";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function proxy(request: NextRequest) {
-  return await updateSession(request);
+  // updateSession refreshes the staff Supabase auth cookie chain on
+  // every request. For unauthenticated /intake/<token>/* requests it's
+  // a cheap no-op (no auth session to refresh), so it's safe to call
+  // unconditionally — we then layer the intake-portal cookie on the
+  // same response.
+  const response = await updateSession(request);
+  await maybeSetIntakePortalCookie(request, response);
+  return response;
 }
 
 export const config = {
