@@ -45,10 +45,21 @@ export function adminClient() {
 // the same shape regardless of failure reason — never leak whether
 // the token was unknown vs. locked vs. malformed, to avoid an oracle
 // for token guessing.
+//
+// Server-side logs the specific failure reason so operators can
+// distinguish "no row" from "DB error" from "submit-locked" when
+// debugging an unexpected InvalidLinkCard render. Clients still only
+// see the generic "Invalid link" string.
 export async function verifyIntakeToken(
   token: string,
 ): Promise<{ ok: true; clientId: string } | GateFailure> {
-  if (!TOKEN_RE.test(token)) return { ok: false, error: "Invalid link" };
+  if (!TOKEN_RE.test(token)) {
+    console.warn(
+      "[intake-portal] verify: token failed UUID regex",
+      JSON.stringify({ tokenLen: token.length }),
+    );
+    return { ok: false, error: "Invalid link" };
+  }
   const admin = adminClient();
   const { data, error } = await admin
     .schema("crm")
@@ -56,8 +67,28 @@ export async function verifyIntakeToken(
     .select("id, intake_submitted_at, deleted_at")
     .eq("intake_portal_token", token)
     .maybeSingle();
-  if (error || !data) return { ok: false, error: "Invalid link" };
-  if (data.deleted_at) return { ok: false, error: "Invalid link" };
+  if (error) {
+    console.error("[intake-portal] verify: DB error", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    return { ok: false, error: "Invalid link" };
+  }
+  if (!data) {
+    console.warn(
+      "[intake-portal] verify: no row matched token (token persisted to a different DB, or row deleted/regenerated)",
+      JSON.stringify({ tokenPrefix: token.slice(0, 8) }),
+    );
+    return { ok: false, error: "Invalid link" };
+  }
+  if (data.deleted_at) {
+    console.warn("[intake-portal] verify: client row is soft-deleted", {
+      clientId: data.id,
+    });
+    return { ok: false, error: "Invalid link" };
+  }
   if (data.intake_submitted_at) {
     return { ok: false, error: "This intake form has already been submitted." };
   }
