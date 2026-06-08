@@ -3,7 +3,7 @@
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 
-import { graphFetch } from "@/lib/graph/client";
+import { ensureCaseCategoryFolder } from "@/lib/graph/folders";
 import { uploadFile } from "@/lib/graph/uploads";
 import type { Database } from "@/lib/supabase/types";
 import {
@@ -180,28 +180,20 @@ export async function uploadAsClient(
   const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
   if (!driveId) return { error: "Storage not configured." };
 
-  // Find the category subfolder under the case folder. Created at case
-  // setup; the client upload doesn't create folders, just locates the
-  // matching one by group name.
+  // Self-healing: if the category subfolder doesn't exist (e.g. staff
+  // added a new category to the active template after this case was
+  // provisioned), create it under the case root on demand. The client-
+  // facing error message stays generic — Graph failures here are an
+  // ops problem, not something the client can resolve.
   let categoryFolderId: string;
   try {
-    const children = await graphFetch<{
-      value: Array<{ id: string; name: string; folder?: object }>;
-    }>(
-      `/drives/${driveId}/items/${caseRow.sharepoint_folder_id}/children?$select=id,name,folder`,
+    const { folderItemId } = await ensureCaseCategoryFolder(
+      caseRow.sharepoint_folder_id,
+      templateDoc.group.name,
     );
-    const match = children.value.find(
-      (c) => c.folder && c.name === templateDoc.group?.name,
-    );
-    if (!match) {
-      return {
-        error:
-          "Storage folder isn't ready yet. Please contact our office.",
-      };
-    }
-    categoryFolderId = match.id;
+    categoryFolderId = folderItemId;
   } catch (err) {
-    console.error("[uploadAsClient] folder lookup failed:", err);
+    console.error("[uploadAsClient] folder ensure failed:", err);
     return {
       error: "We couldn't reach storage. Please try again in a minute.",
     };

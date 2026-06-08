@@ -209,6 +209,60 @@ export async function ensureCasePaymentsFolder(
 }
 
 /**
+ * Returns the case's category subfolder (e.g. "01 Identity"), creating
+ * it under the case root if it doesn't exist yet.
+ *
+ * Self-healing for the case where staff added a new category to an
+ * active template AFTER a case was already provisioned: the original
+ * provisioner only ran at case-creation time, so the new category's
+ * subfolder is missing from OneDrive. Calling this on every category
+ * upload makes the structure heal on first use, with no backfill or
+ * background job.
+ *
+ * The categoryName must match exactly what createCaseFolderStructure
+ * would have used at provisioning time — i.e. sanitize(group.name)
+ * from ref.checklist_groups. Callers can pass the raw group.name;
+ * sanitize is applied internally to keep both paths in sync.
+ */
+export async function ensureCaseCategoryFolder(
+  caseFolderItemId: string,
+  categoryName: string,
+): Promise<{ driveId: string; folderItemId: string; wasCreated: boolean }> {
+  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
+  if (!driveId) {
+    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
+  }
+  const name = sanitize(categoryName);
+  // findChildFolder first so we can report wasCreated honestly (useful
+  // for logs + the backfill script). ensureFolder would do the same
+  // probe internally but doesn't return create-vs-found.
+  const existing = await findChildFolder(driveId, caseFolderItemId, name);
+  if (existing) {
+    return {
+      driveId,
+      folderItemId: existing.id,
+      wasCreated: false,
+    };
+  }
+  const created = await ensureFolder(driveId, caseFolderItemId, name);
+  // Visibility: lazy provisioning is the symptom of a mid-case template
+  // edit, which the firm wants to know about. Cheap log, easy to grep.
+  console.log(
+    "[onedrive.lazy-provision]",
+    JSON.stringify({
+      case_folder_item_id: caseFolderItemId,
+      category_name: name,
+      new_folder_id: created.id,
+    }),
+  );
+  return {
+    driveId,
+    folderItemId: created.id,
+    wasCreated: true,
+  };
+}
+
+/**
  * Returns the named child folder under `parentItemId`, creating it if it
  * doesn't exist. Idempotent under a single caller; concurrent callers
  * racing on the same name should get one survivor via the 409 fallback.

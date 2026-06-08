@@ -13,8 +13,10 @@ import { logEmail } from "@/lib/email/log";
 import { shouldRateLimit } from "@/lib/email/rate-limit";
 import { clientUploadInviteEmail } from "@/lib/email/templates/client-upload-invite";
 import { getBaseUrl } from "@/lib/email/url";
-import { graphFetch } from "@/lib/graph/client";
-import { ensureCasePaymentsFolder } from "@/lib/graph/folders";
+import {
+  ensureCaseCategoryFolder,
+  ensureCasePaymentsFolder,
+} from "@/lib/graph/folders";
 import { uploadFile } from "@/lib/graph/uploads";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
@@ -162,28 +164,29 @@ export async function uploadDocument(
   const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
   if (!driveId) return { error: "GRAPH_DOCUMENT_LIBRARY_ID is not set" };
 
-  // List children of the case folder once and find the matching category
-  // subfolder. The list is captured here for the duration of this single
-  // upload — no cross-call caching, just keep within the request.
+  // Self-healing: if the category subfolder doesn't exist (e.g. staff
+  // added a new category to the active template after this case was
+  // provisioned), ensureCaseCategoryFolder creates it under the case
+  // root on demand. Idempotent and safe under upload bursts (the
+  // helper retries on 409 from Graph).
   let categoryFolderId: string;
   try {
-    const children = await graphFetch<{
-      value: Array<{ id: string; name: string; folder?: object }>;
-    }>(
-      `/drives/${driveId}/items/${caseRow.sharepoint_folder_id}/children?$select=id,name,folder`,
+    const { folderItemId } = await ensureCaseCategoryFolder(
+      caseRow.sharepoint_folder_id,
+      category.name,
     );
-    const match = children.value.find(
-      (c) => c.folder && c.name === category.name,
-    );
-    if (!match) {
-      return {
-        error: `Subfolder "${category.name}" not found inside the case folder. The folder structure may be incomplete — try "Retry folder creation".`,
-      };
-    }
-    categoryFolderId = match.id;
+    categoryFolderId = folderItemId;
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { error: `Failed to list case folder: ${message}` };
+    // The raw Graph error often points at a stale or missing case root
+    // folder (someone deleted it in OneDrive, provisioning never
+    // completed, etc). That's an ops problem, not something staff
+    // can resolve from the upload form — surface a generic message
+    // and let graphFetch's own console.error carry the detail to logs.
+    console.error("[uploadDocument] ensureCaseCategoryFolder failed:", err);
+    return {
+      error:
+        "This case's OneDrive folder isn't ready. An admin needs to re-provision the case folder before uploads can proceed.",
+    };
   }
 
   const sanitizedOriginalName = sanitizeFileName(file.name);
