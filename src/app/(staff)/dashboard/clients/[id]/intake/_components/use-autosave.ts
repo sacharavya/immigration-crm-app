@@ -40,6 +40,7 @@ export function useDebouncedAutosave<T>(
     setState("saving");
     setError(null);
 
+    let fadeTimer: ReturnType<typeof setTimeout> | null = null;
     const t = setTimeout(() => {
       startTransition(async () => {
         const result = await save(value);
@@ -50,12 +51,14 @@ export function useDebouncedAutosave<T>(
         }
         lastSavedRef.current = value;
         setState("saved");
-        const fade = setTimeout(() => setState("idle"), 1200);
-        return () => clearTimeout(fade);
+        fadeTimer = setTimeout(() => setState("idle"), 1200);
       });
     }, delayMs);
 
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      if (fadeTimer) clearTimeout(fadeTimer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, enabled]);
 
