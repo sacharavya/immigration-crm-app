@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 
 export type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -10,6 +10,15 @@ export type SaveState = "idle" | "saving" | "saved" | "error";
 //
 // `enabled` lets the caller suppress autosave when the field is in an
 // invalid intermediate state (e.g. partial date input).
+//
+// Next.js 16: server-action invocations + their dependent setState
+// calls must run inside startTransition. Without it the dev console
+// floods with "Router action dispatched before initialization."
+// every time revalidatePath fires from inside the action (which the
+// staff intake actions do on every write to keep the dashboard
+// view fresh). The transition wrap also marks autosave as a non-
+// urgent update so a fast typist's keystrokes still render
+// immediately while the previous save is in flight.
 export function useDebouncedAutosave<T>(
   value: T,
   save: (value: T) => Promise<{ ok: true } | { error: string }>,
@@ -31,17 +40,19 @@ export function useDebouncedAutosave<T>(
     setState("saving");
     setError(null);
 
-    const t = setTimeout(async () => {
-      const result = await save(value);
-      if ("error" in result) {
-        setError(result.error);
-        setState("error");
-        return;
-      }
-      lastSavedRef.current = value;
-      setState("saved");
-      const fade = setTimeout(() => setState("idle"), 1200);
-      return () => clearTimeout(fade);
+    const t = setTimeout(() => {
+      startTransition(async () => {
+        const result = await save(value);
+        if ("error" in result) {
+          setError(result.error);
+          setState("error");
+          return;
+        }
+        lastSavedRef.current = value;
+        setState("saved");
+        const fade = setTimeout(() => setState("idle"), 1200);
+        return () => clearTimeout(fade);
+      });
     }, delayMs);
 
     return () => clearTimeout(t);
