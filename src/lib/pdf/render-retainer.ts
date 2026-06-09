@@ -458,6 +458,37 @@ export async function renderRetainerPdf(
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
 
+    // Wait for the Google Fonts (PT Serif) stylesheet to register and
+    // every requested font face to finish loading before snapshotting.
+    // networkidle0 alone isn't enough — the @font-face entries are
+    // declared by the stylesheet AFTER the network goes idle, so the
+    // font system can still be mid-load when the PDF capture fires.
+    // document.fonts.ready resolves only when every face is usable.
+    // Best-effort: a 5s ceiling keeps a degraded fallback (Georgia /
+    // default serif) from blocking the PDF forever if Google Fonts
+    // is unreachable.
+    try {
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            const timeout = setTimeout(() => resolve(), 5000);
+            (
+              document as unknown as { fonts: { ready: Promise<unknown> } }
+            ).fonts.ready
+              .then(() => {
+                clearTimeout(timeout);
+                resolve();
+              })
+              .catch(() => {
+                clearTimeout(timeout);
+                resolve();
+              });
+          }),
+      );
+    } catch (err) {
+      console.warn("[renderRetainerPdf] font-ready wait failed:", err);
+    }
+
     const pdf = await page.pdf({
       format: "A4",
       margin: {

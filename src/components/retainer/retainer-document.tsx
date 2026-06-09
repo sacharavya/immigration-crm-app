@@ -101,7 +101,15 @@ export const RETAINER_STYLES = `
 }
 
 .retainer-page {
-  font-family: Georgia, "Times New Roman", Times, serif;
+  /* PT Serif is the primary because Georgia / Times New Roman are
+     proprietary Microsoft fonts that don't ship with @sparticuz/chromium
+     on Vercel — the headless render fell back to a default serif with
+     wider metrics and the contact-table bled past the page. PT Serif
+     has metrics very close to Georgia, loads from Google Fonts (linked
+     in renderRetainerHtml), and is open-source. On the staff/client
+     browser preview, modern systems still resolve to Georgia if PT
+     Serif isn't cached locally, so the on-screen view stays unchanged. */
+  font-family: "PT Serif", Georgia, "Times New Roman", Times, serif;
   color: var(--rt-text);
   background: #ffffff;
   font-size: 12pt;
@@ -985,12 +993,21 @@ export async function renderRetainerHtml(
     <RetainerDocument data={data} mode={mode} voidedAt={options?.voidedAt} />,
   );
   const title = `Retainer Agreement — ${data.case_number}`;
+  // PT Serif via Google Fonts. The headless chromium on Vercel doesn't
+  // have Georgia (Microsoft proprietary), so without this link the PDF
+  // falls back to a default serif with wider metrics and the contact
+  // table bleeds past the page edge. renderRetainerPdf waits for
+  // document.fonts.ready before snapshotting so the load completes
+  // before the PDF is captured.
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapeHtml(title)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
 <style>${RETAINER_STYLES}</style>
 </head>
 <body>${body}</body>
