@@ -968,6 +968,9 @@ export default async function CasePage({ params, searchParams }: Props) {
                   finalDocRes.data?.sharepoint_web_url ?? null,
                 final_document_file_name:
                   finalDocRes.data?.file_name ?? null,
+                final_document_present: Boolean(
+                  retainerRow.final_document_id,
+                ),
               }}
               rcicHasSignature={(() => {
                 const list = rcicListRes.data ?? [];

@@ -2,7 +2,9 @@
 
 import { format } from "date-fns";
 import {
+  AlertTriangle,
   Check,
+  CloudUpload,
   Copy,
   ExternalLink,
   FileText,
@@ -32,6 +34,7 @@ import { cn } from "@/lib/utils/index";
 import {
   cancelSigning,
   getSigningLink,
+  resaveSignedRetainerToOneDrive,
   resendRetainerEmail,
   setRetainerRcic,
   startNewRetainer,
@@ -71,6 +74,10 @@ export type RetainerTabProps = {
     signed_by_name: string | null;
     final_document_web_url: string | null;
     final_document_file_name: string | null;
+    // True iff the retainer row has final_document_id set. When the
+    // status is signed/uploaded but this is false, the OneDrive copy
+    // didn't land — surface a "Save to OneDrive" backup button.
+    final_document_present: boolean;
   };
   rcicHasSignature: boolean;
   canManage: boolean;
@@ -164,6 +171,10 @@ export function RetainerTab(props: RetainerTabProps) {
   const [resendPending, startResendTransition] = useTransition();
   const [cancelPending, startCancelTransition] = useTransition();
   const [newPending, startNewTransition] = useTransition();
+  const [resavePending, startResaveTransition] = useTransition();
+  const [resaveNotice, setResaveNotice] = useState<
+    { kind: "success"; webUrl: string | null } | { kind: "error"; reason: string } | null
+  >(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const [sendOpen, setSendOpen] = useState(false);
@@ -227,6 +238,22 @@ export function RetainerTab(props: RetainerTabProps) {
       if ("error" in result) {
         setActionError(result.error);
       }
+    });
+  }
+
+  function handleResave() {
+    setResaveNotice(null);
+    setActionError(null);
+    startResaveTransition(async () => {
+      const result = await resaveSignedRetainerToOneDrive(retainerId);
+      if ("error" in result) {
+        setResaveNotice({ kind: "error", reason: result.error });
+        return;
+      }
+      setResaveNotice({ kind: "success", webUrl: result.webUrl });
+      // The page revalidates server-side; refresh client state so the
+      // banner disappears and the OneDrive link button renders.
+      router.refresh();
     });
   }
 
@@ -479,6 +506,72 @@ export function RetainerTab(props: RetainerTabProps) {
                     <ExternalLink className="mr-1 h-3.5 w-3.5" />
                     Open in OneDrive
                   </a>
+                )}
+
+                {/* Backup save path. The online-signing flow uploads the
+                    PDF best-effort and logs failures silently; if the
+                    upload didn't land (status=signed but no
+                    final_document_id), staff can re-trigger the same
+                    pipeline here. Scoped to 'signed' because 'uploaded'
+                    is the staff-uploaded-scan path where we don't have
+                    the original file to re-upload. */}
+                {status === "signed" && !meta.final_document_present && (
+                  <div className="w-full">
+                    <div className="flex flex-col gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <div>
+                          <strong className="block">
+                            Signed PDF isn&rsquo;t in OneDrive yet.
+                          </strong>
+                          <span className="text-xs text-amber-800">
+                            The auto-save at signing time didn&rsquo;t land.
+                            Click below to render and upload it now.
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={handleResave}
+                        disabled={resavePending}
+                      >
+                        {resavePending ? (
+                          <>
+                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                            Saving…
+                          </>
+                        ) : (
+                          <>
+                            <CloudUpload className="mr-2 h-3.5 w-3.5" />
+                            Save to OneDrive
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    {resaveNotice?.kind === "error" && (
+                      <p
+                        role="alert"
+                        className="mt-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+                      >
+                        {resaveNotice.reason}
+                      </p>
+                    )}
+                    {resaveNotice?.kind === "success" && (
+                      <p className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+                        Saved to OneDrive.{" "}
+                        {resaveNotice.webUrl && (
+                          <a
+                            href={resaveNotice.webUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium underline-offset-2 hover:underline"
+                          >
+                            Open file
+                          </a>
+                        )}
+                      </p>
+                    )}
+                  </div>
                 )}
                 {canVoid && (
                   <Button

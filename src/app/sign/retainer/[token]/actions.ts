@@ -437,16 +437,36 @@ async function finishOnlineSignature(
       }
     }
   } catch (err) {
-    if (err instanceof RetainerRenderError) {
-      console.error(
-        `[signing] PDF generation failed for retainer ${retainer.id}:`,
-        err.code,
-        err.message,
-      );
-    } else {
-      console.error(
-        `[signing] PDF/upload failed for retainer ${retainer.id}:`,
-        err,
+    const errCode =
+      err instanceof RetainerRenderError ? err.code : "upload_failed";
+    const errMessage = err instanceof Error ? err.message : String(err);
+    console.error(
+      `[signing] PDF/upload failed for retainer ${retainer.id}:`,
+      errCode,
+      errMessage,
+    );
+    // Surface the silent failure in the case timeline so staff can see
+    // it (and recover via the "Save to OneDrive" backup button on the
+    // retainer tab). Best-effort — never roll back the signature.
+    try {
+      await supabase
+        .schema("crm")
+        .from("case_events")
+        .insert({
+          case_id: retainer.case_id,
+          event_type: "other",
+          description:
+            "Auto-save of signed retainer PDF failed. Use 'Save to OneDrive' on the retainer tab to retry.",
+          event_data: {
+            kind: "retainer_pdf_autosave_failed",
+            error_code: errCode,
+            error_message: errMessage.slice(0, 500),
+          },
+        });
+    } catch (logErr) {
+      console.warn(
+        "[signing] could not log autosave-failure case_event:",
+        logErr,
       );
     }
     // downloadPath stays null — the confirmation page will surface a

@@ -1391,3 +1391,169 @@ export async function uploadSignedRetainer(
   rev(ctx.caseRow.id);
   return { ok: true };
 }
+
+// ---------------------------------------------------------------------------
+// resaveSignedRetainerToOneDrive
+//
+// Backup path for the rare case where the online-signing flow's PDF
+// upload silently failed (Graph blip, rate limit, missing env var on
+// prod). The retainer row ends up status='signed' but
+// final_document_id IS NULL — the app shows it as signed but the
+// "00 Retainer" OneDrive folder has nothing.
+//
+// This action re-runs the same render + upload + link pipeline that
+// the original online-signing flow ran. Only valid when:
+//   * status = 'signed' (online signature path — not 'uploaded', which
+//     is the staff-uploaded-scan path; we don't have the original
+//     file to re-upload there)
+//   * final_document_id IS NULL
+// Idempotent under racing clicks because the staff page reloads after
+// each call and the precondition disappears.
+// ---------------------------------------------------------------------------
+
+export type ResaveSignedRetainerResult =
+  | { ok: true; documentId: string; webUrl: string | null }
+  | { error: string };
+
+export async function resaveSignedRetainerToOneDrive(
+  retainerId: string,
+): Promise<ResaveSignedRetainerResult> {
+  const g = await gate();
+  if (!g.ok) return { error: g.error };
+
+  if (!z.string().uuid().safeParse(retainerId).success) {
+    return { error: "Invalid retainer id" };
+  }
+
+  const supabase = await createClient();
+  const { data: retainerRow } = await supabase
+    .schema("crm")
+    .from("retainer_agreements")
+    .select("id, case_id, status, final_document_id")
+    .eq("id", retainerId)
+    .maybeSingle();
+  if (!retainerRow) return { error: "Retainer not found" };
+  if (retainerRow.status !== "signed") {
+    return {
+      error:
+        "This retainer isn't in the signed state. The resave path only handles online-signed retainers whose PDF upload failed.",
+    };
+  }
+  if (retainerRow.final_document_id) {
+    return {
+      error:
+        "This retainer already has a saved PDF on file. Refresh the page to see the OneDrive link.",
+    };
+  }
+
+  const { data: caseRow } = await supabase
+    .schema("crm")
+    .from("cases")
+    .select("id, sharepoint_folder_id")
+    .eq("id", retainerRow.case_id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!caseRow) return { error: "Case not found" };
+  if (!caseRow.sharepoint_folder_id) {
+    return {
+      error:
+        "OneDrive folder isn't provisioned for this case yet. Open the OneDrive card and retry folder creation first.",
+    };
+  }
+
+  // Render the PDF from the persisted retainer + the captured client
+  // signature image. Same renderer the online-signing flow uses; the
+  // output is byte-identical for a given retainer state.
+  let pdf: Uint8Array;
+  try {
+    pdf = await renderRetainerPdf(retainerId);
+  } catch (err) {
+    return {
+      error: `Could not render the retainer PDF: ${err instanceof Error ? err.message : "unknown"}`,
+    };
+  }
+
+  let folderDriveId: string;
+  let folderItemId: string;
+  try {
+    const folder = await ensureCaseRetainerFolder(caseRow.sharepoint_folder_id);
+    folderDriveId = folder.driveId;
+    folderItemId = folder.folderItemId;
+  } catch (err) {
+    return {
+      error: `Could not access OneDrive folder: ${err instanceof Error ? err.message : "unknown"}`,
+    };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const fileName = `Retainer_Signed_${today}.pdf`;
+
+  let uploaded;
+  try {
+    uploaded = await uploadFile(
+      folderDriveId,
+      folderItemId,
+      fileName,
+      pdf,
+      "application/pdf",
+    );
+  } catch (err) {
+    return {
+      error: `OneDrive upload failed: ${err instanceof Error ? err.message : "unknown"}`,
+    };
+  }
+
+  const { data: doc, error: docErr } = await supabase
+    .schema("files")
+    .from("documents")
+    .insert({
+      case_id: caseRow.id,
+      category: "retainer",
+      document_code: "SIGNED_RETAINER",
+      display_name: "Signed Retainer Agreement",
+      file_name: fileName,
+      file_size_bytes: pdf.byteLength,
+      mime_type: "application/pdf",
+      sharepoint_drive_id: folderDriveId,
+      sharepoint_item_id: uploaded.id,
+      sharepoint_web_url: uploaded.webUrl,
+      status: "accepted",
+      // Backup save was triggered by staff after the auto-upload
+      // failed at signing time. Attribution goes to staff so the
+      // audit trail is honest about who pushed the bytes.
+      uploaded_by_staff: g.me.id,
+    })
+    .select("id")
+    .single();
+  if (docErr || !doc) {
+    return {
+      error: `Could not record document: ${docErr?.message ?? "unknown"}`,
+    };
+  }
+
+  const { error: linkErr } = await supabase
+    .schema("crm")
+    .from("retainer_agreements")
+    .update({ final_document_id: doc.id })
+    .eq("id", retainerId);
+  if (linkErr) return { error: linkErr.message };
+
+  await supabase
+    .schema("crm")
+    .from("case_events")
+    .insert({
+      case_id: caseRow.id,
+      event_type: "retainer_uploaded",
+      description:
+        "Signed retainer PDF re-saved to OneDrive (manual backup save).",
+      event_data: {
+        document_id: doc.id,
+        sharepoint_web_url: uploaded.webUrl,
+        backup_save: true,
+      },
+      created_by: g.me.id,
+    });
+
+  rev(caseRow.id);
+  return { ok: true, documentId: doc.id, webUrl: uploaded.webUrl };
+}
