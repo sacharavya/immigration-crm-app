@@ -1,28 +1,26 @@
 // Server-side helper that loads a retainer + its related rows, builds
-// the RetainerData object, renders the HTML, and produces a PDF Buffer
-// via Puppeteer. Used by:
+// the RetainerData object, and produces a PDF Buffer. Used by:
 //   - the case detail Retainer tab "Generate PDF" button (RET-4)
+//   - the case detail "Save to OneDrive" backup button (90a4aea)
 //   - the public signing page submit handler (RET-5+)
 //   - the /api/render-retainer-pdf route handler
+//   - the void-retainer + download paths
 //
 // Uses the Supabase service-role client so it works for the public
 // signing flow (no logged-in staff). Callers that should be auth-gated
 // must check permissions themselves before invoking this.
 //
-// Vercel: this MUST run in the Node.js runtime (not Edge) — Chromium
-// can't run on Edge. The route handler exports `runtime = 'nodejs'`.
-//
-// Cold start: first invocation in a warm function takes ~2-3s for
-// Chromium to launch; subsequent calls in the same instance are much
-// faster. Document this so callers know to show a "Generating..."
-// state.
+// Vercel: this runs in the Node.js runtime. @react-pdf/renderer is
+// pure JavaScript (no native binary, no chromium) so cold start is
+// sub-second; the previous puppeteer + @sparticuz/chromium pipeline
+// (~2-3s cold start, ~50 MB function-bundle overhead, fragile font
+// handling) was retired in favour of this.
 
+import { renderToBuffer } from "@react-pdf/renderer";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
-import {
-  renderRetainerHtml,
-  type RetainerData,
-} from "@/components/retainer/retainer-document";
+import { RetainerPdfDocument } from "@/components/retainer/retainer-pdf-document";
+import type { RetainerData } from "@/components/retainer/retainer-document";
 import { getLetterheadLogoDataUrl } from "@/lib/retainer/logo";
 import { resolveServiceLabel } from "@/lib/retainer/service-label";
 import type { Database } from "@/lib/supabase/types";
@@ -371,52 +369,10 @@ async function resolveRcicStaffId(
   return null;
 }
 
-// Resolve the path to the local Chrome/Chromium binary in dev. The
-// production path goes through @sparticuz/chromium below.
-function localChromePath(): string | undefined {
-  if (process.env.CHROME_EXECUTABLE_PATH) {
-    return process.env.CHROME_EXECUTABLE_PATH;
-  }
-  if (process.platform === "darwin") {
-    return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-  }
-  // Linux fallback for local CI / containers; npx/dev workflows typically
-  // have one of these on PATH.
-  if (process.platform === "linux") {
-    return "/usr/bin/google-chrome";
-  }
-  return undefined;
-}
-
-async function launchBrowser() {
-  const isLambda = Boolean(
-    process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME,
-  );
-
-  const puppeteer = (await import("puppeteer-core")).default;
-
-  if (isLambda) {
-    const chromium = (await import("@sparticuz/chromium")).default;
-    return puppeteer.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
-      headless: true,
-    });
-  }
-
-  const executablePath = localChromePath();
-  if (!executablePath) {
-    throw new RetainerRenderError(
-      "chromium_launch_failed",
-      "Could not find a local Chrome/Chromium binary. Set CHROME_EXECUTABLE_PATH.",
-    );
-  }
-  return puppeteer.launch({
-    executablePath,
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
-}
+// Browser-launch helpers (localChromePath, launchBrowser) lived here in
+// the puppeteer + @sparticuz/chromium era. They were deleted when the
+// pipeline switched to @react-pdf/renderer — pure JavaScript, no
+// browser to launch, no binary to locate.
 
 /**
  * Loads the retainer, renders the HTML, and produces a PDF Buffer.
@@ -439,76 +395,24 @@ export async function renderRetainerPdf(
   const data = await loadRetainerData(retainerId, {
     requireSignature: mode === "final",
   });
-  const html = await renderRetainerHtml(data, mode, {
-    voidedAt: options?.voidedAt,
-  });
 
-  let browser: Awaited<ReturnType<typeof launchBrowser>> | null = null;
+  // @react-pdf/renderer takes the React tree and returns a Buffer
+  // directly — no browser, no HTML stringification, no font.ready
+  // race. PT Serif is registered inside the PDF component via
+  // Font.register(), fetched once per cold start, cached in /tmp.
   try {
-    try {
-      browser = await launchBrowser();
-    } catch (err) {
-      console.error("[renderRetainerPdf] chromium launch failed:", err);
-      throw new RetainerRenderError(
-        "chromium_launch_failed",
-        err instanceof Error ? err.message : "Chromium launch failed",
-      );
-    }
-
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-
-    // Wait for the Google Fonts (PT Serif) stylesheet to register and
-    // every requested font face to finish loading before snapshotting.
-    // networkidle0 alone isn't enough — the @font-face entries are
-    // declared by the stylesheet AFTER the network goes idle, so the
-    // font system can still be mid-load when the PDF capture fires.
-    // document.fonts.ready resolves only when every face is usable.
-    // Best-effort: a 5s ceiling keeps a degraded fallback (Georgia /
-    // default serif) from blocking the PDF forever if Google Fonts
-    // is unreachable.
-    try {
-      await page.evaluate(
-        () =>
-          new Promise<void>((resolve) => {
-            const timeout = setTimeout(() => resolve(), 5000);
-            (
-              document as unknown as { fonts: { ready: Promise<unknown> } }
-            ).fonts.ready
-              .then(() => {
-                clearTimeout(timeout);
-                resolve();
-              })
-              .catch(() => {
-                clearTimeout(timeout);
-                resolve();
-              });
-          }),
-      );
-    } catch (err) {
-      console.warn("[renderRetainerPdf] font-ready wait failed:", err);
-    }
-
-    const pdf = await page.pdf({
-      format: "A4",
-      margin: {
-        top: "20mm",
-        bottom: "20mm",
-        left: "15mm",
-        right: "15mm",
-      },
-      printBackground: true,
-    });
-
-    return Buffer.from(pdf);
+    return await renderToBuffer(
+      <RetainerPdfDocument
+        data={data}
+        mode={mode}
+        voidedAt={options?.voidedAt}
+      />,
+    );
   } catch (err) {
-    if (err instanceof RetainerRenderError) throw err;
     console.error("[renderRetainerPdf] pdf generation failed:", err);
     throw new RetainerRenderError(
       "pdf_generation_failed",
       err instanceof Error ? err.message : "PDF generation failed",
     );
-  } finally {
-    await browser?.close().catch(() => {});
   }
 }
