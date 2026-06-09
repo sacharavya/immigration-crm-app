@@ -86,6 +86,7 @@ export default async function PaymentsPage({ searchParams }: Props) {
         case_id,
         client_id,
         consultation_payment_nature,
+        client_uploaded_at,
         case:cases(id, case_number, client:clients(legal_name_full))
       `,
     )
@@ -294,6 +295,11 @@ export default async function PaymentsPage({ searchParams }: Props) {
                     </TableCell>
                     <TableCell className="text-stone-500">
                       <div>{p.reference || "—"}</div>
+                      {p.client_uploaded_at && (
+                        <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                          Client-uploaded · verify
+                        </div>
+                      )}
                       {p.consultation_payment_nature && (
                         <div className="mt-1">
                           <ConsultationOutcomeCell

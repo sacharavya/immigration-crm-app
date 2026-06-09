@@ -11,6 +11,7 @@ import { tryAutoAdvanceFromRetainerPending } from "@/lib/cases/auto-advance";
 import { sendEmail } from "@/lib/email/client";
 import { logEmail } from "@/lib/email/log";
 import { shouldRateLimit } from "@/lib/email/rate-limit";
+import { casePaymentRequestEmail } from "@/lib/email/templates/case-payment-request";
 import { clientUploadInviteEmail } from "@/lib/email/templates/client-upload-invite";
 import { getBaseUrl } from "@/lib/email/url";
 import {
@@ -1964,4 +1965,181 @@ export async function linkBiometricRecord(
 
   revalidatePath(`/dashboard/cases/${caseId}`);
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// notifyClientForPayment
+//
+// Staff-triggered: sends the client an email with Interac e-transfer
+// instructions and a link to /pay/<token> where they can upload proof.
+// Reuses the existing case client_portal_token so a single link covers
+// both the document-upload portal and the pay portal (just different
+// page paths).
+//
+// Refuses to send if the case balance is already paid in full — the
+// case detail page's button is disabled in that state, but the action
+// re-checks server-side because the dialog state could be stale.
+// ---------------------------------------------------------------------------
+
+// Same recipient address the appointment payment-pending email uses
+// for consultations. Centralised so a future change picks both up.
+const CASE_PAYMENT_RECIPIENT_EMAIL = "info@bigbangimmigration.com";
+
+const notifyPaymentSchema = z.object({
+  caseId: z.string().uuid(),
+  recipientEmail: z.string().email("Enter a valid email"),
+  customMessage: z.string().trim().max(1000).optional(),
+});
+
+export type NotifyClientForPaymentResult =
+  | { ok: true; emailSent: boolean; emailError?: string }
+  | { error: string };
+
+export async function notifyClientForPayment(
+  input: z.input<typeof notifyPaymentSchema>,
+): Promise<NotifyClientForPaymentResult> {
+  const parsed = notifyPaymentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  const me = await getStaff();
+  if (!me) return { error: "Not authenticated" };
+  // The "record_payments" perm is the right gate: anyone allowed to
+  // accept staff-recorded payments is allowed to ask for one. Doesn't
+  // need a separate permission flag.
+  if (!staffCan(me, "record_payments")) {
+    return {
+      error: "You don't have permission to send a payment request.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { data: caseRow } = await supabase
+    .schema("crm")
+    .from("cases")
+    .select(
+      "id, case_number, client_id, status, quoted_fee_cad, client_portal_token, client:clients(legal_name_full, given_names, preferred_name)",
+    )
+    .eq("id", parsed.data.caseId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!caseRow) return { error: "Case not found" };
+  if (caseRow.status === "closed") {
+    return { error: "Cannot request payment on a closed case." };
+  }
+
+  // Sum non-deleted payments to compute the outstanding balance. This
+  // INCLUDES client-uploaded rows pending verification — the button
+  // disables the moment the client uploads enough, and re-enables if
+  // staff later soft-deletes a bogus row.
+  const { data: priorPayments } = await supabase
+    .schema("crm")
+    .from("payments")
+    .select("amount_cad")
+    .eq("case_id", caseRow.id)
+    .is("deleted_at", null);
+  const alreadyPaid = (priorPayments ?? []).reduce(
+    (sum, p) => sum + Number(p.amount_cad),
+    0,
+  );
+  const quoted = Number(caseRow.quoted_fee_cad);
+  const amountDue = Math.max(0, quoted - alreadyPaid);
+  if (amountDue <= 0) {
+    return {
+      error: "This case is paid in full — no payment to request.",
+    };
+  }
+
+  // Ensure a portal token exists. Reusing the same column the
+  // document-upload portal uses (case is the entity gating both).
+  let token = caseRow.client_portal_token;
+  if (!token) {
+    token = randomUUID();
+    const { error: updateErr } = await supabase
+      .schema("crm")
+      .from("cases")
+      .update({
+        client_portal_token: token,
+        client_portal_token_created_at: new Date().toISOString(),
+      })
+      .eq("id", caseRow.id);
+    if (updateErr) {
+      return { error: `Could not issue portal token: ${updateErr.message}` };
+    }
+  }
+
+  const clientName =
+    caseRow.client?.preferred_name?.trim() ||
+    caseRow.client?.given_names?.trim() ||
+    caseRow.client?.legal_name_full ||
+    "there";
+
+  const limited = await shouldRateLimit(
+    "case_payment_request",
+    parsed.data.recipientEmail,
+  );
+  if (limited) {
+    return {
+      ok: true,
+      emailSent: false,
+      emailError: "Rate limit reached for this recipient. Try again later.",
+    };
+  }
+
+  const baseUrl = await getBaseUrl();
+  const payUrl = `${baseUrl}/pay/${token}`;
+  const tpl = casePaymentRequestEmail({
+    clientName,
+    caseNumber: caseRow.case_number,
+    amountDueCad: amountDue,
+    quotedFeeCad: quoted,
+    alreadyPaidCad: alreadyPaid,
+    recipientPaymentEmail: CASE_PAYMENT_RECIPIENT_EMAIL,
+    referenceCode: caseRow.case_number,
+    payUrl,
+    customMessage: parsed.data.customMessage,
+  });
+
+  const res = await sendEmail({
+    to: parsed.data.recipientEmail,
+    subject: tpl.subject,
+    html: tpl.html,
+    text: tpl.text,
+  });
+
+  await logEmail({
+    supabase,
+    caseId: caseRow.id,
+    clientId: caseRow.client_id,
+    staffId: me.id,
+    to: parsed.data.recipientEmail,
+    subject: tpl.subject,
+    body: tpl.text,
+  });
+
+  await supabase
+    .schema("crm")
+    .from("case_events")
+    .insert({
+      case_id: caseRow.id,
+      event_type: "other",
+      event_data: {
+        kind: "case_payment_request_emailed",
+        recipient: parsed.data.recipientEmail,
+        amount_due_cad: amountDue,
+        sent: res.ok,
+      },
+      description: res.ok
+        ? `Emailed payment request ($${amountDue.toFixed(2)}) to ${parsed.data.recipientEmail}.`
+        : `Tried to email payment request to ${parsed.data.recipientEmail} — delivery failed.`,
+      created_by: me.id,
+    });
+
+  revalidatePath(`/dashboard/cases/${caseRow.id}`);
+  return {
+    ok: true,
+    emailSent: res.ok,
+    emailError: res.ok ? undefined : res.error,
+  };
 }

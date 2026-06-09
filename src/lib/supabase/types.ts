@@ -1667,6 +1667,7 @@ export type Database = {
           amount_cad: number
           case_id: string | null
           client_id: string
+          client_uploaded_at: string | null
           consultation_payment_nature: string | null
           created_at: string
           deleted_at: string | null
@@ -1684,6 +1685,7 @@ export type Database = {
           amount_cad: number
           case_id?: string | null
           client_id: string
+          client_uploaded_at?: string | null
           consultation_payment_nature?: string | null
           created_at?: string
           deleted_at?: string | null
@@ -1701,6 +1703,7 @@ export type Database = {
           amount_cad?: number
           case_id?: string | null
           client_id?: string
+          client_uploaded_at?: string | null
           consultation_payment_nature?: string | null
           created_at?: string
           deleted_at?: string | null

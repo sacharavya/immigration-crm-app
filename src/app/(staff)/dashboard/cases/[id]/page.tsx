@@ -50,6 +50,7 @@ import {
   type PaymentRow as PaymentTabRow,
 } from "./_components/payments-tab";
 import { PhasePipeline } from "./_components/phase-pipeline";
+import { NotifyForPaymentTrigger } from "./_components/notify-for-payment-trigger";
 import { RecordPaymentTrigger } from "./_components/record-payment-trigger";
 import {
   TimelineActions,
@@ -1109,6 +1110,13 @@ export default async function CasePage({ params, searchParams }: Props) {
                 )}
 
                 <RecordPaymentTrigger caseId={caseRow.id} />
+                {canManagePayments && (
+                  <NotifyForPaymentTrigger
+                    caseId={caseRow.id}
+                    clientEmail={client?.email ?? null}
+                    paidInFull={paidInFull}
+                  />
+                )}
               </CardContent>
             </Card>
 
