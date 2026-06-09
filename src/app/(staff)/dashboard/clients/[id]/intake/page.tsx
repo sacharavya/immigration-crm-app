@@ -6,6 +6,8 @@ import { getStaff } from "@/lib/auth/staff";
 import { getIntakeProgress } from "@/lib/intake/completeness";
 import { createClient } from "@/lib/supabase/server";
 
+import { IntakeShareDialog } from "../_components/intake-share-dialog";
+
 import { IntakeShell } from "./_components/intake-shell";
 
 export const dynamic = "force-dynamic";
@@ -157,6 +159,14 @@ export default async function IntakePage({ params }: Props) {
               </span>
             </p>
           </div>
+          {canEdit && (
+            <IntakeShareDialog
+              clientId={client.id}
+              initialToken={client.intake_portal_token ?? null}
+              submittedAt={client.intake_submitted_at ?? null}
+              clientEmail={client.email ?? null}
+            />
+          )}
         </div>
 
         <IntakeShell
