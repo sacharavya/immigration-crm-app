@@ -100,11 +100,10 @@ export function NotifyForPaymentTrigger({
           <DialogHeader>
             <DialogTitle>Notify client for payment</DialogTitle>
             <DialogDescription>
-              Sends an email with Interac e-transfer instructions and a
-              secure link where the client can upload proof of payment.
-              The proof lands in the case&rsquo;s OneDrive folder under
-              &ldquo;00 Payments&rdquo; and shows up in /dashboard/payments
-              for verification.
+              We&rsquo;ll email the client with how to pay by Interac
+              e-transfer and a private link to upload their receipt.
+              You&rsquo;ll get notified when it arrives so you can review
+              and confirm it.
             </DialogDescription>
           </DialogHeader>
 
