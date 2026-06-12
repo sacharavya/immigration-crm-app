@@ -18,7 +18,7 @@ import {
   ensureCaseCategoryFolder,
   ensureCasePaymentsFolder,
 } from "@/lib/graph/folders";
-import { uploadFile } from "@/lib/graph/uploads";
+import { uploadFile as graphUploadFile } from "@/lib/graph/uploads";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import {
@@ -51,45 +51,62 @@ export type UploadDocumentResult =
   | { ok: true; documentId: string; sharepointWebUrl: string }
   | { error: string };
 
-export async function uploadDocument(
+// ---------------------------------------------------------------------------
+// Filename rules for the new file-group versioning model (Increment 1+).
+//
+// v1   : <documentCode>_<sanitizedOriginal>            (clean, no version)
+// v>=2 : <documentCode>_<sanitizedOriginal>_v<N>       (suffix before ext)
+//
+// The version number is the DB source of truth (files.documents.version_
+// number). The filename merely echoes it for OneDrive readability and is
+// never parsed back out.
+// ---------------------------------------------------------------------------
+function composeFileName(
+  documentCode: string,
+  originalName: string,
+  version: number,
+): string {
+  const base = `${documentCode}_${sanitizeFileName(originalName)}`;
+  if (version <= 1) return base;
+  const lastDot = base.lastIndexOf(".");
+  if (lastDot <= 0 || lastDot === base.length - 1) {
+    return `${base}_v${version}`;
+  }
+  return `${base.slice(0, lastDot)}_v${version}${base.slice(lastDot)}`;
+}
+
+type UploadContext = {
+  caseRow: {
+    id: string;
+    client_id: string;
+    sharepoint_folder_id: string;
+  };
+  templateDoc: {
+    document_label: string;
+  };
+  categoryName: string;
+  categoryFolderId: string;
+  driveId: string;
+};
+
+// Loads the case + template + category folder and validates the file
+// against the template's per-doc constraints. Shared between uploadFile
+// (fresh) and reuploadFile (re-upload) since both need the same context
+// even though they differ in versioning behaviour.
+async function resolveUploadContext(
+  supabase: Awaited<ReturnType<typeof createClient>>,
   caseId: string,
   documentCode: string,
-  formData: FormData,
-): Promise<UploadDocumentResult> {
-  if (!z.string().uuid().safeParse(caseId).success) {
-    return { error: "Invalid case id" };
-  }
-  if (!z.string().min(1).max(50).safeParse(documentCode).success) {
-    return { error: "Invalid document code" };
-  }
-
-  const file = formData.get("file");
-  if (!(file instanceof File)) return { error: "No file provided" };
-
-  // Hard ceiling regardless of template overrides — Graph's small-file
-  // upload endpoint caps at 4 MB. Bigger files would need the upload-session
-  // flow, which we don't implement.
+  file: File,
+): Promise<
+  { ok: true; ctx: UploadContext } | { ok: false; error: string }
+> {
   if (file.size > MAX_UPLOAD_BYTES) {
     return {
+      ok: false,
       error: `File exceeds the 4MB limit (${formatBytesMb(file.size)} MB).`,
     };
   }
-
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-
-  const { data: staff } = await supabase
-    .schema("crm")
-    .from("staff")
-    .select("id")
-    .eq("auth_user_id", user.id)
-    .is("deleted_at", null)
-    .maybeSingle();
-  if (!staff) return { error: "Active staff record not found" };
 
   const { data: caseRow } = await supabase
     .schema("crm")
@@ -98,10 +115,10 @@ export async function uploadDocument(
     .eq("id", caseId)
     .is("deleted_at", null)
     .maybeSingle();
-  if (!caseRow) return { error: "Case not found" };
-
+  if (!caseRow) return { ok: false, error: "Case not found" };
   if (!caseRow.sharepoint_folder_id) {
     return {
+      ok: false,
       error:
         "Documents folder is still being created — please try again in a few seconds.",
     };
@@ -122,16 +139,18 @@ export async function uploadDocument(
     .eq("document_code", documentCode)
     .maybeSingle();
   if (!templateDoc) {
-    return { error: "Document code is not part of this case's template." };
+    return {
+      ok: false,
+      error: "Document code is not part of this case's template.",
+    };
   }
   if (!templateDoc.group) {
     return {
+      ok: false,
       error: "Document group missing — checklist group reference is broken.",
     };
   }
 
-  // Per-template override of the global mime allow-list. Falls back to the
-  // default set when the template doesn't pin one.
   const allowed = templateDoc.allowed_file_types?.length
     ? new Set(templateDoc.allowed_file_types)
     : ALLOWED_MIME_TYPES_SET;
@@ -140,12 +159,11 @@ export async function uploadDocument(
       ? templateDoc.allowed_file_types.join(", ")
       : ALLOWED_EXTENSIONS_HUMAN;
     return {
+      ok: false,
       error: `File type ${file.type || "unknown"} is not allowed for this document. Use ${human}.`,
     };
   }
 
-  // Per-template size cap, clamped to the Graph small-upload ceiling.
-  // Templates above the ceiling are an authoring mistake — log + clamp.
   if (templateDoc.max_file_size_mb !== null) {
     if (templateDoc.max_file_size_mb > 4) {
       console.warn(
@@ -155,49 +173,119 @@ export async function uploadDocument(
     const cap = Math.min(templateDoc.max_file_size_mb, 4) * 1024 * 1024;
     if (file.size > cap) {
       return {
+        ok: false,
         error: `File exceeds this document's ${Math.min(templateDoc.max_file_size_mb, 4)}MB limit (${formatBytesMb(file.size)} MB).`,
       };
     }
   }
 
-  const category = { name: templateDoc.group.name };
-
   const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) return { error: "GRAPH_DOCUMENT_LIBRARY_ID is not set" };
+  if (!driveId) {
+    return { ok: false, error: "GRAPH_DOCUMENT_LIBRARY_ID is not set" };
+  }
 
-  // Self-healing: if the category subfolder doesn't exist (e.g. staff
-  // added a new category to the active template after this case was
-  // provisioned), ensureCaseCategoryFolder creates it under the case
-  // root on demand. Idempotent and safe under upload bursts (the
-  // helper retries on 409 from Graph).
+  // Self-healing: if the category subfolder doesn't exist (template
+  // edited mid-case), ensureCaseCategoryFolder creates it lazily on
+  // demand. Idempotent under 409 races.
   let categoryFolderId: string;
   try {
     const { folderItemId } = await ensureCaseCategoryFolder(
       caseRow.sharepoint_folder_id,
-      category.name,
+      templateDoc.group.name,
     );
     categoryFolderId = folderItemId;
   } catch (err) {
-    // The raw Graph error often points at a stale or missing case root
-    // folder (someone deleted it in OneDrive, provisioning never
-    // completed, etc). That's an ops problem, not something staff
-    // can resolve from the upload form — surface a generic message
-    // and let graphFetch's own console.error carry the detail to logs.
-    console.error("[uploadDocument] ensureCaseCategoryFolder failed:", err);
+    console.error(
+      "[resolveUploadContext] ensureCaseCategoryFolder failed:",
+      err,
+    );
     return {
+      ok: false,
       error:
         "This case's OneDrive folder isn't ready. An admin needs to re-provision the case folder before uploads can proceed.",
     };
   }
 
-  const sanitizedOriginalName = sanitizeFileName(file.name);
-  const uploadName = `${documentCode}_${sanitizedOriginalName}`;
-
-  let uploadResponse: { id: string; name: string; webUrl: string; size: number };
-  try {
-    uploadResponse = await uploadFile(
-      driveId,
+  return {
+    ok: true,
+    ctx: {
+      caseRow: {
+        id: caseRow.id,
+        client_id: caseRow.client_id,
+        sharepoint_folder_id: caseRow.sharepoint_folder_id,
+      },
+      templateDoc: { document_label: templateDoc.document_label },
+      categoryName: templateDoc.group.name,
       categoryFolderId,
+      driveId,
+    },
+  };
+}
+
+/**
+ * uploadFile — fresh upload, version 1, new file_group_key.
+ *
+ * Used for the first upload on a checklist slot AND for sibling files
+ * when the template's expected_quantity > 1. The DB column DEFAULT
+ * (gen_random_uuid) fills file_group_key automatically.
+ *
+ * Refuses if a live row already exists on the slot — under the new
+ * invariant the only path to v(N>1) is reuploadFile against a rejected
+ * row. The wrapper uploadDocument below dispatches automatically; the
+ * Inc 4 UI will call this directly for sibling additions.
+ */
+export async function uploadFile(
+  caseId: string,
+  documentCode: string,
+  formData: FormData,
+): Promise<UploadDocumentResult> {
+  if (!z.string().uuid().safeParse(caseId).success) {
+    return { error: "Invalid case id" };
+  }
+  if (!z.string().min(1).max(50).safeParse(documentCode).success) {
+    return { error: "Invalid document code" };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) return { error: "No file provided" };
+
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: staff } = await supabase
+    .schema("crm")
+    .from("staff")
+    .select("id")
+    .eq("auth_user_id", user.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!staff) return { error: "Active staff record not found" };
+
+  const ctxRes = await resolveUploadContext(
+    supabase,
+    caseId,
+    documentCode,
+    file,
+  );
+  if (!ctxRes.ok) return { error: ctxRes.error };
+  const { ctx } = ctxRes;
+
+  const uploadName = composeFileName(documentCode, file.name, 1);
+
+  let uploadResponse: {
+    id: string;
+    name: string;
+    webUrl: string;
+    size: number;
+  };
+  try {
+    uploadResponse = await graphUploadFile(
+      ctx.driveId,
+      ctx.categoryFolderId,
       uploadName,
       file,
       file.type,
@@ -207,66 +295,24 @@ export async function uploadDocument(
     return { error: `Upload to OneDrive failed: ${message}` };
   }
 
-  // Existing versions: mark prior as superseded, compute next version.
-  const { data: existing } = await supabase
-    .schema("files")
-    .from("documents")
-    .select("id, version_number, status")
-    .eq("case_id", caseId)
-    .eq("document_code", documentCode)
-    .is("deleted_at", null);
-
-  const priorRows = existing ?? [];
-  const maxVersion = priorRows.reduce(
-    (m, d) => Math.max(m, d.version_number),
-    0,
-  );
-  const nextVersion = maxVersion + 1;
-  const priorId =
-    priorRows.length > 0
-      ? priorRows.reduce((latest, d) =>
-          d.version_number > latest.version_number ? d : latest,
-        ).id
-      : null;
-
-  if (priorRows.length > 0) {
-    const idsToSupersede = priorRows
-      .filter((d) => d.status !== "superseded")
-      .map((d) => d.id);
-    if (idsToSupersede.length > 0) {
-      await supabase
-        .schema("files")
-        .from("documents")
-        .update({ status: "superseded" })
-        .in("id", idsToSupersede);
-    }
-  }
-
-  // CICC audit-trail note: the OneDrive audit log will record every upload
-  // as the shared OneDrive owner (info@bigbangimmigration.com), since the
-  // app uses an app-only Graph token against that shared mailbox. The
-  // legally meaningful per-staff attribution is captured here in
-  // uploaded_by_staff and in the case_event below.
   const { data: newDoc, error: insertErr } = await supabase
     .schema("files")
     .from("documents")
     .insert({
       case_id: caseId,
-      client_id: caseRow.client_id,
+      client_id: ctx.caseRow.client_id,
       document_code: documentCode,
-      display_name: templateDoc.document_label,
-      // files.documents.category is a denormalised label kept for legacy
-      // queries; populate it with the checklist group name.
-      category: category.name,
-      sharepoint_drive_id: driveId,
+      display_name: ctx.templateDoc.document_label,
+      category: ctx.categoryName,
+      sharepoint_drive_id: ctx.driveId,
       sharepoint_item_id: uploadResponse.id,
       sharepoint_web_url: uploadResponse.webUrl,
       file_name: uploadName,
       file_size_bytes: file.size,
       mime_type: file.type,
       status: "uploaded",
-      version_number: nextVersion,
-      supersedes: priorId,
+      version_number: 1,
+      // file_group_key omitted; DB default fills a fresh UUID.
       uploaded_by_staff: staff.id,
       uploaded_by_client: false,
     })
@@ -288,10 +334,10 @@ export async function uploadDocument(
       event_data: {
         document_code: documentCode,
         document_id: newDoc.id,
-        version_number: nextVersion,
+        version_number: 1,
         file_name: uploadName,
       },
-      description: `Document received: ${templateDoc.document_label} (v${nextVersion})`,
+      description: `Document received: ${ctx.templateDoc.document_label} (v1)`,
       visible_to_client: false,
       created_by: staff.id,
     });
@@ -301,6 +347,257 @@ export async function uploadDocument(
     ok: true,
     documentId: newDoc.id,
     sharepointWebUrl: uploadResponse.webUrl,
+  };
+}
+
+/**
+ * reuploadFile — replaces a rejected file in-place with a new version.
+ *
+ * Strictly limited to slots whose current live row is status='rejected'.
+ * Same file_group_key, version_number = prior + 1.
+ *
+ * ORDERING IS CRITICAL (Increment 1 migration comment):
+ * the prior row must be flipped to 'superseded' BEFORE the new row is
+ * inserted, or uniq_document_live_per_group rejects the INSERT.
+ *
+ * Sequence (do NOT reorder):
+ *   1. Probe — find the live rejected row in this group. Captures
+ *      case_id, document_code, version_number for filename + context.
+ *   2. Graph upload — happens BEFORE the DB transition so a Graph
+ *      failure leaves the prior 'rejected' row intact (and the slot
+ *      still reflects the right state). Trade-off: a failed DB write
+ *      between Graph success and our INSERT leaves a small OneDrive
+ *      orphan that gets cleaned up by Inc 5's pending-moves cron.
+ *   3. UPDATE ... RETURNING — flip rejected to superseded AND capture
+ *      version_number atomically. Double precondition (status='rejected'
+ *      AND version matches) defends against concurrent reuploads: the
+ *      second caller finds no row and aborts.
+ *   4. INSERT v(N+1) under the same file_group_key.
+ *   5. Audit case_event. (Inc 5 will also enqueue a pending_drive_moves
+ *      row here so the prior file is filed into Rejected/.)
+ */
+export async function reuploadFile(
+  fileGroupKey: string,
+  formData: FormData,
+): Promise<UploadDocumentResult> {
+  if (!z.string().uuid().safeParse(fileGroupKey).success) {
+    return { error: "Invalid file group" };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) return { error: "No file provided" };
+
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: staff } = await supabase
+    .schema("crm")
+    .from("staff")
+    .select("id")
+    .eq("auth_user_id", user.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!staff) return { error: "Active staff record not found" };
+
+  // 1. Probe the group.
+  const { data: live } = await supabase
+    .schema("files")
+    .from("documents")
+    .select("id, case_id, client_id, document_code, version_number, status")
+    .eq("file_group_key", fileGroupKey)
+    .neq("status", "superseded")
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!live) return { error: "File group not found" };
+  if (!live.case_id) return { error: "File is not attached to a case." };
+  if (!live.document_code) {
+    return {
+      error:
+        "Cannot re-upload an additional document via this action.",
+    };
+  }
+  if (live.status !== "rejected") {
+    return {
+      error: "Only rejected files can be re-uploaded. Refresh and try again.",
+    };
+  }
+
+  const ctxRes = await resolveUploadContext(
+    supabase,
+    live.case_id,
+    live.document_code,
+    file,
+  );
+  if (!ctxRes.ok) return { error: ctxRes.error };
+  const { ctx } = ctxRes;
+
+  const nextVersion = live.version_number + 1;
+  const uploadName = composeFileName(
+    live.document_code,
+    file.name,
+    nextVersion,
+  );
+
+  // 2. Graph upload first. Failure here = no DB damage.
+  let uploadResponse: {
+    id: string;
+    name: string;
+    webUrl: string;
+    size: number;
+  };
+  try {
+    uploadResponse = await graphUploadFile(
+      ctx.driveId,
+      ctx.categoryFolderId,
+      uploadName,
+      file,
+      file.type,
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: `Upload to OneDrive failed: ${message}` };
+  }
+
+  // 3. UPDATE rejected -> superseded with double precondition. If
+  //    another caller already re-uploaded between probe and now, our
+  //    update matches no row and we abort. The OneDrive file is
+  //    orphaned but harmless.
+  const { data: superseded, error: updErr } = await supabase
+    .schema("files")
+    .from("documents")
+    .update({ status: "superseded" })
+    .eq("id", live.id)
+    .eq("status", "rejected")
+    .eq("version_number", live.version_number)
+    .select(
+      "id, version_number, sharepoint_drive_id, sharepoint_item_id, file_name",
+    )
+    .maybeSingle();
+
+  if (updErr) {
+    console.error("[reuploadFile] supersede update failed:", updErr);
+    return {
+      error:
+        "Could not update prior version. The new file is in OneDrive but unrecorded — contact support.",
+    };
+  }
+  if (!superseded) {
+    return {
+      error:
+        "Another action changed this file. The new upload is in OneDrive but not linked. Refresh and try again.",
+    };
+  }
+
+  // 4. INSERT v(N+1) under the same file_group_key.
+  const { data: newDoc, error: insertErr } = await supabase
+    .schema("files")
+    .from("documents")
+    .insert({
+      case_id: live.case_id,
+      client_id: live.client_id,
+      document_code: live.document_code,
+      display_name: ctx.templateDoc.document_label,
+      category: ctx.categoryName,
+      sharepoint_drive_id: ctx.driveId,
+      sharepoint_item_id: uploadResponse.id,
+      sharepoint_web_url: uploadResponse.webUrl,
+      file_name: uploadName,
+      file_size_bytes: file.size,
+      mime_type: file.type,
+      status: "uploaded",
+      version_number: nextVersion,
+      file_group_key: fileGroupKey,
+      supersedes: superseded.id,
+      uploaded_by_staff: staff.id,
+      uploaded_by_client: false,
+    })
+    .select("id")
+    .single();
+
+  if (insertErr || !newDoc) {
+    return {
+      error: `Could not record document: ${insertErr?.message ?? "unknown"}`,
+    };
+  }
+
+  // 5. Audit. Inc 5 will also enqueue a pending_drive_moves row so the
+  //    prior file (sharepoint_item_id = superseded.sharepoint_item_id)
+  //    is moved into Rejected/ with a date-decorated filename. The DB
+  //    is already the source of truth; that move is best-effort.
+  await supabase
+    .schema("crm")
+    .from("case_events")
+    .insert({
+      case_id: live.case_id,
+      event_type: "document_received",
+      event_data: {
+        document_code: live.document_code,
+        document_id: newDoc.id,
+        version_number: nextVersion,
+        file_name: uploadName,
+        supersedes_document_id: superseded.id,
+      },
+      description: `Document re-uploaded: ${ctx.templateDoc.document_label} (v${nextVersion})`,
+      visible_to_client: false,
+      created_by: staff.id,
+    });
+
+  revalidatePath(`/dashboard/cases/${live.case_id}`);
+  return {
+    ok: true,
+    documentId: newDoc.id,
+    sharepointWebUrl: uploadResponse.webUrl,
+  };
+}
+
+/**
+ * uploadDocument — backward-compatible wrapper.
+ *
+ * Dispatches to uploadFile (fresh slot) or reuploadFile (rejected
+ * slot). Refuses replacement when the slot already has a non-rejected
+ * live row — under the new model, the only path to v>1 is through
+ * 'rejected'. Inc 4's UI will call uploadFile / reuploadFile directly
+ * and this wrapper will be retired.
+ */
+export async function uploadDocument(
+  caseId: string,
+  documentCode: string,
+  formData: FormData,
+): Promise<UploadDocumentResult> {
+  if (!z.string().uuid().safeParse(caseId).success) {
+    return { error: "Invalid case id" };
+  }
+  if (!z.string().min(1).max(50).safeParse(documentCode).success) {
+    return { error: "Invalid document code" };
+  }
+
+  const supabase = await createClient();
+
+  // Same predicate as uniq_document_live_per_group: status != superseded
+  // AND deleted_at IS NULL.
+  const { data: live } = await supabase
+    .schema("files")
+    .from("documents")
+    .select("file_group_key, status")
+    .eq("case_id", caseId)
+    .eq("document_code", documentCode)
+    .neq("status", "superseded")
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (!live) {
+    return uploadFile(caseId, documentCode, formData);
+  }
+  if (live.status === "rejected") {
+    return reuploadFile(live.file_group_key, formData);
+  }
+  return {
+    error:
+      "A file is already filed in this slot. Reject the current upload before replacing it.",
   };
 }
 
@@ -384,7 +681,7 @@ export async function uploadAdditionalDocument(
 
   let uploadResponse: { id: string; name: string; webUrl: string; size: number };
   try {
-    uploadResponse = await uploadFile(
+    uploadResponse = await graphUploadFile(
       driveId,
       caseRow.sharepoint_folder_id,
       uploadName,
@@ -665,7 +962,7 @@ export async function attachPaymentProof(
   let uploaded;
   try {
     const folder = await ensureCasePaymentsFolder(caseRow.sharepoint_folder_id);
-    uploaded = await uploadFile(
+    uploaded = await graphUploadFile(
       folder.driveId,
       folder.folderItemId,
       fileName,
@@ -796,85 +1093,80 @@ export async function reviewDocument(
 
   const supabase = await createClient();
 
-  const { data: doc } = await supabase
+  // Single UPDATE with status precondition prevents double-review races:
+  // two staff approving the same row simultaneously will see only one
+  // UPDATE return a row; the other gets nothing and falls through to
+  // the "already reviewed" branch. The precondition also collapses the
+  // earlier "if superseded → error" check: a superseded row's status
+  // isn't 'uploaded', so the UPDATE matches no row.
+  const reviewedAt = new Date().toISOString();
+  const decisionStatus =
+    parsed.data.decision === "accept" ? "accepted" : "rejected";
+  const rejectionReason =
+    parsed.data.decision === "accept" ? null : parsed.data.reason;
+
+  const { data: updated, error: updErr } = await supabase
     .schema("files")
     .from("documents")
-    .select(
-      "id, case_id, document_code, status, display_name, version_number",
-    )
+    .update({
+      status: decisionStatus,
+      reviewed_by: me.id,
+      reviewed_at: reviewedAt,
+      rejection_reason: rejectionReason,
+    })
     .eq("id", parsed.data.documentId)
+    .eq("status", "uploaded")
     .is("deleted_at", null)
+    .select(
+      "id, case_id, document_code, display_name, version_number",
+    )
     .maybeSingle();
-  if (!doc) return { error: "Document not found" };
-  if (!doc.case_id) {
-    return { error: "Document is not attached to a case." };
-  }
-  if (doc.status === "superseded") {
+
+  if (updErr) return { error: updErr.message };
+  if (!updated) {
     return {
       error:
-        "This version was replaced by a newer upload. Review the latest one instead.",
+        "This file isn't awaiting review anymore. Refresh and check the latest status.",
     };
   }
+  if (!updated.case_id) {
+    return { error: "Document is not attached to a case." };
+  }
 
-  const reviewedAt = new Date().toISOString();
   if (parsed.data.decision === "accept") {
-    const { error } = await supabase
-      .schema("files")
-      .from("documents")
-      .update({
-        status: "accepted",
-        reviewed_by: me.id,
-        reviewed_at: reviewedAt,
-        rejection_reason: null,
-      })
-      .eq("id", doc.id);
-    if (error) return { error: error.message };
-
     await supabase
       .schema("crm")
       .from("case_events")
       .insert({
-        case_id: doc.case_id,
+        case_id: updated.case_id,
         event_type: "document_accepted",
         event_data: {
-          document_code: doc.document_code,
-          document_id: doc.id,
-          version_number: doc.version_number,
+          document_code: updated.document_code,
+          document_id: updated.id,
+          version_number: updated.version_number,
         },
-        description: `Accepted: ${doc.display_name} (v${doc.version_number})`,
+        description: `Accepted: ${updated.display_name} (v${updated.version_number})`,
         created_by: me.id,
       });
   } else {
-    const { error } = await supabase
-      .schema("files")
-      .from("documents")
-      .update({
-        status: "rejected",
-        reviewed_by: me.id,
-        reviewed_at: reviewedAt,
-        rejection_reason: parsed.data.reason,
-      })
-      .eq("id", doc.id);
-    if (error) return { error: error.message };
-
     await supabase
       .schema("crm")
       .from("case_events")
       .insert({
-        case_id: doc.case_id,
+        case_id: updated.case_id,
         event_type: "document_rejected",
         event_data: {
-          document_code: doc.document_code,
-          document_id: doc.id,
-          version_number: doc.version_number,
+          document_code: updated.document_code,
+          document_id: updated.id,
+          version_number: updated.version_number,
           reason: parsed.data.reason,
         },
-        description: `Rejected: ${doc.display_name} (v${doc.version_number}) — ${parsed.data.reason}`,
+        description: `Rejected: ${updated.display_name} (v${updated.version_number}) — ${parsed.data.reason}`,
         created_by: me.id,
       });
   }
 
-  revalidatePath(`/dashboard/cases/${doc.case_id}`);
+  revalidatePath(`/dashboard/cases/${updated.case_id}`);
   return { ok: true };
 }
 

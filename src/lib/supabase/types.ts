@@ -2421,6 +2421,7 @@ export type Database = {
           document_code: string | null
           document_date: string | null
           expiry_date: string | null
+          file_group_key: string
           file_name: string | null
           file_size_bytes: number | null
           id: string
@@ -2449,6 +2450,7 @@ export type Database = {
           document_code?: string | null
           document_date?: string | null
           expiry_date?: string | null
+          file_group_key?: string
           file_name?: string | null
           file_size_bytes?: number | null
           id?: string
@@ -2477,6 +2479,7 @@ export type Database = {
           document_code?: string | null
           document_date?: string | null
           expiry_date?: string | null
+          file_group_key?: string
           file_name?: string | null
           file_size_bytes?: number | null
           id?: string

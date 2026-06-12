@@ -4,7 +4,7 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 
 import { ensureCaseCategoryFolder } from "@/lib/graph/folders";
-import { uploadFile } from "@/lib/graph/uploads";
+import { uploadFile as graphUploadFile } from "@/lib/graph/uploads";
 import type { Database } from "@/lib/supabase/types";
 import {
   ALLOWED_EXTENSIONS_HUMAN,
@@ -98,7 +98,156 @@ export type UploadAsClientResult =
   | { ok: true; documentId: string }
   | { error: string };
 
-export async function uploadAsClient(
+// ---------------------------------------------------------------------------
+// Filename rules — match the staff side (see actions.ts:composeFileName).
+//
+// v1   : <documentCode>_<sanitizedOriginal>            (clean, no version)
+// v>=2 : <documentCode>_<sanitizedOriginal>_v<N>       (suffix before ext)
+//
+// The old client-portal __v__ infix is retired. The DB
+// version_number is the source of truth; filenames merely echo it.
+// ---------------------------------------------------------------------------
+function sanitizePortalFileName(name: string): string {
+  return (
+    name
+      .replace(/[\\/:*?"<>|]/g, "_")
+      .replace(/^[.\s]+|[.\s]+$/g, "")
+      .trim() || ""
+  );
+}
+
+function composePortalFileName(
+  documentCode: string,
+  originalName: string,
+  version: number,
+): string {
+  const sanitized =
+    sanitizePortalFileName(originalName) || `${documentCode}-v${version}`;
+  const base = `${documentCode}_${sanitized}`;
+  if (version <= 1) return base;
+  const lastDot = base.lastIndexOf(".");
+  if (lastDot <= 0 || lastDot === base.length - 1) {
+    return `${base}_v${version}`;
+  }
+  return `${base.slice(0, lastDot)}_v${version}${base.slice(lastDot)}`;
+}
+
+type PortalUploadContext = {
+  caseRow: ClientPortalCase;
+  templateDoc: {
+    document_label: string;
+  };
+  categoryName: string;
+  categoryFolderId: string;
+  driveId: string;
+};
+
+// Validates the file + loads the template + resolves the category folder.
+// Shared between uploadFileAsClient (fresh) and reuploadFileAsClient
+// (re-upload). The caller has already validated the portal token via
+// loadCaseByPortalToken.
+async function resolvePortalUploadContext(
+  supabase: ReturnType<typeof adminClient>,
+  caseRow: ClientPortalCase,
+  documentCode: string,
+  file: File,
+): Promise<
+  { ok: true; ctx: PortalUploadContext } | { ok: false; error: string }
+> {
+  if (!caseRow.sharepoint_folder_id) {
+    return {
+      ok: false,
+      error:
+        "Documents folder is still being created — please try again in a few seconds.",
+    };
+  }
+
+  const { data: templateDoc } = await supabase
+    .schema("ref")
+    .from("template_documents")
+    .select(
+      `
+        document_label,
+        allowed_file_types,
+        max_file_size_mb,
+        group:checklist_groups(name)
+      `,
+    )
+    .eq("service_template_id", caseRow.service_template_id)
+    .eq("document_code", documentCode)
+    .maybeSingle();
+  if (!templateDoc) {
+    return {
+      ok: false,
+      error: "That document isn't part of your case checklist.",
+    };
+  }
+  if (!templateDoc.group) {
+    return {
+      ok: false,
+      error: "Document group missing. Please contact our office.",
+    };
+  }
+
+  const allowed = templateDoc.allowed_file_types?.length
+    ? new Set(templateDoc.allowed_file_types)
+    : ALLOWED_MIME_TYPES_SET;
+  if (!allowed.has(file.type)) {
+    const human = templateDoc.allowed_file_types?.length
+      ? templateDoc.allowed_file_types.join(", ")
+      : ALLOWED_EXTENSIONS_HUMAN;
+    return {
+      ok: false,
+      error: `File type ${file.type || "unknown"} is not allowed. Use ${human}.`,
+    };
+  }
+  if (templateDoc.max_file_size_mb !== null) {
+    const cap = Math.min(templateDoc.max_file_size_mb, 4) * 1024 * 1024;
+    if (file.size > cap) {
+      return {
+        ok: false,
+        error: `File exceeds the ${Math.min(templateDoc.max_file_size_mb, 4)}MB limit (${formatBytesMb(file.size)} MB).`,
+      };
+    }
+  }
+
+  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
+  if (!driveId) return { ok: false, error: "Storage not configured." };
+
+  let categoryFolderId: string;
+  try {
+    const { folderItemId } = await ensureCaseCategoryFolder(
+      caseRow.sharepoint_folder_id,
+      templateDoc.group.name,
+    );
+    categoryFolderId = folderItemId;
+  } catch (err) {
+    console.error("[resolvePortalUploadContext] folder ensure failed:", err);
+    return {
+      ok: false,
+      error: "We couldn't reach storage. Please try again in a minute.",
+    };
+  }
+
+  return {
+    ok: true,
+    ctx: {
+      caseRow,
+      templateDoc: { document_label: templateDoc.document_label },
+      categoryName: templateDoc.group.name,
+      categoryFolderId,
+      driveId,
+    },
+  };
+}
+
+/**
+ * uploadFileAsClient — fresh upload from the client portal. v1, new
+ * file_group_key (DB default). Used for first uploads on a slot AND for
+ * sibling files when expected_quantity > 1 (Inc 4 UI calls this
+ * directly for siblings).
+ */
+export async function uploadFileAsClient(
   token: string,
   documentCode: string,
   formData: FormData,
@@ -124,136 +273,31 @@ export async function uploadAsClient(
         "This upload link is no longer active. Please contact our office for a new link.",
     };
   }
-  if (!caseRow.sharepoint_folder_id) {
-    return {
-      error:
-        "Documents folder is still being created — please try again in a few seconds.",
-    };
-  }
 
   const supabase = adminClient();
-
-  const { data: templateDoc } = await supabase
-    .schema("ref")
-    .from("template_documents")
-    .select(
-      `
-        document_label,
-        allowed_file_types,
-        max_file_size_mb,
-        group:checklist_groups(name)
-      `,
-    )
-    .eq("service_template_id", caseRow.service_template_id)
-    .eq("document_code", documentCode)
-    .maybeSingle();
-  if (!templateDoc) {
-    return { error: "That document isn't part of your case checklist." };
-  }
-  if (!templateDoc.group) {
-    return {
-      error: "Document group missing. Please contact our office.",
-    };
-  }
-
-  // Per-template MIME allow-list (falls back to global default).
-  const allowed = templateDoc.allowed_file_types?.length
-    ? new Set(templateDoc.allowed_file_types)
-    : ALLOWED_MIME_TYPES_SET;
-  if (!allowed.has(file.type)) {
-    const human = templateDoc.allowed_file_types?.length
-      ? templateDoc.allowed_file_types.join(", ")
-      : ALLOWED_EXTENSIONS_HUMAN;
-    return {
-      error: `File type ${file.type || "unknown"} is not allowed. Use ${human}.`,
-    };
-  }
-  if (templateDoc.max_file_size_mb !== null) {
-    const cap = Math.min(templateDoc.max_file_size_mb, 4) * 1024 * 1024;
-    if (file.size > cap) {
-      return {
-        error: `File exceeds the ${Math.min(templateDoc.max_file_size_mb, 4)}MB limit (${formatBytesMb(file.size)} MB).`,
-      };
-    }
-  }
-
-  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) return { error: "Storage not configured." };
-
-  // Self-healing: if the category subfolder doesn't exist (e.g. staff
-  // added a new category to the active template after this case was
-  // provisioned), create it under the case root on demand. The client-
-  // facing error message stays generic — Graph failures here are an
-  // ops problem, not something the client can resolve.
-  let categoryFolderId: string;
-  try {
-    const { folderItemId } = await ensureCaseCategoryFolder(
-      caseRow.sharepoint_folder_id,
-      templateDoc.group.name,
-    );
-    categoryFolderId = folderItemId;
-  } catch (err) {
-    console.error("[uploadAsClient] folder ensure failed:", err);
-    return {
-      error: "We couldn't reach storage. Please try again in a minute.",
-    };
-  }
-
-  // Versioning: mark prior non-superseded uploads on this slot as
-  // superseded; the new upload becomes the latest version.
-  const { data: existing } = await supabase
-    .schema("files")
-    .from("documents")
-    .select("id, version_number, status")
-    .eq("case_id", caseRow.id)
-    .eq("document_code", documentCode)
-    .is("deleted_at", null);
-
-  const priorRows = existing ?? [];
-  const maxVersion = priorRows.reduce(
-    (m, d) => Math.max(m, d.version_number),
-    0,
+  const ctxRes = await resolvePortalUploadContext(
+    supabase,
+    caseRow,
+    documentCode,
+    file,
   );
-  const nextVersion = maxVersion + 1;
-  const priorId =
-    priorRows.length > 0
-      ? priorRows.reduce((latest, d) =>
-          d.version_number > latest.version_number ? d : latest,
-        ).id
-      : null;
+  if (!ctxRes.ok) return { error: ctxRes.error };
+  const { ctx } = ctxRes;
 
-  if (priorRows.length > 0) {
-    const idsToSupersede = priorRows
-      .filter((d) => d.status !== "superseded")
-      .map((d) => d.id);
-    if (idsToSupersede.length > 0) {
-      await supabase
-        .schema("files")
-        .from("documents")
-        .update({ status: "superseded" })
-        .in("id", idsToSupersede);
-    }
-  }
-
-  // Filename: prefix with the document code so the OneDrive listing is
-  // self-describing even if the client's filename is generic.
-  const safeBase =
-    file.name.replace(/[\\/:*?"<>|]/g, "_").trim() ||
-    `${documentCode}-v${nextVersion}`;
-  const uploadName = `${documentCode}__v${nextVersion}__${safeBase}`;
-
+  const uploadName = composePortalFileName(documentCode, file.name, 1);
   const buffer = new Uint8Array(await file.arrayBuffer());
+
   let uploadResponse;
   try {
-    uploadResponse = await uploadFile(
-      driveId,
-      categoryFolderId,
+    uploadResponse = await graphUploadFile(
+      ctx.driveId,
+      ctx.categoryFolderId,
       uploadName,
       buffer,
       file.type,
     );
   } catch (err) {
-    console.error("[uploadAsClient] OneDrive upload failed:", err);
+    console.error("[uploadFileAsClient] OneDrive upload failed:", err);
     return {
       error:
         "We couldn't upload your file. Try a different file or contact our office.",
@@ -264,20 +308,20 @@ export async function uploadAsClient(
     .schema("files")
     .from("documents")
     .insert({
-      case_id: caseRow.id,
-      client_id: caseRow.client_id,
+      case_id: ctx.caseRow.id,
+      client_id: ctx.caseRow.client_id,
       document_code: documentCode,
-      display_name: templateDoc.document_label,
-      category: templateDoc.group.name,
-      sharepoint_drive_id: driveId,
+      display_name: ctx.templateDoc.document_label,
+      category: ctx.categoryName,
+      sharepoint_drive_id: ctx.driveId,
       sharepoint_item_id: uploadResponse.id,
       sharepoint_web_url: uploadResponse.webUrl,
       file_name: uploadName,
       file_size_bytes: file.size,
       mime_type: file.type,
       status: "uploaded",
-      version_number: nextVersion,
-      supersedes: priorId,
+      version_number: 1,
+      // file_group_key omitted; DB default fills.
       uploaded_by_staff: null,
       uploaded_by_client: true,
     })
@@ -293,26 +337,248 @@ export async function uploadAsClient(
     .schema("crm")
     .from("case_events")
     .insert({
-      case_id: caseRow.id,
+      case_id: ctx.caseRow.id,
       event_type: "document_received",
       event_data: {
         document_code: documentCode,
         document_id: newDoc.id,
-        version_number: nextVersion,
+        version_number: 1,
         file_name: uploadName,
         source: "client_portal",
       },
-      description: `Client uploaded ${templateDoc.document_label} (v${nextVersion})`,
+      description: `Client uploaded ${ctx.templateDoc.document_label} (v1)`,
       visible_to_client: true,
       created_by: null,
     });
 
-  // Revalidate both surfaces — the staff case page so the new upload
-  // appears in awaiting-review state, and the client portal itself so
-  // the row immediately reflects the new status.
-  revalidatePath(`/dashboard/cases/${caseRow.id}`);
+  revalidatePath(`/dashboard/cases/${ctx.caseRow.id}`);
   revalidatePath(`/upload/${token}`);
   return { ok: true, documentId: newDoc.id };
+}
+
+/**
+ * reuploadFileAsClient — replaces a rejected file from the client
+ * portal. Same invariants as the staff reuploadFile: rejected -> super-
+ * seded BEFORE the new INSERT, captured atomically via UPDATE...RETURNING.
+ *
+ * The token validation ALSO scopes the file_group_key to this portal's
+ * case: we look up the live row's case_id and reject if it doesn't
+ * match the case the token resolves to. Without this guard, a forged
+ * file_group_key on this portal could reach files outside the case.
+ */
+export async function reuploadFileAsClient(
+  token: string,
+  fileGroupKey: string,
+  formData: FormData,
+): Promise<UploadAsClientResult> {
+  if (!TOKEN_RE.test(token)) return { error: "Invalid link" };
+  if (!TOKEN_RE.test(fileGroupKey)) return { error: "Invalid file group" };
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) return { error: "No file provided" };
+  if (file.size === 0) return { error: "File is empty" };
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return {
+      error: `File exceeds the 4MB limit (${formatBytesMb(file.size)} MB).`,
+    };
+  }
+
+  const caseRow = await loadCaseByPortalToken(token);
+  if (!caseRow) {
+    return {
+      error:
+        "This upload link is no longer active. Please contact our office for a new link.",
+    };
+  }
+
+  const supabase = adminClient();
+
+  // 1. Probe the group. Also enforce case scoping.
+  const { data: live } = await supabase
+    .schema("files")
+    .from("documents")
+    .select("id, case_id, client_id, document_code, version_number, status")
+    .eq("file_group_key", fileGroupKey)
+    .neq("status", "superseded")
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!live) return { error: "File not found" };
+  if (live.case_id !== caseRow.id) return { error: "File not found" };
+  if (!live.document_code) {
+    return { error: "Cannot re-upload an additional document via this action." };
+  }
+  if (live.status !== "rejected") {
+    return {
+      error: "Only rejected files can be re-uploaded. Refresh and try again.",
+    };
+  }
+
+  const ctxRes = await resolvePortalUploadContext(
+    supabase,
+    caseRow,
+    live.document_code,
+    file,
+  );
+  if (!ctxRes.ok) return { error: ctxRes.error };
+  const { ctx } = ctxRes;
+
+  const nextVersion = live.version_number + 1;
+  const uploadName = composePortalFileName(
+    live.document_code,
+    file.name,
+    nextVersion,
+  );
+  const buffer = new Uint8Array(await file.arrayBuffer());
+
+  // 2. Graph upload first (no DB damage if it fails).
+  let uploadResponse;
+  try {
+    uploadResponse = await graphUploadFile(
+      ctx.driveId,
+      ctx.categoryFolderId,
+      uploadName,
+      buffer,
+      file.type,
+    );
+  } catch (err) {
+    console.error("[reuploadFileAsClient] OneDrive upload failed:", err);
+    return {
+      error:
+        "We couldn't upload your file. Try a different file or contact our office.",
+    };
+  }
+
+  // 3. UPDATE rejected -> superseded with double precondition.
+  const { data: superseded, error: updErr } = await supabase
+    .schema("files")
+    .from("documents")
+    .update({ status: "superseded" })
+    .eq("id", live.id)
+    .eq("status", "rejected")
+    .eq("version_number", live.version_number)
+    .select("id, version_number")
+    .maybeSingle();
+
+  if (updErr) {
+    console.error("[reuploadFileAsClient] supersede update failed:", updErr);
+    return {
+      error:
+        "We saved your file but couldn't update the prior version. Please contact our office.",
+    };
+  }
+  if (!superseded) {
+    return {
+      error:
+        "Another action changed this file. Refresh the page and try again.",
+    };
+  }
+
+  // 4. INSERT v(N+1).
+  const { data: newDoc, error: insertErr } = await supabase
+    .schema("files")
+    .from("documents")
+    .insert({
+      case_id: ctx.caseRow.id,
+      client_id: ctx.caseRow.client_id,
+      document_code: live.document_code,
+      display_name: ctx.templateDoc.document_label,
+      category: ctx.categoryName,
+      sharepoint_drive_id: ctx.driveId,
+      sharepoint_item_id: uploadResponse.id,
+      sharepoint_web_url: uploadResponse.webUrl,
+      file_name: uploadName,
+      file_size_bytes: file.size,
+      mime_type: file.type,
+      status: "uploaded",
+      version_number: nextVersion,
+      file_group_key: fileGroupKey,
+      supersedes: superseded.id,
+      uploaded_by_staff: null,
+      uploaded_by_client: true,
+    })
+    .select("id")
+    .single();
+
+  if (insertErr || !newDoc) {
+    return {
+      error: `Could not record upload: ${insertErr?.message ?? "unknown"}`,
+    };
+  }
+
+  // 5. Audit. (Inc 5 will enqueue the rejected-folder move here.)
+  await supabase
+    .schema("crm")
+    .from("case_events")
+    .insert({
+      case_id: ctx.caseRow.id,
+      event_type: "document_received",
+      event_data: {
+        document_code: live.document_code,
+        document_id: newDoc.id,
+        version_number: nextVersion,
+        file_name: uploadName,
+        source: "client_portal",
+        supersedes_document_id: superseded.id,
+      },
+      description: `Client re-uploaded ${ctx.templateDoc.document_label} (v${nextVersion})`,
+      visible_to_client: true,
+      created_by: null,
+    });
+
+  revalidatePath(`/dashboard/cases/${ctx.caseRow.id}`);
+  revalidatePath(`/upload/${token}`);
+  return { ok: true, documentId: newDoc.id };
+}
+
+/**
+ * uploadAsClient — backward-compatible wrapper. Dispatches to
+ * uploadFileAsClient (fresh slot) or reuploadFileAsClient (rejected
+ * slot). Refuses replacement when the slot has a non-rejected live row.
+ * Inc 4's UI will call uploadFileAsClient / reuploadFileAsClient
+ * directly and this wrapper will be retired.
+ */
+export async function uploadAsClient(
+  token: string,
+  documentCode: string,
+  formData: FormData,
+): Promise<UploadAsClientResult> {
+  if (!TOKEN_RE.test(token)) return { error: "Invalid link" };
+  if (!documentCode || documentCode.length > 50) {
+    return { error: "Invalid document code" };
+  }
+
+  const caseRow = await loadCaseByPortalToken(token);
+  if (!caseRow) {
+    return {
+      error:
+        "This upload link is no longer active. Please contact our office for a new link.",
+    };
+  }
+
+  const supabase = adminClient();
+
+  // Same predicate as uniq_document_live_per_group: not superseded AND
+  // not soft-deleted.
+  const { data: live } = await supabase
+    .schema("files")
+    .from("documents")
+    .select("file_group_key, status")
+    .eq("case_id", caseRow.id)
+    .eq("document_code", documentCode)
+    .neq("status", "superseded")
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (!live) {
+    return uploadFileAsClient(token, documentCode, formData);
+  }
+  if (live.status === "rejected") {
+    return reuploadFileAsClient(token, live.file_group_key, formData);
+  }
+  return {
+    error:
+      "We've already received a file for this requirement. Wait for staff to review it.",
+  };
 }
 
 // ============================================================================
@@ -390,7 +656,7 @@ export async function uploadAsClientAdditional(
 
   let uploadResponse: { id: string; name: string; webUrl: string; size: number };
   try {
-    uploadResponse = await uploadFile(
+    uploadResponse = await graphUploadFile(
       driveId,
       caseRow.sharepoint_folder_id,
       uploadName,
