@@ -969,6 +969,20 @@ export async function startNewRetainer(
     .maybeSingle();
   if (!oldCase) return { error: "Original case not found" };
 
+  // Look up the client's residence so we can re-apply the country-
+  // based HST gate when seeding the new retainer below. The wizard
+  // has an apply_hst checkbox for the initial case-creation path,
+  // but a void+restart has no wizard step — the new retainer is
+  // entirely auto-provisioned, so the country check has to live
+  // here. Otherwise a non-CA client whose original retainer had
+  // hst_cad=0 would silently get charged 13% on the restart.
+  const { data: clientForHst } = await supabase
+    .schema("crm")
+    .from("clients")
+    .select("country_of_residence")
+    .eq("id", oldCase.client_id)
+    .maybeSingle();
+
   const { data: existingRetainer } = await supabase
     .schema("crm")
     .from("retainer_agreements")
@@ -1028,11 +1042,21 @@ export async function startNewRetainer(
   }
 
   // Stamp rcic_id on the new (auto-created) retainer so loadRetainerData
-  // resolves it directly. Mirrors the same step in createCase.
+  // resolves it directly. Mirrors the same step in createCase. Also
+  // enforces the HST country gate: when the client is not in Canada,
+  // hst_cad is set to 0 so the renderer's 13%-default doesn't kick
+  // in. Canadian (and unknown country) clients leave hst_cad NULL so
+  // the renderer applies 13%; staff can still override via the
+  // RetainerDetailsForm before sending.
+  const residence = clientForHst?.country_of_residence;
+  const applyHst = residence === null || residence === undefined || residence === "CA";
   await supabase
     .schema("crm")
     .from("retainer_agreements")
-    .update({ rcic_id: oldCase.assigned_rcic })
+    .update({
+      rcic_id: oldCase.assigned_rcic,
+      ...(applyHst ? {} : { hst_cad: 0 }),
+    })
     .eq("case_id", newCase.id)
     .is("deleted_at", null);
 
