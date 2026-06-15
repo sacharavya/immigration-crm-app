@@ -55,6 +55,25 @@ export function RetainerDetailsForm({
   const installmentsBalanced =
     Math.abs(installmentsSum - caseQuotedFeeCad) <= FEE_TOLERANCE;
 
+  // Preview of the post-tax installment amounts that will appear on
+  // the signed PDF. HST is distributed proportionally across the two
+  // installments by the renderer; surfacing the same math here so
+  // staff don't have to mentally apply tax to verify the schedule.
+  const firstShareWithTax =
+    caseQuotedFeeCad > 0
+      ? values.first_installment_cad +
+        (values.first_installment_cad / caseQuotedFeeCad) * values.hst_cad
+      : 0;
+  const secondShareWithTax =
+    caseQuotedFeeCad > 0
+      ? values.second_installment_cad +
+        (values.second_installment_cad / caseQuotedFeeCad) * values.hst_cad
+      : 0;
+  const totalInclTax =
+    caseQuotedFeeCad +
+    values.hst_cad +
+    values.government_fee_cad;
+
   function handleSubmit() {
     setError(null);
     if (!values.service_description.trim()) {
@@ -145,10 +164,42 @@ export function RetainerDetailsForm({
             : "border-amber-300 bg-amber-50 text-amber-900"
         }`}
       >
-        First + Second installments: {installmentsSum.toFixed(2)} CAD ·{" "}
-        Case quoted fee: {caseQuotedFeeCad.toFixed(2)} CAD ·{" "}
+        First + Second installments (pre-tax): {installmentsSum.toFixed(2)}{" "}
+        CAD · Case quoted fee: {caseQuotedFeeCad.toFixed(2)} CAD ·{" "}
         {installmentsBalanced ? "balanced" : "must match within 1¢"}
       </div>
+
+      {installmentsBalanced && (
+        <div className="rounded-md border border-stone-200 bg-white px-3 py-2 text-xs text-stone-700">
+          <p className="mb-1 font-semibold text-stone-800">
+            Payment schedule on the signed PDF:
+          </p>
+          <div className="flex justify-between">
+            <span>First installment (incl. HST)</span>
+            <span className="tabular-nums">
+              ${firstShareWithTax.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Second installment (incl. HST)</span>
+            <span className="tabular-nums">
+              ${secondShareWithTax.toFixed(2)}
+            </span>
+          </div>
+          {values.government_fee_cad > 0 && (
+            <div className="flex justify-between">
+              <span>Government fees</span>
+              <span className="tabular-nums">
+                ${values.government_fee_cad.toFixed(2)}
+              </span>
+            </div>
+          )}
+          <div className="mt-1 flex justify-between border-t border-stone-200 pt-1 font-semibold">
+            <span>Total (inclusive of tax)</span>
+            <span className="tabular-nums">${totalInclTax.toFixed(2)}</span>
+          </div>
+        </div>
+      )}
 
       {error && (
         <p

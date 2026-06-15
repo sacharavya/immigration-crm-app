@@ -226,24 +226,38 @@ export async function loadRetainerData(
         ? Number(caseRow.government_fee_cad)
         : 0;
   // HST is 13% of the quoted (pre-tax) fee unless explicitly overridden
-  // on the retainer. Subtotal = quoted + hst — this is what the
-  // installments add up to. Government fees are listed separately and
-  // are NOT split into the installments (they go straight to IRCC).
+  // on the retainer. Subtotal = quoted + hst. Government fees are
+  // listed separately and are NOT in the HST base (gov fees are
+  // tax-exempt) and NOT split into the installments (they go straight
+  // to IRCC).
   const hst =
     retainer.hst_cad !== null
       ? Number(retainer.hst_cad)
       : Math.round(quoted * 0.13 * 100) / 100;
   const subtotal = Math.round((quoted + hst) * 100) / 100;
 
-  // Installment split — three cases, all summing to the subtotal:
-  //   (a) Full fee upfront (retainer_minimum_cad >= quoted): first =
-  //       subtotal, second = 0. Tax is rolled into the single payment.
-  //   (b) Partial upfront (retainer_minimum_cad < quoted): first =
-  //       the entered amount (pre-tax), second = subtotal − first.
-  //       Tax lands on the second installment.
-  //   (c) Nothing set: 50/50 split of the subtotal across both
-  //       installments.
-  // Explicit overrides on the retainer columns win over all of this.
+  // Installment split. Stored columns (first_installment_cad,
+  // second_installment_cad, retainer_minimum_cad) hold PRE-TAX
+  // service-fee portions — the case wizard's RetainerDetailsForm
+  // validates "first + second = quoted_fee" (pre-tax). We then
+  // distribute HST proportionally across the two installments so the
+  // PAYMENT SCHEDULE in the PDF actually adds up to the "Total Cost
+  // (inclusive of tax)" line. Previously the displayed installments
+  // were pre-tax while the total was post-tax, leaving a phantom HST
+  // gap (e.g. $250 + $250 + $255 gov = $755, total said $820).
+  //
+  // Pre-tax distribution:
+  //   (a) Full fee upfront (retainer_minimum_cad >= quoted): pretax
+  //       first = quoted, second = 0.
+  //   (b) Partial upfront (retainer_minimum_cad < quoted): pretax
+  //       first = the entered amount, second = quoted - first.
+  //   (c) Nothing set: 50/50 split of quoted.
+  // Explicit overrides on retainer.first/second_installment_cad win.
+  //
+  // HST share = (pretax_portion / quoted) * total_hst, rounded to
+  // cents. Second is computed as (hst - first_share) to absorb any
+  // rounding drift so first + second always = hst exactly.
+  //
   // Withdrawal refund floor mirrors the first installment by default
   // (matches the .docx clause "the payment before the start of the
   // application is non-refundable").
@@ -251,20 +265,37 @@ export async function loadRetainerData(
     caseRow.retainer_minimum_cad !== null
       ? Number(caseRow.retainer_minimum_cad)
       : null;
-  let firstInst: number;
+  let firstPretax: number;
   if (retainer.first_installment_cad !== null) {
-    firstInst = Number(retainer.first_installment_cad);
+    firstPretax = Number(retainer.first_installment_cad);
   } else if (caseRetainerMin === null) {
-    firstInst = Math.round(subtotal * 0.5 * 100) / 100;
+    firstPretax = Math.round(quoted * 0.5 * 100) / 100;
   } else if (caseRetainerMin >= quoted) {
-    firstInst = subtotal;
+    firstPretax = quoted;
   } else {
-    firstInst = caseRetainerMin;
+    firstPretax = caseRetainerMin;
   }
-  const secondInst =
+  const secondPretax =
     retainer.second_installment_cad !== null
       ? Number(retainer.second_installment_cad)
-      : Math.max(0, Math.round((subtotal - firstInst) * 100) / 100);
+      : Math.max(0, Math.round((quoted - firstPretax) * 100) / 100);
+
+  // Distribute HST proportionally. Guard against quoted=0 (zero-fee
+  // promo / pro bono) — in that case the entire HST (which would
+  // also be 0 under normal flow) falls to second.
+  const firstHstShare =
+    quoted > 0
+      ? Math.round((firstPretax / quoted) * hst * 100) / 100
+      : 0;
+  const secondHstShare = Math.max(
+    0,
+    Math.round((hst - firstHstShare) * 100) / 100,
+  );
+
+  const firstInst =
+    Math.round((firstPretax + firstHstShare) * 100) / 100;
+  const secondInst =
+    Math.round((secondPretax + secondHstShare) * 100) / 100;
   const withdrawalFloor =
     retainer.withdrawal_refund_floor_cad !== null
       ? Number(retainer.withdrawal_refund_floor_cad)
