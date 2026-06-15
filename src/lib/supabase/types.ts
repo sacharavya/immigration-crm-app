@@ -2326,6 +2326,7 @@ export type Database = {
         | "appeal_filed"
         | "withdrawal_requested"
         | "additional_documents_requested"
+        | "document_viewed"
       gender: "male" | "female" | "other" | "prefer_not_to_say"
       invoice_status: "draft" | "sent" | "partial" | "paid" | "void" | "overdue"
       marital_status:
@@ -3032,6 +3033,7 @@ export const Constants = {
         "appeal_filed",
         "withdrawal_requested",
         "additional_documents_requested",
+        "document_viewed",
       ],
       gender: ["male", "female", "other", "prefer_not_to_say"],
       invoice_status: ["draft", "sent", "partial", "paid", "void", "overdue"],
