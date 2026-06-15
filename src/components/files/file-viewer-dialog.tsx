@@ -1,9 +1,9 @@
 "use client";
 
-import { Download, ExternalLink, X } from "lucide-react";
+import { Download, ExternalLink } from "lucide-react";
 import { useState } from "react";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -95,26 +95,14 @@ export function FileViewerDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[92vh] w-[92vw] max-w-5xl gap-3 p-0">
-        <DialogHeader className="border-b border-stone-200 px-5 py-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <DialogTitle className="truncate text-base">
-                {fileName}
-              </DialogTitle>
-              <DialogDescription className="mt-0.5 text-xs">
-                Version {versionNumber}
-                {mimeType ? ` · ${mimeType}` : ""}
-              </DialogDescription>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleOpenChange(false)}
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+        <DialogHeader className="border-b border-stone-200 px-5 py-4 pr-12">
+          <DialogTitle className="truncate text-base">
+            {fileName}
+          </DialogTitle>
+          <DialogDescription className="mt-0.5 text-xs">
+            Version {versionNumber}
+            {mimeType ? ` · ${mimeType}` : ""}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex min-h-[60vh] flex-1 items-center justify-center bg-stone-100 px-5 py-4">
