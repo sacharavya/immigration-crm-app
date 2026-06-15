@@ -795,7 +795,17 @@ export default async function CasePage({ params, searchParams }: Props) {
     (acc, p) => acc + (p.is_refund ? -1 : 1) * Number(p.amount_cad),
     0,
   );
-  const quoted = Number(caseRow.quoted_fee_cad);
+  // The "amount the client owes" total includes the service fee plus
+  // any government fee (snapshotted on the retainer at signing or set
+  // on the case row pre-retainer) plus HST when applicable. Keeping
+  // this in sync with the payment-request email so the dashboard
+  // denominator and the email's "Amount due" agree.
+  const quotedBase = Number(caseRow.quoted_fee_cad);
+  const quotedGovernmentFee = Number(
+    retainerRow?.government_fee_cad ?? caseRow.government_fee_cad ?? 0,
+  );
+  const quotedHst = Number(retainerRow?.hst_cad ?? 0);
+  const quoted = quotedBase + quotedGovernmentFee + quotedHst;
 
   const staffNameById = new Map(
     allStaff.map((s) => [s.id, `${s.first_name} ${s.last_name}`.trim()]),

@@ -5,6 +5,16 @@ type Args = {
   caseNumber: string;
   amountDueCad: number;
   quotedFeeCad: number;
+  // Optional line items. Each is rendered only when > 0 so cases
+  // without a government fee or without HST get a clean two-line
+  // breakdown (Service fee / Already paid / Amount due) instead of
+  // showing zero rows.
+  governmentFeeCad: number;
+  hstCad: number;
+  // Sum of service fee + government fee + HST. Shown as the explicit
+  // "Total" row when there's more than one line item, so the client
+  // can see how amount-due is reached.
+  totalDueCad: number;
   alreadyPaidCad: number;
   recipientPaymentEmail: string;
   // Short reference code the client puts in the e-transfer message
@@ -39,6 +49,70 @@ export function casePaymentRequestEmail(args: Args): {
       )}</p>`
     : "";
 
+  // Build the line-items table. Service fee always shows. Government
+  // fee + HST only show when present (> 0). Total shows when there's
+  // more than one line item so the breakdown adds up visibly.
+  const showGovernmentFee = args.governmentFeeCad > 0;
+  const showHst = args.hstCad > 0;
+  const showTotal = showGovernmentFee || showHst;
+
+  function rowHtml(label: string, value: string, opts?: {
+    muted?: boolean;
+    bordered?: boolean;
+    amber?: boolean;
+  }) {
+    const labelStyle = opts?.muted ? "color:#78716c;" : "";
+    const containerStyle: string[] = [
+      "display:flex",
+      "justify-content:space-between",
+      "margin-bottom:6px",
+    ];
+    if (opts?.bordered) {
+      containerStyle.push(
+        "border-top:1px solid #e7e5e4",
+        "padding-top:6px",
+        "margin-top:6px",
+      );
+    }
+    if (opts?.amber) {
+      containerStyle.push("color:#b45309");
+    }
+    return `      <div style="${containerStyle.join(";")};">
+        <span style="${labelStyle}">${label}</span>
+        <strong>${escapeHtml(value)}</strong>
+      </div>`;
+  }
+
+  const lineItemsHtml = [
+    rowHtml("Service fee", formatCad(args.quotedFeeCad), { muted: true }),
+    showGovernmentFee
+      ? rowHtml("Government fee", formatCad(args.governmentFeeCad), {
+          muted: true,
+        })
+      : "",
+    showHst
+      ? rowHtml("HST", formatCad(args.hstCad), { muted: true })
+      : "",
+    showTotal
+      ? rowHtml(
+          "<strong>Total</strong>",
+          formatCad(args.totalDueCad),
+          { bordered: true },
+        )
+      : "",
+    rowHtml("Already paid", formatCad(args.alreadyPaidCad), {
+      muted: true,
+      bordered: !showTotal,
+    }),
+    rowHtml(
+      "<strong>Amount due now</strong>",
+      formatCad(args.amountDueCad),
+      { bordered: true, amber: true },
+    ),
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   const bodyHtml = `<p style="margin:0 0 12px 0;">Hello ${escapeHtml(args.clientName)},</p>
 ${customBlockHtml}<p style="margin:0 0 12px 0;">There&rsquo;s an outstanding payment on your case <strong>${escapeHtml(
     args.caseNumber,
@@ -47,18 +121,7 @@ ${customBlockHtml}<p style="margin:0 0 12px 0;">There&rsquo;s an outstanding pay
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0;background:#fafaf9;border:1px solid #e7e5e4;border-radius:8px;width:100%;max-width:420px;">
   <tr>
     <td style="padding:12px 16px;font-size:14px;color:#1c1917;">
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <span style="color:#78716c;">Quoted fee</span>
-        <strong>${escapeHtml(formatCad(args.quotedFeeCad))}</strong>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <span style="color:#78716c;">Already paid</span>
-        <strong>${escapeHtml(formatCad(args.alreadyPaidCad))}</strong>
-      </div>
-      <div style="display:flex;justify-content:space-between;border-top:1px solid #e7e5e4;padding-top:6px;margin-top:6px;color:#b45309;">
-        <span><strong>Amount due now</strong></span>
-        <strong>${escapeHtml(formatCad(args.amountDueCad))}</strong>
-      </div>
+${lineItemsHtml}
     </td>
   </tr>
 </table>
@@ -80,13 +143,26 @@ ${buttonHtml("Upload payment proof", args.payUrl)}
     ? `${args.customMessage.trim()}\n\n`
     : "";
 
+  // Text version: same conditional structure so plain-text clients
+  // see the breakdown without zero rows.
+  const lineItemsText = [
+    `  Service fee:     ${formatCad(args.quotedFeeCad)}`,
+    showGovernmentFee
+      ? `  Government fee:  ${formatCad(args.governmentFeeCad)}`
+      : "",
+    showHst ? `  HST:             ${formatCad(args.hstCad)}` : "",
+    showTotal ? `  Total:           ${formatCad(args.totalDueCad)}` : "",
+    `  Already paid:    ${formatCad(args.alreadyPaidCad)}`,
+    `  Amount due:      ${formatCad(args.amountDueCad)}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   const text = `Hello ${args.clientName},
 
 ${customBlockText}There's an outstanding payment on your case ${args.caseNumber}.
 
-  Quoted fee:    ${formatCad(args.quotedFeeCad)}
-  Already paid:  ${formatCad(args.alreadyPaidCad)}
-  Amount due:    ${formatCad(args.amountDueCad)}
+${lineItemsText}
 
 How to pay:
   1. Send an Interac e-transfer for ${formatCad(args.amountDueCad)} to ${args.recipientPaymentEmail}.

@@ -2330,7 +2330,7 @@ export async function notifyClientForPayment(
     .schema("crm")
     .from("cases")
     .select(
-      "id, case_number, client_id, status, quoted_fee_cad, client_portal_token, client:clients(legal_name_full, given_names, preferred_name)",
+      "id, case_number, client_id, status, quoted_fee_cad, government_fee_cad, client_portal_token, client:clients(legal_name_full, given_names, preferred_name)",
     )
     .eq("id", parsed.data.caseId)
     .is("deleted_at", null)
@@ -2339,6 +2339,23 @@ export async function notifyClientForPayment(
   if (caseRow.status === "closed") {
     return { error: "Cannot request payment on a closed case." };
   }
+
+  // Pull HST from the most recent SIGNED retainer. The retainer is
+  // the canonical fee snapshot at signing; the cases table doesn't
+  // store hst_cad directly. If no signed retainer exists yet (rare
+  // for cases at the payment-request stage) we treat HST as zero —
+  // staff will sign a retainer before collecting payment in practice.
+  const { data: retainer } = await supabase
+    .schema("crm")
+    .from("retainer_agreements")
+    .select("hst_cad, government_fee_cad")
+    .eq("case_id", caseRow.id)
+    .is("voided_at", null)
+    .is("deleted_at", null)
+    .not("signed_at", "is", null)
+    .order("signed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   // Sum non-deleted payments to compute the outstanding balance. This
   // INCLUDES client-uploaded rows pending verification — the button
@@ -2355,7 +2372,15 @@ export async function notifyClientForPayment(
     0,
   );
   const quoted = Number(caseRow.quoted_fee_cad);
-  const amountDue = Math.max(0, quoted - alreadyPaid);
+  // Prefer the retainer's snapshotted government fee (it's what the
+  // client signed) and fall back to the live case row when there's
+  // no retainer yet.
+  const governmentFee = Number(
+    retainer?.government_fee_cad ?? caseRow.government_fee_cad ?? 0,
+  );
+  const hst = Number(retainer?.hst_cad ?? 0);
+  const totalDue = quoted + governmentFee + hst;
+  const amountDue = Math.max(0, totalDue - alreadyPaid);
   if (amountDue <= 0) {
     return {
       error: "This case is paid in full — no payment to request.",
@@ -2405,6 +2430,9 @@ export async function notifyClientForPayment(
     caseNumber: caseRow.case_number,
     amountDueCad: amountDue,
     quotedFeeCad: quoted,
+    governmentFeeCad: governmentFee,
+    hstCad: hst,
+    totalDueCad: totalDue,
     alreadyPaidCad: alreadyPaid,
     recipientPaymentEmail: CASE_PAYMENT_RECIPIENT_EMAIL,
     referenceCode: caseRow.case_number,
