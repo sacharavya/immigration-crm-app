@@ -545,10 +545,12 @@ export async function reuploadFile(
     });
 
   // 6. Best-effort move of the now-superseded OneDrive item into
-  //    "99 Rejected/" with a date-suffixed name. Enqueues + tries
-  //    inline; failures get retried by the daily drive-moves cron.
-  //    The DB is already authoritative — this only affects what staff
-  //    sees when browsing OneDrive directly.
+  //    "<group>/99 Rejected/" with a date-suffixed name. Enqueues +
+  //    tries inline; failures get retried by the daily drive-moves
+  //    cron. The DB is already authoritative — this only affects what
+  //    staff sees when browsing OneDrive directly. Parent is the
+  //    category folder (e.g. "01 Identity") so rejected files stay
+  //    co-located with their active siblings.
   if (
     superseded.sharepoint_drive_id &&
     superseded.sharepoint_item_id &&
@@ -559,7 +561,7 @@ export async function reuploadFile(
       sourceDriveId: superseded.sharepoint_drive_id,
       sourceItemId: superseded.sharepoint_item_id,
       sourceFileName: superseded.file_name,
-      caseFolderItemId: ctx.caseRow.sharepoint_folder_id,
+      parentFolderItemId: ctx.categoryFolderId,
     });
   }
 

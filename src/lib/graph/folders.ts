@@ -192,24 +192,31 @@ export async function ensureConsultationPaymentsFolder(
 }
 
 /**
- * Returns the drive id + the "99 Rejected" subfolder under the case
- * folder, creating it lazily. The numeric "99 " prefix sorts it to the
- * BOTTOM of the case folder listing so staff browsing OneDrive don't
- * confuse it with active document categories.
+ * Returns the drive id + a "99 Rejected" subfolder under the given
+ * parent folder, creating it lazily. The numeric "99 " prefix sorts
+ * it to the BOTTOM of the parent's listing so staff browsing OneDrive
+ * don't confuse it with active documents in the same group.
  *
- * Inc 5: re-uploads move the prior (rejected) Graph item into this
- * folder + rename it with a date suffix so OneDrive mirrors the DB
- * state. The move is best-effort; failures get queued to
+ * The parent is typically the case's category folder
+ * (e.g. "01 Identity"), so rejected files stay co-located with their
+ * active siblings — staff browsing "01 Identity" can find the
+ * rejected version right inside "01 Identity/99 Rejected". A caller
+ * is also free to pass the case folder if they want a case-wide
+ * Rejected bucket, but the per-group placement is the default.
+ *
+ * Re-uploads move the prior (rejected) Graph item into this folder
+ * + rename it with a date suffix so OneDrive mirrors the DB state.
+ * The move is best-effort; failures get queued to
  * files.pending_drive_moves.
  */
-export async function ensureCaseRejectedFolder(
-  caseFolderItemId: string,
+export async function ensureRejectedFolderUnder(
+  parentFolderItemId: string,
 ): Promise<{ driveId: string; folderItemId: string }> {
   const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
   if (!driveId) {
     throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
   }
-  const folder = await ensureFolder(driveId, caseFolderItemId, "99 Rejected");
+  const folder = await ensureFolder(driveId, parentFolderItemId, "99 Rejected");
   return { driveId, folderItemId: folder.id };
 }
 

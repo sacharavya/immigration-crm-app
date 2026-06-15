@@ -2512,7 +2512,7 @@ export type Database = {
       pending_drive_moves: {
         Row: {
           attempt_count: number
-          case_folder_item_id: string
+          parent_folder_item_id: string
           created_at: string
           document_id: string
           id: string
@@ -2528,7 +2528,7 @@ export type Database = {
         }
         Insert: {
           attempt_count?: number
-          case_folder_item_id: string
+          parent_folder_item_id: string
           created_at?: string
           document_id: string
           id?: string
@@ -2544,7 +2544,7 @@ export type Database = {
         }
         Update: {
           attempt_count?: number
-          case_folder_item_id?: string
+          parent_folder_item_id?: string
           created_at?: string
           document_id?: string
           id?: string

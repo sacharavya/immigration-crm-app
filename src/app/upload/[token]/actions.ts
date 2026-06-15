@@ -528,14 +528,13 @@ export async function reuploadFileAsClient(
       created_by: null,
     });
 
-  // 6. Best-effort move of the superseded item into "99 Rejected/".
-  //    Same shape as the staff path; enqueue + try inline; failures
-  //    get retried by the daily drive-moves cron.
-  //    resolvePortalUploadContext already verified
-  //    caseRow.sharepoint_folder_id is non-null but TS doesn't narrow
-  //    the field through the context return, so re-guard here.
+  // 6. Best-effort move of the superseded item into the group's
+  //    "99 Rejected/" subfolder. Same shape as the staff path;
+  //    enqueue + try inline; failures get retried by the daily
+  //    drive-moves cron. Parent is the category folder (e.g.
+  //    "01 Identity") so rejected files stay co-located with their
+  //    active siblings.
   if (
-    ctx.caseRow.sharepoint_folder_id &&
     superseded.sharepoint_drive_id &&
     superseded.sharepoint_item_id &&
     superseded.file_name
@@ -545,7 +544,7 @@ export async function reuploadFileAsClient(
       sourceDriveId: superseded.sharepoint_drive_id,
       sourceItemId: superseded.sharepoint_item_id,
       sourceFileName: superseded.file_name,
-      caseFolderItemId: ctx.caseRow.sharepoint_folder_id,
+      parentFolderItemId: ctx.categoryFolderId,
     });
   }
 

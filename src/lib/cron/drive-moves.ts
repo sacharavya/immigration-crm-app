@@ -1,6 +1,6 @@
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
-import { ensureCaseRejectedFolder } from "@/lib/graph/folders";
+import { ensureRejectedFolderUnder } from "@/lib/graph/folders";
 import { moveAndRenameDriveItem } from "@/lib/graph/move";
 import type { Database } from "@/lib/supabase/types";
 
@@ -49,7 +49,7 @@ export async function runDriveMovesSweep(): Promise<DriveMovesSweepResult> {
     .schema("files")
     .from("pending_drive_moves")
     .select(
-      "id, source_drive_id, source_item_id, case_folder_item_id, target_file_name, attempt_count, max_attempts",
+      "id, source_drive_id, source_item_id, parent_folder_item_id, target_file_name, attempt_count, max_attempts",
     )
     .eq("status", "pending")
     .lte("next_attempt_at", nowIso)
@@ -72,8 +72,8 @@ export async function runDriveMovesSweep(): Promise<DriveMovesSweepResult> {
     summary.processed++;
     const nextAttempt = row.attempt_count + 1;
     try {
-      const { folderItemId } = await ensureCaseRejectedFolder(
-        row.case_folder_item_id,
+      const { folderItemId } = await ensureRejectedFolderUnder(
+        row.parent_folder_item_id,
       );
       await moveAndRenameDriveItem(
         row.source_drive_id,

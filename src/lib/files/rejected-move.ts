@@ -1,6 +1,6 @@
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
-import { ensureCaseRejectedFolder } from "@/lib/graph/folders";
+import { ensureRejectedFolderUnder } from "@/lib/graph/folders";
 import {
   composeRejectedFileName,
   moveAndRenameDriveItem,
@@ -45,9 +45,12 @@ export type EnqueueRejectedMoveInput = {
   sourceDriveId: string;
   sourceItemId: string;
   sourceFileName: string;
-  // The case folder item id (cases.sharepoint_folder_id). The cron
-  // trusts this value verbatim — no relookup.
-  caseFolderItemId: string;
+  // The folder under which "99 Rejected/" should be created. Callers
+  // pass the GROUP folder (e.g. "01 Identity") so rejected files stay
+  // co-located with their active siblings; passing the case folder
+  // also works if a case-wide bucket is preferred. The cron trusts
+  // this value verbatim — no relookup.
+  parentFolderItemId: string;
 };
 
 export async function enqueueAndAttemptRejectedMove(
@@ -69,7 +72,7 @@ export async function enqueueAndAttemptRejectedMove(
       document_id: input.supersededDocumentId,
       source_drive_id: input.sourceDriveId,
       source_item_id: input.sourceItemId,
-      case_folder_item_id: input.caseFolderItemId,
+      parent_folder_item_id: input.parentFolderItemId,
       target_file_name: targetFileName,
     })
     .select("id")
@@ -85,8 +88,8 @@ export async function enqueueAndAttemptRejectedMove(
   // 2. Inline best-effort move. The cron handles retries on failure;
   //    on success we stamp succeeded_at so the cron skips this row.
   try {
-    const { folderItemId } = await ensureCaseRejectedFolder(
-      input.caseFolderItemId,
+    const { folderItemId } = await ensureRejectedFolderUnder(
+      input.parentFolderItemId,
     );
     await moveAndRenameDriveItem(
       input.sourceDriveId,
