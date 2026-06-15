@@ -96,13 +96,12 @@ export async function createClientStandalone(
     };
   }
 
-  // Derive first/last from the full legal name so downstream surfaces
-  // (retainer PDF, emails, intake checklist) don't get empty name
-  // fields. The intake form lets staff override the split if the
-  // derived value is wrong (e.g. compound family names).
-  const { given_names, family_name } = splitLegalName(
-    parsed.data.legal_name_full,
-  );
+  // Derive first/last from the full legal name when staff left them
+  // blank. The form surfaces this split inline so staff can override;
+  // anything they typed wins over the derive.
+  const derived = splitLegalName(parsed.data.legal_name_full);
+  const given_names = parsed.data.given_names ?? derived.given_names;
+  const family_name = parsed.data.family_name ?? derived.family_name;
 
   const { data: newClient, error: insertErr } = await supabase
     .schema("crm")
@@ -110,13 +109,26 @@ export async function createClientStandalone(
     .insert({
       client_number: clientNumber as unknown as string,
       legal_name_full: parsed.data.legal_name_full,
+      preferred_name: parsed.data.preferred_name ?? null,
       given_names,
       family_name,
+      date_of_birth: parsed.data.date_of_birth ?? null,
+      gender: parsed.data.gender ?? null,
+      marital_status: parsed.data.marital_status ?? null,
+      country_of_birth: parsed.data.country_of_birth ?? null,
+      country_of_citizenship: parsed.data.country_of_citizenship ?? null,
+      country_of_residence: parsed.data.country_of_residence ?? null,
+      preferred_language: parsed.data.preferred_language ?? null,
+      preferred_contact: parsed.data.preferred_contact ?? null,
       email: parsed.data.email ?? null,
       phone_primary: parsed.data.phone_primary ?? null,
       phone_whatsapp: parsed.data.phone_whatsapp ?? null,
-      country_of_citizenship: parsed.data.country_of_citizenship ?? null,
-      date_of_birth: parsed.data.date_of_birth ?? null,
+      address_line1: parsed.data.address_line1 ?? null,
+      address_line2: parsed.data.address_line2 ?? null,
+      city: parsed.data.city ?? null,
+      province_state: parsed.data.province_state ?? null,
+      postal_code: parsed.data.postal_code ?? null,
+      country_code: parsed.data.country_code ?? null,
       status: "lead",
       created_by: me.id,
     })

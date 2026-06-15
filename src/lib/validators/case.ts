@@ -21,14 +21,57 @@ const optionalCountryCode = z.preprocess(
 );
 
 // Standalone client capture (e.g., adding a lead before any case exists).
-// Address + name split optional — staff can fill in later when a case opens.
+// Full personal-details surface so the retainer, intake forms, and
+// emails don't render with blank fields. Legal name is the only hard
+// requirement; everything else is optional so a lead can be created
+// with partial info and the staff can fill the rest later via the
+// intake page.
 export const newClientSchema = z.object({
   legal_name_full: z.string().trim().min(1, "Full legal name is required"),
+  preferred_name: optionalText,
+  // Given/family names: if staff leaves them blank the server derives
+  // them from legal_name_full (first word, last word). The form
+  // surfaces the derived split inline so staff can override.
+  given_names: optionalText,
+  family_name: optionalText,
+  date_of_birth: optionalDate,
+  gender: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z
+      .enum(["male", "female", "other", "prefer_not_to_say"])
+      .optional(),
+  ),
+  marital_status: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z
+      .enum([
+        "single",
+        "married",
+        "common_law",
+        "divorced",
+        "widowed",
+        "separated",
+        "annulled",
+      ])
+      .optional(),
+  ),
+  country_of_birth: optionalCountryCode,
+  country_of_citizenship: optionalCountryCode,
+  country_of_residence: optionalCountryCode,
+  preferred_language: optionalText,
+  preferred_contact: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.enum(["email", "phone", "whatsapp"]).optional(),
+  ),
   email: optionalEmail,
   phone_primary: optionalText,
   phone_whatsapp: optionalText,
-  country_of_citizenship: optionalCountryCode,
-  date_of_birth: optionalDate,
+  address_line1: optionalText,
+  address_line2: optionalText,
+  city: optionalText,
+  province_state: optionalText,
+  postal_code: optionalText,
+  country_code: optionalCountryCode,
 });
 
 export type NewClientInput = z.infer<typeof newClientSchema>;
