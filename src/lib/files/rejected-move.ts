@@ -61,6 +61,7 @@ export async function enqueueAndAttemptRejectedMove(
   const targetFileName = composeRejectedFileName(
     input.sourceFileName,
     now.toISOString(),
+    input.supersededDocumentId,
   );
 
   // 1. Enqueue first. If this insert fails we can't safely run the

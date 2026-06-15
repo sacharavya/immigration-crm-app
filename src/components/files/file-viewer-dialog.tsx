@@ -8,7 +8,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -94,9 +93,32 @@ export function FileViewerDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[92vh] w-[92vw] max-w-5xl gap-3 p-0">
-        <DialogHeader className="border-b border-stone-200 px-5 py-4 pr-12">
-          <DialogTitle className="truncate text-base">
+      {/*
+        Responsive sizing: full-screen on mobile (< 640px), inset
+        dialog from sm: up. The dialog primitive's defaults assume a
+        narrow centered panel; we override translate + position so the
+        sheet can fill the viewport when needed.
+        Using flex-col so the body region (flex-1) can stretch and the
+        iframe/image inside fill what's left after header + footer.
+      */}
+      <DialogContent
+        className={cn(
+          // overflow-hidden is load-bearing: pdf/image children inside
+          // the flex body otherwise push past the dialog's rounded
+          // borders on desktop. The body's own overflow handling keeps
+          // content visible; this just clips at the dialog edge.
+          "flex flex-col gap-0 overflow-hidden p-0",
+          // Mobile: pin to viewport edges, fill height.
+          "inset-x-0 top-0 left-0 h-dvh max-h-dvh w-screen max-w-full translate-x-0 translate-y-0 rounded-none",
+          // sm: revert to a centered, inset dialog.
+          // h-[92vh] (not h-auto) gives the body a DEFINITE height so
+          // flex-1 + min-h-0 clamps the iframe / image inside instead
+          // of letting them push the dialog past the viewport.
+          "sm:inset-auto sm:top-1/2 sm:left-1/2 sm:h-[92vh] sm:max-h-[92vh] sm:w-[92vw] sm:max-w-5xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl",
+        )}
+      >
+        <DialogHeader className="border-b border-stone-200 px-4 py-3 pr-12 sm:px-5 sm:py-4">
+          <DialogTitle className="truncate text-sm sm:text-base">
             {fileName}
           </DialogTitle>
           <DialogDescription className="mt-0.5 text-xs">
@@ -105,17 +127,50 @@ export function FileViewerDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex min-h-[60vh] flex-1 items-center justify-center bg-stone-100 px-5 py-4">
+        {/*
+          min-h-0 here is load-bearing: without it the flex child can't
+          shrink below its content's natural height, so the iframe's
+          h-full would push the dialog past the viewport on phones.
+          overflow-auto on the container handles cases where the image
+          is naturally larger than the box (e.g. a 4000px-wide flag PNG)
+          — user scrolls within the body region rather than the page.
+        */}
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-stone-100 px-3 py-3 sm:px-5 sm:py-4">
           {strategy === "iframe" && (
-            <iframe
+            // <object> instead of <iframe> for PDFs: Chrome refuses to
+            // render application/pdf responses in iframes in some
+            // contexts ("This page has been blocked by Chrome"). The
+            // <object> element is the spec-blessed embed mechanism
+            // and explicitly tells the browser "render this as PDF",
+            // routing through the browser's native PDF viewer rather
+            // than treating it as a generic frame navigation. The
+            // children render only when the browser declines to embed
+            // — they act as a graceful fallback.
+            // Defense in depth survives: the proxy authenticates by
+            // case_id, forces SVG/HTML/XML to attachment so they
+            // never embed, and sends X-Content-Type-Options: nosniff.
+            <object
               key={openKey}
-              src={src}
-              title={fileName}
-              className="h-[70vh] w-full rounded-md border border-stone-200 bg-white"
-              // sandbox attribute also applied by the proxy response
-              // header (CSP: sandbox). Belt and suspenders.
-              sandbox=""
-            />
+              data={src}
+              type="application/pdf"
+              className="h-full min-h-[280px] w-full rounded-md border border-stone-200 bg-white sm:min-h-[400px]"
+              aria-label={fileName}
+            >
+              <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-stone-600">
+                <p>
+                  Your browser can&rsquo;t preview this file inline.
+                </p>
+                <a
+                  href={src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(buttonVariants())}
+                >
+                  <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                  Open in new tab
+                </a>
+              </div>
+            </object>
           )}
           {strategy === "image" && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -123,26 +178,45 @@ export function FileViewerDialog({
               key={openKey}
               src={src}
               alt={fileName}
-              className="max-h-[70vh] max-w-full rounded-md border border-stone-200 bg-white object-contain"
+              // max-h-full + object-contain clamps to the body's
+              // definite height (set via dialog h-[92vh] on desktop /
+              // h-dvh on mobile, propagated through flex-1 + min-h-0).
+              // Without the dialog's definite height, the image would
+              // push the body past the viewport.
+              className="max-h-full max-w-full rounded-md border border-stone-200 bg-white object-contain"
             />
           )}
           {strategy === "download_only" && (
             <div className="flex flex-col items-center gap-3 text-center text-sm text-stone-600">
               <p>This file type can&rsquo;t be previewed inline.</p>
-              <a href={src} download={fileName} className={cn(buttonVariants())}>
+              <a
+                href={src}
+                download={fileName}
+                className={cn(buttonVariants(), "max-w-full truncate")}
+              >
                 <Download className="mr-1.5 h-3.5 w-3.5" />
-                Download {fileName}
+                <span className="truncate">Download {fileName}</span>
               </a>
             </div>
           )}
         </div>
 
-        <DialogFooter className="flex-wrap gap-2 border-t border-stone-200 px-5 py-3">
+        {/*
+          Plain div instead of DialogFooter to avoid the primitive's
+          negative margins (-mx-4 -mb-4) and bg-muted styling, which
+          fight the full-screen mobile shell. Buttons stack on mobile,
+          row on sm+. Anchors styled as buttons so they keep the
+          shared button look without dragging in asChild.
+        */}
+        <div className="flex flex-col gap-2 border-t border-stone-200 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-2 sm:px-5">
           <a
             href={src}
             target="_blank"
             rel="noopener noreferrer"
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "w-full justify-center sm:w-auto",
+            )}
           >
             <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
             Open in new tab
@@ -150,13 +224,16 @@ export function FileViewerDialog({
           <a
             href={src}
             download={fileName}
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "w-full justify-center sm:w-auto",
+            )}
           >
             <Download className="mr-1.5 h-3.5 w-3.5" />
             Download
           </a>
           {reviewSlot}
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

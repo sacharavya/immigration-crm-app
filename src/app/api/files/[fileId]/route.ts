@@ -137,11 +137,16 @@ export async function GET(
     "Cache-Control": "private, no-store",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
-    // sandbox on the proxy response so an iframe loading this URL can't
-    // execute scripts. Belt-and-suspenders alongside attachment-only
-    // disposition for SVG / HTML.
-    "Content-Security-Policy": "sandbox",
   });
+  // CSP sandbox is applied ONLY for attachment-only types (SVG, HTML,
+  // XML). For inline-renderable types (PDF, images) it would block
+  // the browser's PDF viewer (which needs scripts) and serves no
+  // additional purpose: those mimes can't execute attacker code, and
+  // X-Content-Type-Options: nosniff prevents the browser from
+  // re-interpreting them as something else.
+  if (isAttachmentOnly) {
+    headers.set("Content-Security-Policy", "sandbox");
+  }
   if (streamed.contentLength) {
     headers.set("Content-Length", streamed.contentLength);
   }

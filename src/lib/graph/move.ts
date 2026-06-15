@@ -12,8 +12,12 @@ import { graphFetch } from "./client";
 // attempt already moved the file and a second attempt fires (e.g.
 // inline succeeded, then the cron also tries because we forgot to
 // stamp succeeded_at), Graph rejects the rename-into-same-location
-// with no real damage. The retry loop in the cron handler treats any
-// 4xx as terminal (no retry) and any 5xx/network as retryable.
+// with a 409 nameAlreadyExists, which the cron then counts as a
+// failed attempt. The current cron does NOT distinguish 4xx vs 5xx —
+// every exception increments attempt_count and reschedules
+// next_attempt_at by +24h until max_attempts is hit. Worth revisiting
+// if we see legitimate 4xx (e.g. itemNotFound) burning the retry
+// budget in practice.
 
 export type MoveAndRenameResult = {
   itemId: string;
@@ -46,18 +50,25 @@ export async function moveAndRenameDriveItem(
   };
 }
 
-// Decorates the source filename with a date suffix so two rejections
-// of the same document don't collide in the "99 Rejected" folder.
-//   bbi_e1_birth_certificate.pdf  ->  bbi_e1_birth_certificate__rejected_2026-06-13.pdf
-// The double underscore is a marker that staff can grep for.
+// Decorates the source filename with a date + short id suffix so two
+// rejections in the same group folder on the same day don't collide.
+//   bbi_e1_birth_certificate.pdf
+//     -> bbi_e1_birth_certificate__rejected_2026-06-13_4f8a2b1c.pdf
+// The double underscore is a marker that staff can grep for. The id
+// tail is the leading 8 chars of the superseded document's UUID,
+// which is unique per file_group_key + version. Date alone isn't
+// enough — when expected_quantity > 1, two siblings can share a
+// filename and be rejected the same day; the id tail fixes that.
 export function composeRejectedFileName(
   originalName: string,
   rejectedOnIsoDate: string,
+  uniqueId: string,
 ): string {
   const dot = originalName.lastIndexOf(".");
   const ymd = rejectedOnIsoDate.slice(0, 10);
-  if (dot <= 0) return `${originalName}__rejected_${ymd}`;
+  const tail = uniqueId.replace(/-/g, "").slice(0, 8);
+  if (dot <= 0) return `${originalName}__rejected_${ymd}_${tail}`;
   const base = originalName.slice(0, dot);
   const ext = originalName.slice(dot);
-  return `${base}__rejected_${ymd}${ext}`;
+  return `${base}__rejected_${ymd}_${tail}${ext}`;
 }
