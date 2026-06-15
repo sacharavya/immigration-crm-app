@@ -2509,6 +2509,65 @@ export type Database = {
           },
         ]
       }
+      pending_drive_moves: {
+        Row: {
+          attempt_count: number
+          case_folder_item_id: string
+          created_at: string
+          document_id: string
+          id: string
+          last_error: string | null
+          max_attempts: number
+          next_attempt_at: string
+          source_drive_id: string
+          source_item_id: string
+          status: string
+          succeeded_at: string | null
+          target_file_name: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          case_folder_item_id: string
+          created_at?: string
+          document_id: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          source_drive_id: string
+          source_item_id: string
+          status?: string
+          succeeded_at?: string | null
+          target_file_name: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          case_folder_item_id?: string
+          created_at?: string
+          document_id?: string
+          id?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          source_drive_id?: string
+          source_item_id?: string
+          status?: string
+          succeeded_at?: string | null
+          target_file_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_drive_moves_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

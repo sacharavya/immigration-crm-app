@@ -14,6 +14,7 @@ import { shouldRateLimit } from "@/lib/email/rate-limit";
 import { casePaymentRequestEmail } from "@/lib/email/templates/case-payment-request";
 import { clientUploadInviteEmail } from "@/lib/email/templates/client-upload-invite";
 import { getBaseUrl } from "@/lib/email/url";
+import { enqueueAndAttemptRejectedMove } from "@/lib/files/rejected-move";
 import {
   ensureCaseCategoryFolder,
   ensureCasePaymentsFolder,
@@ -524,10 +525,7 @@ export async function reuploadFile(
     };
   }
 
-  // 5. Audit. Inc 5 will also enqueue a pending_drive_moves row so the
-  //    prior file (sharepoint_item_id = superseded.sharepoint_item_id)
-  //    is moved into Rejected/ with a date-decorated filename. The DB
-  //    is already the source of truth; that move is best-effort.
+  // 5. Audit.
   await supabase
     .schema("crm")
     .from("case_events")
@@ -545,6 +543,25 @@ export async function reuploadFile(
       visible_to_client: false,
       created_by: staff.id,
     });
+
+  // 6. Best-effort move of the now-superseded OneDrive item into
+  //    "99 Rejected/" with a date-suffixed name. Enqueues + tries
+  //    inline; failures get retried by the daily drive-moves cron.
+  //    The DB is already authoritative — this only affects what staff
+  //    sees when browsing OneDrive directly.
+  if (
+    superseded.sharepoint_drive_id &&
+    superseded.sharepoint_item_id &&
+    superseded.file_name
+  ) {
+    await enqueueAndAttemptRejectedMove({
+      supersededDocumentId: superseded.id,
+      sourceDriveId: superseded.sharepoint_drive_id,
+      sourceItemId: superseded.sharepoint_item_id,
+      sourceFileName: superseded.file_name,
+      caseFolderItemId: ctx.caseRow.sharepoint_folder_id,
+    });
+  }
 
   revalidatePath(`/dashboard/cases/${live.case_id}`);
   return {

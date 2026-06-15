@@ -1,0 +1,57 @@
+import { NextRequest, NextResponse } from "next/server";
+
+import { runAbandonedPaidBookingsSweep } from "@/lib/cron/abandoned-paid-bookings";
+import { runAppointmentRemindersSweep } from "@/lib/cron/appointment-reminders";
+import { runDriveMovesSweep } from "@/lib/cron/drive-moves";
+
+// Consolidated daily cron. Vercel Hobby tier allows exactly ONE
+// scheduled cron, so we run all three sweeps sequentially behind a
+// single entry in vercel.json:
+//   1. appointment-reminders: send reminder emails for confirmed
+//      appointments starting in the next ~30h
+//   2. abandoned-paid-bookings: cancel paid consultations that
+//      lingered in pending_payment for >18h without ever advancing
+//   3. drive-moves: retry queued OneDrive moves for rejected files
+//      that failed the inline best-effort move at re-upload time
+//
+// Failures in one sweep don't abort the others — each runs in its
+// own try/catch and contributes its result (or an error string) to
+// the combined response body.
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
+
+export async function GET(req: NextRequest) {
+  const expected = process.env.CRON_SECRET
+    ? `Bearer ${process.env.CRON_SECRET}`
+    : null;
+  if (!expected) {
+    return NextResponse.json(
+      { error: "CRON_SECRET not configured" },
+      { status: 500 },
+    );
+  }
+  if (req.headers.get("authorization") !== expected) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
+  const [reminders, abandoned, driveMoves] = await Promise.allSettled([
+    runAppointmentRemindersSweep(),
+    runAbandonedPaidBookingsSweep(),
+    runDriveMovesSweep(),
+  ]);
+
+  return NextResponse.json({
+    appointment_reminders: settled(reminders),
+    abandoned_paid_bookings: settled(abandoned),
+    drive_moves: settled(driveMoves),
+  });
+}
+
+function settled<T>(r: PromiseSettledResult<T>): T | { error: string } {
+  if (r.status === "fulfilled") return r.value;
+  return {
+    error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+  };
+}

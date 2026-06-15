@@ -3,6 +3,7 @@
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 
+import { enqueueAndAttemptRejectedMove } from "@/lib/files/rejected-move";
 import { ensureCaseCategoryFolder } from "@/lib/graph/folders";
 import { uploadFile as graphUploadFile } from "@/lib/graph/uploads";
 import type { Database } from "@/lib/supabase/types";
@@ -456,7 +457,9 @@ export async function reuploadFileAsClient(
     .eq("id", live.id)
     .eq("status", "rejected")
     .eq("version_number", live.version_number)
-    .select("id, version_number")
+    .select(
+      "id, version_number, sharepoint_drive_id, sharepoint_item_id, file_name",
+    )
     .maybeSingle();
 
   if (updErr) {
@@ -505,7 +508,7 @@ export async function reuploadFileAsClient(
     };
   }
 
-  // 5. Audit. (Inc 5 will enqueue the rejected-folder move here.)
+  // 5. Audit.
   await supabase
     .schema("crm")
     .from("case_events")
@@ -524,6 +527,27 @@ export async function reuploadFileAsClient(
       visible_to_client: true,
       created_by: null,
     });
+
+  // 6. Best-effort move of the superseded item into "99 Rejected/".
+  //    Same shape as the staff path; enqueue + try inline; failures
+  //    get retried by the daily drive-moves cron.
+  //    resolvePortalUploadContext already verified
+  //    caseRow.sharepoint_folder_id is non-null but TS doesn't narrow
+  //    the field through the context return, so re-guard here.
+  if (
+    ctx.caseRow.sharepoint_folder_id &&
+    superseded.sharepoint_drive_id &&
+    superseded.sharepoint_item_id &&
+    superseded.file_name
+  ) {
+    await enqueueAndAttemptRejectedMove({
+      supersededDocumentId: superseded.id,
+      sourceDriveId: superseded.sharepoint_drive_id,
+      sourceItemId: superseded.sharepoint_item_id,
+      sourceFileName: superseded.file_name,
+      caseFolderItemId: ctx.caseRow.sharepoint_folder_id,
+    });
+  }
 
   revalidatePath(`/dashboard/cases/${ctx.caseRow.id}`);
   revalidatePath(`/upload/${token}`);

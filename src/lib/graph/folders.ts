@@ -192,6 +192,28 @@ export async function ensureConsultationPaymentsFolder(
 }
 
 /**
+ * Returns the drive id + the "99 Rejected" subfolder under the case
+ * folder, creating it lazily. The numeric "99 " prefix sorts it to the
+ * BOTTOM of the case folder listing so staff browsing OneDrive don't
+ * confuse it with active document categories.
+ *
+ * Inc 5: re-uploads move the prior (rejected) Graph item into this
+ * folder + rename it with a date suffix so OneDrive mirrors the DB
+ * state. The move is best-effort; failures get queued to
+ * files.pending_drive_moves.
+ */
+export async function ensureCaseRejectedFolder(
+  caseFolderItemId: string,
+): Promise<{ driveId: string; folderItemId: string }> {
+  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
+  if (!driveId) {
+    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
+  }
+  const folder = await ensureFolder(driveId, caseFolderItemId, "99 Rejected");
+  return { driveId, folderItemId: folder.id };
+}
+
+/**
  * Returns the case folder + the "00 Payments" subfolder, creating the
  * subfolder lazily if it doesn't exist yet. Same numeric "00 " prefix
  * pattern as 00 Retainer so both pin to the top of the case folder
