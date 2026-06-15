@@ -29,6 +29,7 @@ import { RetainerTab } from "./_components/retainer-tab";
 import { ShareLinkDialog } from "./_components/share-link-dialog";
 import {
   DocumentChecklist,
+  type FileRow,
   type LatestDoc,
 } from "./_components/document-checklist";
 import {
@@ -333,7 +334,7 @@ export default async function CasePage({ params, searchParams }: Props) {
       .schema("files")
       .from("documents")
       .select(
-        "id, document_code, required_document_id, status, file_name, version_number, sharepoint_web_url, rejection_reason, reviewed_at, reviewed_by",
+        "id, document_code, required_document_id, status, file_name, mime_type, version_number, sharepoint_web_url, rejection_reason, reviewed_at, reviewed_by, file_group_key, created_at",
       )
       .eq("case_id", id)
       .is("deleted_at", null),
@@ -689,21 +690,31 @@ export default async function CasePage({ params, searchParams }: Props) {
     last_name: s.last_name,
   }));
 
-  // Latest version per document_code
-  const latestByCode = new Map<string, LatestDoc>();
+  // All LIVE files per document_code. "Live" mirrors the partial unique
+  // index uniq_document_live_per_group: status != 'superseded' AND
+  // deleted_at IS NULL. Multi-file slots (expected_quantity > 1) have
+  // multiple entries; single-file slots have 0 or 1.
+  const liveByCode = new Map<string, FileRow[]>();
   for (const doc of uploadedDocs) {
     if (!doc.document_code) continue;
-    const existing = latestByCode.get(doc.document_code);
-    if (!existing || doc.version_number > existing.version_number) {
-      latestByCode.set(doc.document_code, {
-        id: doc.id,
-        status: doc.status,
-        file_name: doc.file_name,
-        sharepoint_web_url: doc.sharepoint_web_url,
-        version_number: doc.version_number,
-        rejection_reason: doc.rejection_reason,
-      });
-    }
+    if (doc.status === "superseded") continue;
+    const list = liveByCode.get(doc.document_code) ?? [];
+    list.push({
+      id: doc.id,
+      status: doc.status,
+      file_name: doc.file_name,
+      mime_type: doc.mime_type,
+      version_number: doc.version_number,
+      rejection_reason: doc.rejection_reason,
+      file_group_key: doc.file_group_key,
+      created_at: doc.created_at,
+    });
+    liveByCode.set(doc.document_code, list);
+  }
+  // Sort each slot's files by created_at so the sub-list renders in
+  // upload order (oldest first).
+  for (const list of liveByCode.values()) {
+    list.sort((a, b) => a.created_at.localeCompare(b.created_at));
   }
 
   // FLOW-3d: build additional-document groups.
@@ -1027,7 +1038,7 @@ export default async function CasePage({ params, searchParams }: Props) {
             <DocumentChecklist
               caseId={caseRow.id}
               templateDocs={templateDocs}
-              latestByCode={latestByCode}
+              liveByCode={liveByCode}
               canEditRequired={me ? staffCan(me, "review_documents") : false}
               canReview={me ? staffCan(me, "review_documents") : false}
               canUpload={me ? staffCan(me, "upload_documents") : false}

@@ -8,9 +8,28 @@ export type TemplateDoc = {
   condition_label: string | null;
   display_order: number;
   instructions: string | null;
+  expected_quantity: number;
   group: { name: string; display_order: number } | null;
 };
 
+// File-row shape consumed by the multi-file checklist UI. One per live
+// row in files.documents for the slot (status not superseded, not soft-
+// deleted). For single-file slots the array has 0 or 1 entries and the
+// row renders the existing single-file UI unchanged.
+export type FileRow = {
+  id: string;
+  status: string;
+  file_name: string | null;
+  mime_type: string | null;
+  version_number: number;
+  rejection_reason: string | null;
+  file_group_key: string;
+  created_at: string;
+};
+
+// Legacy single-file shape kept for the additional-docs surface and
+// other callers that haven't migrated yet. Equivalent to FileRow minus
+// mime/group/created_at.
 export type LatestDoc = {
   id: string;
   status: string;
@@ -51,10 +70,21 @@ function groupDocs(docs: TemplateDoc[]): Group[] {
     .sort((a, b) => a.displayOrder - b.displayOrder);
 }
 
+// Item-level "received" derivation. For single-file slots: at least one
+// file in (uploaded, accepted). For multi-file slots: expected_quantity
+// reached AND all live files are accepted.
+function itemReceived(files: FileRow[] | undefined, expected: number): boolean {
+  if (!files || files.length === 0) return false;
+  if (expected <= 1) {
+    return files.some((f) => f.status === "uploaded" || f.status === "accepted");
+  }
+  return files.length >= expected && files.every((f) => f.status === "accepted");
+}
+
 export function DocumentChecklist({
   caseId,
   templateDocs,
-  latestByCode,
+  liveByCode,
   canEditRequired,
   canReview,
   canUpload,
@@ -63,20 +93,15 @@ export function DocumentChecklist({
 }: {
   caseId: string;
   templateDocs: TemplateDoc[];
-  latestByCode: Map<string, LatestDoc>;
+  liveByCode: Map<string, FileRow[]>;
   canEditRequired: boolean;
   canReview: boolean;
   canUpload: boolean;
   clientPortalToken?: string;
   shareButtonSlot?: React.ReactNode;
 }) {
-  const isReceived = (code: string) => {
-    const u = latestByCode.get(code);
-    return Boolean(u && (u.status === "uploaded" || u.status === "accepted"));
-  };
-
   const receivedCount = templateDocs.filter((d) =>
-    isReceived(d.document_code),
+    itemReceived(liveByCode.get(d.document_code), d.expected_quantity),
   ).length;
 
   const groups = groupDocs(templateDocs);
@@ -114,8 +139,9 @@ export function DocumentChecklist({
                       is_required: d.is_required,
                       condition_label: d.condition_label,
                       instructions: d.instructions,
+                      expected_quantity: d.expected_quantity,
                     }}
-                    uploaded={latestByCode.get(d.document_code) ?? null}
+                    files={liveByCode.get(d.document_code) ?? []}
                     canEditRequired={canEditRequired}
                     canReview={canReview}
                     canUpload={canUpload}

@@ -3,6 +3,7 @@ import Image from "next/image";
 
 import {
   DocumentChecklist,
+  type FileRow,
   type LatestDoc,
   type TemplateDoc,
 } from "@/app/(staff)/dashboard/cases/[id]/_components/document-checklist";
@@ -90,7 +91,7 @@ export default async function ClientUploadPage({ params }: Props) {
       .schema("files")
       .from("documents")
       .select(
-        "id, document_code, required_document_id, status, file_name, version_number, sharepoint_web_url, rejection_reason",
+        "id, document_code, required_document_id, status, file_name, mime_type, version_number, sharepoint_web_url, rejection_reason, file_group_key, created_at",
       )
       .eq("case_id", caseRow.id)
       .is("deleted_at", null),
@@ -115,33 +116,49 @@ export default async function ClientUploadPage({ params }: Props) {
     condition_label: d.condition_label,
     display_order: d.display_order,
     instructions: d.instructions,
+    expected_quantity: d.expected_quantity ?? 1,
     is_required: requiredCodes.has(d.document_code),
     group: d.group,
   }));
 
-  const latestByCode = new Map<string, LatestDoc>();
+  // Live files grouped by document_code for the multi-file checklist.
+  // Mirrors the partial unique index uniq_document_live_per_group:
+  // status != 'superseded' AND deleted_at IS NULL.
+  const liveByCode = new Map<string, FileRow[]>();
+  // Legacy single-file projection retained for the additional-docs panel
+  // (which still consumes LatestDoc).
   const latestByRequiredDocId = new Map<string, LatestDoc>();
   for (const doc of uploadedDocs ?? []) {
-    const v: LatestDoc = {
-      id: doc.id,
-      status: doc.status,
-      file_name: doc.file_name,
-      sharepoint_web_url: doc.sharepoint_web_url,
-      version_number: doc.version_number,
-      rejection_reason: doc.rejection_reason,
-    };
-    if (doc.document_code) {
-      const ex = latestByCode.get(doc.document_code);
-      if (!ex || doc.version_number > ex.version_number) {
-        latestByCode.set(doc.document_code, v);
-      }
+    if (doc.document_code && doc.status !== "superseded") {
+      const list = liveByCode.get(doc.document_code) ?? [];
+      list.push({
+        id: doc.id,
+        status: doc.status,
+        file_name: doc.file_name,
+        mime_type: doc.mime_type,
+        version_number: doc.version_number,
+        rejection_reason: doc.rejection_reason,
+        file_group_key: doc.file_group_key,
+        created_at: doc.created_at,
+      });
+      liveByCode.set(doc.document_code, list);
     }
     if (doc.required_document_id) {
       const ex = latestByRequiredDocId.get(doc.required_document_id);
       if (!ex || doc.version_number > ex.version_number) {
-        latestByRequiredDocId.set(doc.required_document_id, v);
+        latestByRequiredDocId.set(doc.required_document_id, {
+          id: doc.id,
+          status: doc.status,
+          file_name: doc.file_name,
+          sharepoint_web_url: doc.sharepoint_web_url,
+          version_number: doc.version_number,
+          rejection_reason: doc.rejection_reason,
+        });
       }
     }
+  }
+  for (const list of liveByCode.values()) {
+    list.sort((a, b) => a.created_at.localeCompare(b.created_at));
   }
 
   // Build additional-docs groups (mirror of staff page).
@@ -250,7 +267,7 @@ export default async function ClientUploadPage({ params }: Props) {
           <DocumentChecklist
             caseId={caseRow.id}
             templateDocs={templateDocs}
-            latestByCode={latestByCode}
+            liveByCode={liveByCode}
             canEditRequired={false}
             canReview={false}
             canUpload={true}
