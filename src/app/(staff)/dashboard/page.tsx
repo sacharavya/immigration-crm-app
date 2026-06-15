@@ -18,6 +18,7 @@ import {
   computeActionChip,
   type ChipOutput,
 } from "@/lib/cases/action-chip";
+import { computeCaseOutstanding } from "@/lib/cases/fee-totals";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils/index";
 import {
@@ -129,6 +130,7 @@ export default async function DashboardPage() {
               updated_at,
               retained_at,
               quoted_fee_cad,
+              government_fee_cad,
               client:clients(legal_name_full)
             `,
           )
@@ -143,6 +145,7 @@ export default async function DashboardPage() {
             updated_at: string;
             retained_at: string | null;
             quoted_fee_cad: number;
+            government_fee_cad: number | null;
             client: { legal_name_full: string } | null;
           }>,
         }),
@@ -198,6 +201,35 @@ export default async function DashboardPage() {
   const clientCount = "count" in clientCountRes ? (clientCountRes.count ?? 0) : 0;
   const payments = paymentsRes.data ?? [];
   const tasks = (tasksRes.data ?? []) as MyTask[];
+
+  // Pull the signed-retainer snapshot for each open case so the
+  // outstanding KPI includes government fee + HST, not just the
+  // service fee. One retainer per case via the unique constraint.
+  const retainersByCase = new Map<
+    string,
+    { government_fee_cad: number | null; hst_cad: number | null }
+  >();
+  if (canFinancials && cases.length > 0) {
+    const { data: retainers } = await supabase
+      .schema("crm")
+      .from("retainer_agreements")
+      .select("case_id, government_fee_cad, hst_cad")
+      .in(
+        "case_id",
+        cases.map((c) => c.id),
+      )
+      .is("voided_at", null)
+      .is("deleted_at", null)
+      .not("signed_at", "is", null);
+    for (const r of retainers ?? []) {
+      if (r.case_id) {
+        retainersByCase.set(r.case_id, {
+          government_fee_cad: r.government_fee_cad,
+          hst_cad: r.hst_cad,
+        });
+      }
+    }
+  }
 
   // APPT-3 dashboard widget: next 5 confirmed appointments across the
   // firm. Only fetched when the staff can see appointments at all.
@@ -318,9 +350,12 @@ export default async function DashboardPage() {
 
   let outstanding = 0;
   for (const c of cases) {
-    const quoted = Number(c.quoted_fee_cad);
     const collected = collectedByCase.get(c.id) ?? 0;
-    outstanding += Math.max(0, quoted - collected);
+    outstanding += computeCaseOutstanding(
+      c,
+      retainersByCase.get(c.id) ?? null,
+      collected,
+    );
   }
 
   const recent = cases.slice(0, 5);
@@ -383,7 +418,7 @@ export default async function DashboardPage() {
             icon={<DollarSign className="h-4 w-4" />}
             label="Outstanding fees"
             value={formatCAD(outstanding)}
-            hint="Quoted minus collected, across active cases"
+            hint="Service + gov fee + HST minus collected, across active cases"
           />
         </CanServer>
       </section>

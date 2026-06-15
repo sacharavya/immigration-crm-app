@@ -10,6 +10,7 @@ import {
   computeActionChip,
   type ChipOutput,
 } from "@/lib/cases/action-chip";
+import { computeCaseFeeBreakdown } from "@/lib/cases/fee-totals";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import type { CaseStatus } from "@/lib/utils/phase";
@@ -77,6 +78,7 @@ export default async function CasesPage({ searchParams }: Props) {
         status,
         updated_at,
         quoted_fee_cad,
+        government_fee_cad,
         retainer_minimum_cad,
         service_type_id,
         assigned_rcic,
@@ -139,11 +141,20 @@ export default async function CasesPage({ searchParams }: Props) {
         ? supabase
             .schema("crm")
             .from("retainer_agreements")
-            .select("case_id, status")
+            .select(
+              "case_id, status, government_fee_cad, hst_cad, signed_at, voided_at",
+            )
             .in("case_id", caseIds)
             .is("deleted_at", null)
         : Promise.resolve({
-            data: [] as Array<{ case_id: string; status: string }>,
+            data: [] as Array<{
+              case_id: string;
+              status: string;
+              government_fee_cad: number | null;
+              hst_cad: number | null;
+              signed_at: string | null;
+              voided_at: string | null;
+            }>,
           }),
       serviceTypeIds.length
         ? supabase
@@ -214,6 +225,21 @@ export default async function CasesPage({ searchParams }: Props) {
   const retainerStatusByCase = new Map(
     (retainersForCases ?? []).map((r) => [r.case_id, r.status]),
   );
+  // Per-case signed retainer snapshot used by the fee-totals helper.
+  // Only signed-and-not-voided rows contribute their HST + gov fee
+  // override; drafts/voided rows leave the case row as the source.
+  const signedRetainerByCase = new Map<
+    string,
+    { government_fee_cad: number | null; hst_cad: number | null }
+  >();
+  for (const r of retainersForCases ?? []) {
+    if (r.signed_at && !r.voided_at) {
+      signedRetainerByCase.set(r.case_id, {
+        government_fee_cad: r.government_fee_cad,
+        hst_cad: r.hst_cad,
+      });
+    }
+  }
 
   const chipNow = new Date();
   const chipById = new Map<string, ChipOutput>();
@@ -227,10 +253,14 @@ export default async function CasesPage({ searchParams }: Props) {
   // progress; board doesn't. Build both unconditionally — cheap on 50 rows
   // and means the toggle doesn't trigger another server roundtrip.
   const listRows: CaseRow[] = (cases ?? []).map((c) => {
-    const quoted = Number(c.quoted_fee_cad);
+    const breakdown = computeCaseFeeBreakdown(
+      c,
+      signedRetainerByCase.get(c.id) ?? null,
+    );
+    const total = breakdown.totalCad;
     const collected = collectedByCase.get(c.id) ?? 0;
     const progress =
-      quoted > 0 ? Math.min(100, Math.round((collected / quoted) * 100)) : 0;
+      total > 0 ? Math.min(100, Math.round((collected / total) * 100)) : 0;
     const retainerStatus = retainerStatusByCase.get(c.id) ?? null;
     const retainerSigned =
       retainerStatus === "signed" || retainerStatus === "uploaded";

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
+import { computeCaseOutstanding } from "@/lib/cases/fee-totals";
 import { createClient } from "@/lib/supabase/server";
 import { PHASE_LABELS, phaseIndex } from "@/lib/utils/phase";
 
@@ -83,7 +84,7 @@ export default async function ReportsPage({ searchParams }: Props) {
     .schema("crm")
     .from("cases")
     .select(
-      "id, status, service_type_id, assigned_rcic, quoted_fee_cad, closed_at",
+      "id, status, service_type_id, assigned_rcic, quoted_fee_cad, government_fee_cad, closed_at",
     )
     .is("deleted_at", null);
   if (serviceTypeId) casesQuery = casesQuery.eq("service_type_id", serviceTypeId);
@@ -168,11 +169,40 @@ export default async function ReportsPage({ searchParams }: Props) {
       (collectedByCase.get(p.case_id) ?? 0) + sign * Number(p.amount_cad),
     );
   }
+  // Pull signed-retainer snapshots for every active case so the
+  // outstanding total includes government fee + HST, not just the
+  // service fee. Done after the filter so we don't fetch retainers
+  // for closed cases.
+  const activeCaseIds = activeCases.map((c) => c.id);
+  const { data: activeRetainers } = activeCaseIds.length
+    ? await supabase
+        .schema("crm")
+        .from("retainer_agreements")
+        .select("case_id, government_fee_cad, hst_cad")
+        .in("case_id", activeCaseIds)
+        .is("voided_at", null)
+        .is("deleted_at", null)
+        .not("signed_at", "is", null)
+    : { data: [] as never[] };
+  const retainerByCase = new Map<
+    string,
+    { government_fee_cad: number | null; hst_cad: number | null }
+  >();
+  for (const r of activeRetainers ?? []) {
+    if (r.case_id) {
+      retainerByCase.set(r.case_id, {
+        government_fee_cad: r.government_fee_cad,
+        hst_cad: r.hst_cad,
+      });
+    }
+  }
+
   const outstandingTotal = activeCases.reduce((sum, c) => {
-    const quoted = Number(c.quoted_fee_cad);
     const collected = collectedByCase.get(c.id) ?? 0;
-    const owed = quoted - collected;
-    return sum + (owed > 0 ? owed : 0);
+    return (
+      sum +
+      computeCaseOutstanding(c, retainerByCase.get(c.id) ?? null, collected)
+    );
   }, 0);
 
   const paymentsWithoutProof = allPayments.filter(

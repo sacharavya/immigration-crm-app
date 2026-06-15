@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
+import { computeCaseOutstanding } from "@/lib/cases/fee-totals";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils/index";
 import {
@@ -176,15 +177,16 @@ export default async function PaymentsPage({ searchParams }: Props) {
     (p) => p.proof_document_id !== null,
   ).length;
 
-  // Firm-wide outstanding balance: for every non-closed case, the gap
-  // between quoted_fee_cad and what's been received. Independent of the
-  // table filters above — the table shows filtered payments, this stat
-  // tells staff how much money is still expected across the practice.
+  // Firm-wide outstanding balance: for every non-closed case, the
+  // gap between the full fee total (service + gov fee + HST) and
+  // what's been received. Independent of the table filters above —
+  // the table shows filtered payments, this stat tells staff how
+  // much money is still expected across the practice.
   const [{ data: openCases }, { data: openPayments }] = await Promise.all([
     supabase
       .schema("crm")
       .from("cases")
-      .select("id, quoted_fee_cad")
+      .select("id, quoted_fee_cad, government_fee_cad")
       .is("deleted_at", null)
       .neq("status", "closed"),
     supabase
@@ -193,6 +195,29 @@ export default async function PaymentsPage({ searchParams }: Props) {
       .select("case_id, amount_cad")
       .is("deleted_at", null),
   ]);
+  const openCaseIds = (openCases ?? []).map((c) => c.id);
+  const { data: openRetainers } = openCaseIds.length
+    ? await supabase
+        .schema("crm")
+        .from("retainer_agreements")
+        .select("case_id, government_fee_cad, hst_cad")
+        .in("case_id", openCaseIds)
+        .is("voided_at", null)
+        .is("deleted_at", null)
+        .not("signed_at", "is", null)
+    : { data: [] as never[] };
+  const retainerByCase = new Map<
+    string,
+    { government_fee_cad: number | null; hst_cad: number | null }
+  >();
+  for (const r of openRetainers ?? []) {
+    if (r.case_id) {
+      retainerByCase.set(r.case_id, {
+        government_fee_cad: r.government_fee_cad,
+        hst_cad: r.hst_cad,
+      });
+    }
+  }
   const collectedByCase = new Map<string, number>();
   for (const p of openPayments ?? []) {
     if (!p.case_id) continue;
@@ -203,12 +228,16 @@ export default async function PaymentsPage({ searchParams }: Props) {
   }
   const pendingTotal = (openCases ?? []).reduce((sum, c) => {
     const collected = collectedByCase.get(c.id) ?? 0;
-    const outstanding = Number(c.quoted_fee_cad) - collected;
-    return sum + Math.max(0, outstanding);
+    return (
+      sum +
+      computeCaseOutstanding(c, retainerByCase.get(c.id) ?? null, collected)
+    );
   }, 0);
   const casesWithBalance = (openCases ?? []).filter((c) => {
     const collected = collectedByCase.get(c.id) ?? 0;
-    return Number(c.quoted_fee_cad) - collected > 0;
+    return (
+      computeCaseOutstanding(c, retainerByCase.get(c.id) ?? null, collected) > 0
+    );
   }).length;
 
   return (

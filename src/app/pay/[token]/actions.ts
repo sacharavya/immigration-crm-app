@@ -53,7 +53,16 @@ export type PayPortalCase = {
   case_number: string;
   client_id: string;
   status: string;
+  // Service fee (cases.quoted_fee_cad).
   quoted_fee_cad: number;
+  // Government fee snapshotted on the retainer at signing; falls back
+  // to the cases row when no retainer exists yet. Zero when neither
+  // source has a value.
+  government_fee_cad: number;
+  // HST from the retainer snapshot. Zero when no retainer.
+  hst_cad: number;
+  // quoted + gov + hst. The denominator the client owes.
+  total_due_cad: number;
   already_paid_cad: number;
   amount_due_cad: number;
   sharepoint_folder_id: string | null;
@@ -69,7 +78,7 @@ export async function loadCaseByPayToken(
     .schema("crm")
     .from("cases")
     .select(
-      "id, case_number, client_id, status, quoted_fee_cad, sharepoint_folder_id, client:clients(legal_name_full, given_names, preferred_name)",
+      "id, case_number, client_id, status, quoted_fee_cad, government_fee_cad, sharepoint_folder_id, client:clients(legal_name_full, given_names, preferred_name)",
     )
     .eq("client_portal_token", token)
     .is("deleted_at", null)
@@ -83,6 +92,21 @@ export async function loadCaseByPayToken(
     return null;
   }
 
+  // Pull HST + the snapshotted government fee from the most recent
+  // signed retainer. Mirrors the staff notifyClientForPayment action
+  // so the portal denominator matches the email's amount-due.
+  const { data: retainer } = await sb
+    .schema("crm")
+    .from("retainer_agreements")
+    .select("hst_cad, government_fee_cad")
+    .eq("case_id", caseRow.id)
+    .is("voided_at", null)
+    .is("deleted_at", null)
+    .not("signed_at", "is", null)
+    .order("signed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   const { data: priorPayments } = await sb
     .schema("crm")
     .from("payments")
@@ -94,7 +118,12 @@ export async function loadCaseByPayToken(
     0,
   );
   const quoted = Number(caseRow.quoted_fee_cad);
-  const amountDue = Math.max(0, quoted - alreadyPaid);
+  const governmentFee = Number(
+    retainer?.government_fee_cad ?? caseRow.government_fee_cad ?? 0,
+  );
+  const hst = Number(retainer?.hst_cad ?? 0);
+  const totalDue = quoted + governmentFee + hst;
+  const amountDue = Math.max(0, totalDue - alreadyPaid);
 
   const clientName =
     caseRow.client?.preferred_name?.trim() ||
@@ -108,6 +137,9 @@ export async function loadCaseByPayToken(
     client_id: caseRow.client_id,
     status: caseRow.status,
     quoted_fee_cad: quoted,
+    government_fee_cad: governmentFee,
+    hst_cad: hst,
+    total_due_cad: totalDue,
     already_paid_cad: alreadyPaid,
     amount_due_cad: amountDue,
     sharepoint_folder_id: caseRow.sharepoint_folder_id,

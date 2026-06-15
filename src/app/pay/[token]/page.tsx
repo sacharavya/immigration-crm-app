@@ -81,15 +81,51 @@ export default async function PublicPayPage({ params }: Props) {
         <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-500">
           Outstanding balance
         </h2>
+        {/*
+          Line items mirror the payment-request email's conditional
+          structure: service fee always shows, government fee + HST
+          show only when > 0, "Total" row appears when there's more
+          than one line item so the breakdown adds up visibly.
+        */}
         <table className="mt-3 w-full max-w-md text-sm">
           <tbody>
             <tr>
-              <td className="py-1 text-stone-500">Quoted fee</td>
+              <td className="py-1 text-stone-500">Service fee</td>
               <td className="py-1 text-right tabular-nums text-stone-900">
                 {formatCad(caseRow.quoted_fee_cad)}
               </td>
             </tr>
-            <tr>
+            {caseRow.government_fee_cad > 0 && (
+              <tr>
+                <td className="py-1 text-stone-500">Government fee</td>
+                <td className="py-1 text-right tabular-nums text-stone-900">
+                  {formatCad(caseRow.government_fee_cad)}
+                </td>
+              </tr>
+            )}
+            {caseRow.hst_cad > 0 && (
+              <tr>
+                <td className="py-1 text-stone-500">HST</td>
+                <td className="py-1 text-right tabular-nums text-stone-900">
+                  {formatCad(caseRow.hst_cad)}
+                </td>
+              </tr>
+            )}
+            {(caseRow.government_fee_cad > 0 || caseRow.hst_cad > 0) && (
+              <tr className="border-t border-stone-200">
+                <td className="py-1 font-semibold text-stone-900">Total</td>
+                <td className="py-1 text-right tabular-nums font-semibold text-stone-900">
+                  {formatCad(caseRow.total_due_cad)}
+                </td>
+              </tr>
+            )}
+            <tr
+              className={
+                caseRow.government_fee_cad > 0 || caseRow.hst_cad > 0
+                  ? ""
+                  : "border-t border-stone-200"
+              }
+            >
               <td className="py-1 text-stone-500">Already paid</td>
               <td className="py-1 text-right tabular-nums text-stone-900">
                 {formatCad(caseRow.already_paid_cad)}
