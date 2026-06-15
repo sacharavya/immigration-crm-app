@@ -19,6 +19,7 @@ import {
   type ChipOutput,
 } from "@/lib/cases/action-chip";
 import { computeCaseOutstanding } from "@/lib/cases/fee-totals";
+import { isPaymentVerified } from "@/lib/payments/verified";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils/index";
 import {
@@ -160,13 +161,17 @@ export default async function DashboardPage() {
       ? supabase
           .schema("crm")
           .from("payments")
-          .select("case_id, amount_cad, is_refund")
+          .select(
+            "case_id, amount_cad, is_refund, client_uploaded_at, verified_at",
+          )
           .is("deleted_at", null)
       : Promise.resolve({
           data: [] as Array<{
             case_id: string | null;
             amount_cad: number;
             is_refund: boolean;
+            client_uploaded_at: string | null;
+            verified_at: string | null;
           }>,
         }),
     canTasks
@@ -267,15 +272,21 @@ export default async function DashboardPage() {
       ).data ?? []
     : [];
 
+  // Only VERIFIED payments contribute toward the firm-wide outstanding
+  // KPI. Unverified client uploads sit in the pending bucket below.
   const collectedByCase = new Map<string, number>();
   for (const p of payments) {
     if (!p.case_id) continue;
+    if (!isPaymentVerified(p)) continue;
     const sign = p.is_refund ? -1 : 1;
     collectedByCase.set(
       p.case_id,
       (collectedByCase.get(p.case_id) ?? 0) + sign * Number(p.amount_cad),
     );
   }
+  const pendingVerificationFirmWide = payments.filter(
+    (p) => p.client_uploaded_at !== null && p.verified_at === null,
+  );
 
   const totalActive = cases.length;
   const newThisMonth = cases.filter(

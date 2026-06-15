@@ -12,6 +12,10 @@ import {
   chipInputFromViewRow,
   computeActionChip,
 } from "@/lib/cases/action-chip";
+import {
+  sumPendingVerification,
+  sumVerifiedPayments,
+} from "@/lib/payments/verified";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 
@@ -342,7 +346,7 @@ export default async function CasePage({ params, searchParams }: Props) {
       .schema("crm")
       .from("payments")
       .select(
-        "id, amount_cad, method, reference, received_date, notes, is_refund, recorded_by, proof_document_id",
+        "id, amount_cad, method, reference, received_date, notes, is_refund, recorded_by, proof_document_id, client_uploaded_at, verified_at, verified_by",
       )
       .eq("case_id", id)
       .is("deleted_at", null)
@@ -791,10 +795,12 @@ export default async function CasePage({ params, searchParams }: Props) {
     );
   })();
 
-  const collected = payments.reduce(
-    (acc, p) => acc + (p.is_refund ? -1 : 1) * Number(p.amount_cad),
-    0,
-  );
+  // `collected` only counts VERIFIED payments. Client-portal uploads
+  // sit in the pending bucket until staff approves them, so the
+  // "PAYMENT $X / $Y" card and the "Paid in full" badge don't flip
+  // on a screenshot we haven't reviewed yet.
+  const collected = sumVerifiedPayments(payments);
+  const pendingVerificationAmount = sumPendingVerification(payments);
   // The "amount the client owes" total includes the service fee plus
   // any government fee (snapshotted on the retainer at signing or set
   // on the case row pre-retainer) plus HST when applicable. Keeping
@@ -1131,6 +1137,19 @@ export default async function CasePage({ params, searchParams }: Props) {
                       </Badge>
                     )}
                   </div>
+                )}
+
+                {pendingVerificationAmount > 0 && (
+                  <Link
+                    href="/dashboard/payments?proof=pending"
+                    className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900 hover:bg-amber-100"
+                  >
+                    <span>
+                      <strong>{formatCad(pendingVerificationAmount)}</strong>{" "}
+                      awaiting verification
+                    </span>
+                    <span aria-hidden="true">›</span>
+                  </Link>
                 )}
 
                 <RecordPaymentTrigger caseId={caseRow.id} />

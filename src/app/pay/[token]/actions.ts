@@ -107,16 +107,22 @@ export async function loadCaseByPayToken(
     .limit(1)
     .maybeSingle();
 
+  // Only VERIFIED payments count as "already paid" on the portal so
+  // the client sees the same remaining balance staff sees on the
+  // case page. A prior client upload still pending verification is
+  // NOT subtracted from amount_due here.
   const { data: priorPayments } = await sb
     .schema("crm")
     .from("payments")
-    .select("amount_cad")
+    .select("amount_cad, client_uploaded_at, verified_at")
     .eq("case_id", caseRow.id)
     .is("deleted_at", null);
-  const alreadyPaid = (priorPayments ?? []).reduce(
-    (sum, p) => sum + Number(p.amount_cad),
-    0,
-  );
+  const alreadyPaid = (priorPayments ?? []).reduce((sum, p) => {
+    if (p.client_uploaded_at !== null && p.verified_at === null) {
+      return sum;
+    }
+    return sum + Number(p.amount_cad);
+  }, 0);
   const quoted = Number(caseRow.quoted_fee_cad);
   const governmentFee = Number(
     retainer?.government_fee_cad ?? caseRow.government_fee_cad ?? 0,

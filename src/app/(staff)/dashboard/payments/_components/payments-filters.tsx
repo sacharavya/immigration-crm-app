@@ -12,7 +12,7 @@ import {
   type PaymentMethod,
 } from "@/lib/validators/payment";
 
-type ProofFilter = "all" | "with" | "without";
+type ProofFilter = "all" | "with" | "without" | "pending";
 
 type Props = {
   from: string | null;
@@ -119,6 +119,7 @@ export function PaymentsFilters({ from, to, method, q, proof }: Props) {
           className="h-8 rounded-md border border-stone-200 bg-white px-2 text-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/30"
         >
           <option value="all">Any</option>
+          <option value="pending">Awaiting verification</option>
           <option value="with">With proof</option>
           <option value="without">Missing proof</option>
         </select>

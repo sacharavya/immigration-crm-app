@@ -1680,6 +1680,8 @@ export type Database = {
           received_date: string
           recorded_by: string | null
           reference: string | null
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           amount_cad: number
@@ -1698,6 +1700,8 @@ export type Database = {
           received_date?: string
           recorded_by?: string | null
           reference?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           amount_cad?: number
@@ -1716,6 +1720,8 @@ export type Database = {
           received_date?: string
           recorded_by?: string | null
           reference?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {

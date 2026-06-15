@@ -2357,20 +2357,24 @@ export async function notifyClientForPayment(
     .limit(1)
     .maybeSingle();
 
-  // Sum non-deleted payments to compute the outstanding balance. This
-  // INCLUDES client-uploaded rows pending verification — the button
-  // disables the moment the client uploads enough, and re-enables if
-  // staff later soft-deletes a bogus row.
+  // Sum only VERIFIED payments. Unverified client uploads sit in
+  // the pending bucket — until staff approves them they don't count
+  // toward "paid" so the "Notify client for payment" button stays
+  // enabled. (Previously the button disabled the moment a client
+  // uploaded anything, letting bad uploads silently flip the case
+  // to paid-in-full.)
   const { data: priorPayments } = await supabase
     .schema("crm")
     .from("payments")
-    .select("amount_cad")
+    .select("amount_cad, client_uploaded_at, verified_at")
     .eq("case_id", caseRow.id)
     .is("deleted_at", null);
-  const alreadyPaid = (priorPayments ?? []).reduce(
-    (sum, p) => sum + Number(p.amount_cad),
-    0,
-  );
+  const alreadyPaid = (priorPayments ?? []).reduce((sum, p) => {
+    if (p.client_uploaded_at !== null && p.verified_at === null) {
+      return sum;
+    }
+    return sum + Number(p.amount_cad);
+  }, 0);
   const quoted = Number(caseRow.quoted_fee_cad);
   // Prefer the retainer's snapshotted government fee (it's what the
   // client signed) and fall back to the live case row when there's

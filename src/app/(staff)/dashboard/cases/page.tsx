@@ -11,6 +11,7 @@ import {
   type ChipOutput,
 } from "@/lib/cases/action-chip";
 import { computeCaseFeeBreakdown } from "@/lib/cases/fee-totals";
+import { isPaymentVerified } from "@/lib/payments/verified";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import type { CaseStatus } from "@/lib/utils/phase";
@@ -127,7 +128,9 @@ export default async function CasesPage({ searchParams }: Props) {
         ? supabase
             .schema("crm")
             .from("payments")
-            .select("case_id, amount_cad, is_refund")
+            .select(
+              "case_id, amount_cad, is_refund, client_uploaded_at, verified_at",
+            )
             .in("case_id", caseIds)
             .is("deleted_at", null)
         : Promise.resolve({
@@ -135,6 +138,8 @@ export default async function CasesPage({ searchParams }: Props) {
               case_id: string | null;
               amount_cad: number;
               is_refund: boolean;
+              client_uploaded_at: string | null;
+              verified_at: string | null;
             }>,
           }),
       caseIds.length
@@ -213,8 +218,12 @@ export default async function CasesPage({ searchParams }: Props) {
     name: `${s.first_name} ${s.last_name}`.trim(),
   }));
 
+  // Only VERIFIED payments contribute to the cases-list payment
+  // progress bar. Unverified client uploads sit in the pending bucket
+  // surfaced in /dashboard/payments?proof=pending.
   const collectedByCase = new Map<string, number>();
   for (const p of payments ?? []) {
+    if (!isPaymentVerified(p)) continue;
     const sign = p.is_refund ? -1 : 1;
     collectedByCase.set(
       p.case_id!,

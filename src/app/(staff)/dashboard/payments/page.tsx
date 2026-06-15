@@ -15,6 +15,7 @@ import {
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
 import { computeCaseOutstanding } from "@/lib/cases/fee-totals";
+import { isPaymentVerified } from "@/lib/payments/verified";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils/index";
 import {
@@ -25,6 +26,7 @@ import {
 
 import { ConsultationOutcomeCell } from "./_components/consultation-outcome-cell";
 import { PaymentsFilters } from "./_components/payments-filters";
+import { VerificationActions } from "./_components/verification-actions";
 
 const cadFormatter = new Intl.NumberFormat("en-CA", {
   style: "currency",
@@ -65,8 +67,12 @@ export default async function PaymentsPage({ searchParams }: Props) {
       ? (sp.method as PaymentMethod)
       : null;
   const q = (sp.q ?? "").trim();
-  const proof: "all" | "with" | "without" =
-    sp.proof === "with" || sp.proof === "without" ? sp.proof : "all";
+  const proof: "all" | "with" | "without" | "pending" =
+    sp.proof === "with" ||
+    sp.proof === "without" ||
+    sp.proof === "pending"
+      ? sp.proof
+      : "all";
 
   const supabase = await createClient();
 
@@ -88,6 +94,8 @@ export default async function PaymentsPage({ searchParams }: Props) {
         client_id,
         consultation_payment_nature,
         client_uploaded_at,
+        verified_at,
+        verified_by,
         case:cases(id, case_number, client:clients(legal_name_full))
       `,
     )
@@ -106,6 +114,10 @@ export default async function PaymentsPage({ searchParams }: Props) {
   const filtered = (payments ?? []).filter((p) => {
     if (proof === "with" && !p.proof_document_id) return false;
     if (proof === "without" && p.proof_document_id) return false;
+    if (proof === "pending") {
+      // Pending = client-uploaded but not yet verified by staff.
+      if (!p.client_uploaded_at || p.verified_at) return false;
+    }
     if (q) {
       const text =
         `${p.case?.case_number ?? ""} ${p.case?.client?.legal_name_full ?? ""}`.toLowerCase();
@@ -192,7 +204,7 @@ export default async function PaymentsPage({ searchParams }: Props) {
     supabase
       .schema("crm")
       .from("payments")
-      .select("case_id, amount_cad")
+      .select("case_id, amount_cad, client_uploaded_at, verified_at")
       .is("deleted_at", null),
   ]);
   const openCaseIds = (openCases ?? []).map((c) => c.id);
@@ -218,13 +230,23 @@ export default async function PaymentsPage({ searchParams }: Props) {
       });
     }
   }
+  // Only verified payments count toward outstanding balance math.
+  // Client-uploaded proofs sit in a pending bucket until staff
+  // approves; the "pending verification" stat below surfaces them.
   const collectedByCase = new Map<string, number>();
+  let pendingVerificationTotal = 0;
+  let pendingVerificationCount = 0;
   for (const p of openPayments ?? []) {
     if (!p.case_id) continue;
-    collectedByCase.set(
-      p.case_id,
-      (collectedByCase.get(p.case_id) ?? 0) + Number(p.amount_cad),
-    );
+    if (isPaymentVerified(p)) {
+      collectedByCase.set(
+        p.case_id,
+        (collectedByCase.get(p.case_id) ?? 0) + Number(p.amount_cad),
+      );
+    } else {
+      pendingVerificationTotal += Number(p.amount_cad);
+      pendingVerificationCount += 1;
+    }
   }
   const pendingTotal = (openCases ?? []).reduce((sum, c) => {
     const collected = collectedByCase.get(c.id) ?? 0;
@@ -259,6 +281,27 @@ export default async function PaymentsPage({ searchParams }: Props) {
         q={q}
         proof={proof}
       />
+
+      {pendingVerificationCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
+          <div>
+            <strong>
+              {pendingVerificationCount} client-uploaded payment
+              {pendingVerificationCount === 1 ? "" : "s"}
+            </strong>{" "}
+            totaling{" "}
+            <strong>{fmtCad(pendingVerificationTotal)}</strong> awaiting
+            staff verification. These are NOT yet counted toward case
+            balances.
+          </div>
+          <Link
+            href="?proof=pending"
+            className="rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
+          >
+            Filter list to pending
+          </Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat
@@ -324,9 +367,19 @@ export default async function PaymentsPage({ searchParams }: Props) {
                     </TableCell>
                     <TableCell className="text-stone-500">
                       <div>{p.reference || "—"}</div>
-                      {p.client_uploaded_at && (
-                        <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                          Client-uploaded · verify
+                      {p.client_uploaded_at && !p.verified_at && (
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                            Awaiting verification
+                          </span>
+                          {canReviewPayments && (
+                            <VerificationActions paymentId={p.id} />
+                          )}
+                        </div>
+                      )}
+                      {p.client_uploaded_at && p.verified_at && (
+                        <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800">
+                          Verified
                         </div>
                       )}
                       {p.consultation_payment_nature && (

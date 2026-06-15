@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
 import { computeCaseOutstanding } from "@/lib/cases/fee-totals";
+import { isPaymentVerified } from "@/lib/payments/verified";
 import { createClient } from "@/lib/supabase/server";
 import { PHASE_LABELS, phaseIndex } from "@/lib/utils/phase";
 
@@ -129,7 +130,9 @@ export default async function ReportsPage({ searchParams }: Props) {
   const { data: paymentsRaw } = await supabase
     .schema("crm")
     .from("payments")
-    .select("amount_cad, is_refund, received_date, case_id, proof_document_id")
+    .select(
+      "amount_cad, is_refund, received_date, case_id, proof_document_id, client_uploaded_at, verified_at",
+    )
     .is("deleted_at", null)
     .gte("received_date", revenueStart.toISOString().slice(0, 10))
     .lte("received_date", revenueEnd.toISOString().slice(0, 10));
@@ -150,10 +153,16 @@ export default async function ReportsPage({ searchParams }: Props) {
       c.closed_at <= windowEndIso,
   ).length;
 
+  // Only VERIFIED payments contribute to reported revenue + per-case
+  // collected. Unverified client uploads are tracked in the payments
+  // dashboard's pending bucket; they'd inflate revenue if counted
+  // here before staff approves them.
   const collectedInWindow = allPayments
     .filter(
       (p) =>
-        p.received_date >= windowStartDate && p.received_date <= windowEndDate,
+        isPaymentVerified(p) &&
+        p.received_date >= windowStartDate &&
+        p.received_date <= windowEndDate,
     )
     .reduce(
       (sum, p) => sum + (p.is_refund ? -1 : 1) * Number(p.amount_cad),
@@ -163,6 +172,7 @@ export default async function ReportsPage({ searchParams }: Props) {
   const collectedByCase = new Map<string, number>();
   for (const p of allPayments) {
     if (!p.case_id) continue;
+    if (!isPaymentVerified(p)) continue;
     const sign = p.is_refund ? -1 : 1;
     collectedByCase.set(
       p.case_id,
