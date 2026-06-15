@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { splitLegalName } from "@/lib/clients/name";
 import {
   newClientSchema,
   type NewClientInput,
@@ -46,6 +47,14 @@ export function NewClientForm({ countries }: { countries: CountryOption[] }) {
           : (value as NewClientInput[K]),
     }));
   }
+
+  // Surface the derived split so staff can spot when the auto rule
+  // would get something wrong (e.g. compound family names) BEFORE
+  // submitting. Server applies the same split on insert.
+  const derivedSplit = useMemo(
+    () => splitLegalName(form.legal_name_full ?? ""),
+    [form.legal_name_full],
+  );
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -86,6 +95,24 @@ export function NewClientForm({ countries }: { countries: CountryOption[] }) {
             <FieldError
               errors={fieldErrors.legal_name_full.map((m) => ({ message: m }))}
             />
+          )}
+          {derivedSplit.given_names && (
+            <p className="text-xs text-stone-500">
+              Will save as: First name{" "}
+              <span className="font-medium text-stone-700">
+                {derivedSplit.given_names}
+              </span>
+              {derivedSplit.family_name && (
+                <>
+                  {" "}· Last name{" "}
+                  <span className="font-medium text-stone-700">
+                    {derivedSplit.family_name}
+                  </span>
+                </>
+              )}
+              . Edit on the client&rsquo;s intake page if the auto-split
+              is wrong.
+            </p>
           )}
         </Field>
 

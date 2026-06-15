@@ -21,6 +21,7 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 import { RetainerPdfDocument } from "@/components/retainer/retainer-pdf-document";
 import type { RetainerData } from "@/components/retainer/retainer-document";
+import { splitLegalName } from "@/lib/clients/name";
 import { getLetterheadLogoDataUrl } from "@/lib/retainer/logo";
 import { resolveServiceLabel } from "@/lib/retainer/service-label";
 import type { Database } from "@/lib/supabase/types";
@@ -318,10 +319,21 @@ export async function loadRetainerData(
 
     client_legal_name_full:
       retainer.client_legal_name_full_at_signing ?? client.legal_name_full,
+    // Fall back to splitLegalName when the client row carries a full
+    // name but no first/last split (legacy clients created before the
+    // server-side derive in createClientStandalone). Keeps the
+    // retainer from rendering blank "First Name:" and "Last Name:"
+    // fields when only the legal_name_full was captured.
     client_given_name:
-      retainer.client_given_names_at_signing ?? client.given_names ?? "",
+      retainer.client_given_names_at_signing ??
+      client.given_names ??
+      splitLegalName(client.legal_name_full).given_names ??
+      "",
     client_family_name:
-      retainer.client_family_name_at_signing ?? client.family_name ?? "",
+      retainer.client_family_name_at_signing ??
+      client.family_name ??
+      splitLegalName(client.legal_name_full).family_name ??
+      "",
     client_address:
       retainer.client_address_at_signing ?? (clientAddress || "—"),
     client_email: retainer.client_email_at_signing ?? client.email ?? "",

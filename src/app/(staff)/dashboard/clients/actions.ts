@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
+import { splitLegalName } from "@/lib/clients/name";
 import { createClient } from "@/lib/supabase/server";
 import { newClientSchema, type NewClientInput } from "@/lib/validators/case";
 
@@ -95,12 +96,22 @@ export async function createClientStandalone(
     };
   }
 
+  // Derive first/last from the full legal name so downstream surfaces
+  // (retainer PDF, emails, intake checklist) don't get empty name
+  // fields. The intake form lets staff override the split if the
+  // derived value is wrong (e.g. compound family names).
+  const { given_names, family_name } = splitLegalName(
+    parsed.data.legal_name_full,
+  );
+
   const { data: newClient, error: insertErr } = await supabase
     .schema("crm")
     .from("clients")
     .insert({
       client_number: clientNumber as unknown as string,
       legal_name_full: parsed.data.legal_name_full,
+      given_names,
+      family_name,
       email: parsed.data.email ?? null,
       phone_primary: parsed.data.phone_primary ?? null,
       phone_whatsapp: parsed.data.phone_whatsapp ?? null,
