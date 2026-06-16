@@ -107,16 +107,28 @@ export default async function VariantEditorPage({ params, searchParams }: Props)
   const allTemplates = templates ?? [];
   const allDocs = docs ?? [];
 
-  // Pick the selected version: ?v=<id> if valid, else currently-active,
-  // else highest version, else null.
+  // Pick the selected version. Order of preference:
+  //   1. ?v=<id> if it matches a real template.
+  //   2. The NEWEST version (highest version number) — this is what
+  //      staff almost always want when they just created a new
+  //      version, since the dialog defaults the user there.
+  //   3. The currently-effective version, as a fallback when the
+  //      newest is somehow missing.
+  //
+  // Previously this defaulted to the currently-effective version
+  // first, which broke "create new scheduled version → land on
+  // page" UX: the page would show the OLD (now-clipped) active
+  // version, and any edit would hit the "past versions are read-
+  // only" gate even though staff just made a fresh editable one.
   const selectedFromQuery = allTemplates.find((t) => t.id === sp.v);
+  const newestVersion = allTemplates[allTemplates.length - 1] ?? null;
   const activeVersion = allTemplates.find(
     (t) =>
       t.effective_from <= today &&
       (t.effective_to === null || t.effective_to >= today),
   );
   const selectedTemplate =
-    selectedFromQuery ?? activeVersion ?? allTemplates[allTemplates.length - 1] ?? null;
+    selectedFromQuery ?? newestVersion ?? activeVersion ?? null;
 
   function classify(t: { effective_from: string; effective_to: string | null }) {
     if (t.effective_to !== null && t.effective_to < today) return "past" as const;

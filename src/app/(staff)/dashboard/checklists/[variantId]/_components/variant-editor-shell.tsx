@@ -414,18 +414,27 @@ export function VariantEditorShell({
             </p>
           </header>
           {selectedVersion ? (
-            <EditorPane
-              templateId={selectedVersion.id}
-              state={selectedVersion.state}
-              readonly={editorReadonly}
-              initialGroups={editorInitialGroups}
-              groupOptions={groupOptions.map((g) => ({
-                code: g.code,
-                name: g.name,
-                isActive: g.isActive,
-              }))}
-              onMutated={() => setSavedAt(new Date())}
-            />
+            <>
+              {editorReadonly && selectedVersion.state === "past" && (
+                <ReadOnlyBanner
+                  versions={versions}
+                  currentVersionLabel={`v${selectedVersion.version}`}
+                  onSwitch={(id) => selectVersion(id)}
+                />
+              )}
+              <EditorPane
+                templateId={selectedVersion.id}
+                state={selectedVersion.state}
+                readonly={editorReadonly}
+                initialGroups={editorInitialGroups}
+                groupOptions={groupOptions.map((g) => ({
+                  code: g.code,
+                  name: g.name,
+                  isActive: g.isActive,
+                }))}
+                onMutated={() => setSavedAt(new Date())}
+              />
+            </>
           ) : (
             <p className="rounded-md border border-dashed border-stone-200 px-4 py-10 text-center text-sm text-stone-500">
               This variant has no checklist version yet. Click + New version to
@@ -458,10 +467,17 @@ export function VariantEditorShell({
         open={newVersionOpen}
         onOpenChange={setNewVersionOpen}
         onCreated={(templateId) => {
-          // Switch the URL to the new version so the user lands on it.
+          // Switch the URL to the new version so the user lands on
+          // it. router.refresh() forces the server component to re-
+          // fetch — without it, Next.js can hand back a still-cached
+          // render that's showing the OLD (now-clipped) version's
+          // docs. Editing those would hit the "past versions are
+          // read-only" gate even though the user just made a fresh
+          // editable version.
           const url = new URL(window.location.href);
           url.searchParams.set("v", templateId);
           router.push(`${url.pathname}${url.search}`);
+          router.refresh();
         }}
       />
 
@@ -683,6 +699,42 @@ function ActionMenu({
             </>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Banner that fronts a past (read-only) version with a one-click
+// jump to the newest editable version. Renders only when the
+// selected template is in past state. Helps when staff lands on an
+// older version (browser back button, stale bookmark, etc.) and
+// can't figure out why edits aren't sticking.
+function ReadOnlyBanner({
+  versions,
+  currentVersionLabel,
+  onSwitch,
+}: {
+  versions: TemplateVersion[];
+  currentVersionLabel: string;
+  onSwitch: (templateId: string) => void;
+}) {
+  // Prefer the newest editable version — that's where the user
+  // almost always wants to go.
+  const newest = versions[versions.length - 1] ?? null;
+  return (
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+      <div>
+        You&rsquo;re viewing <strong>{currentVersionLabel}</strong>, which is
+        a past version. Edits are disabled to protect historical cases.
+      </div>
+      {newest && newest.state !== "past" && (
+        <button
+          type="button"
+          onClick={() => onSwitch(newest.id)}
+          className="rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
+        >
+          Open v{newest.version} (editable)
+        </button>
       )}
     </div>
   );

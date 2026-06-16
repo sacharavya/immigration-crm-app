@@ -41,11 +41,16 @@ function rev(variantId: string) {
 async function templateIsPast(
   supabase: Awaited<ReturnType<typeof createClient>>,
   templateId: string,
-): Promise<{ past: boolean; serviceTypeId: string | null; error?: string }> {
+): Promise<{
+  past: boolean;
+  serviceTypeId: string | null;
+  newerEditableTemplateId?: string;
+  error?: string;
+}> {
   const { data, error } = await supabase
     .schema("ref")
     .from("service_templates")
-    .select("service_type_id, effective_to")
+    .select("service_type_id, version, effective_to")
     .eq("id", templateId)
     .maybeSingle();
   if (error || !data) {
@@ -53,7 +58,36 @@ async function templateIsPast(
   }
   const today = new Date().toISOString().slice(0, 10);
   const past = data.effective_to !== null && data.effective_to < today;
-  return { past, serviceTypeId: data.service_type_id };
+
+  // When a template is past, look up the newest editable version on
+  // the same variant so the action's error response can guide staff
+  // ("we shipped V2 — open it instead of editing V1"). The newest
+  // editable version is whichever row on the variant has the highest
+  // version AND is NOT past itself.
+  let newerEditableTemplateId: string | undefined;
+  if (past && data.service_type_id) {
+    const { data: candidates } = await supabase
+      .schema("ref")
+      .from("service_templates")
+      .select("id, effective_to")
+      .eq("service_type_id", data.service_type_id)
+      .gt("version", data.version)
+      .order("version", { ascending: false })
+      .limit(1);
+    const candidate = candidates?.[0];
+    if (
+      candidate &&
+      (candidate.effective_to === null || candidate.effective_to >= today)
+    ) {
+      newerEditableTemplateId = candidate.id;
+    }
+  }
+
+  return {
+    past,
+    serviceTypeId: data.service_type_id,
+    newerEditableTemplateId,
+  };
 }
 
 // ---------------------------------------------------------------------------
