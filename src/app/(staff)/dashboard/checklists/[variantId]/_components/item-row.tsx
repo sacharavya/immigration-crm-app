@@ -240,20 +240,15 @@ export function ItemRow({
           MB
         </label>
 
-        <label className="flex items-center gap-1 text-stone-500">
-          Qty
-          <Input
-            type="number"
-            min={1}
-            max={50}
-            value={draft.expectedQuantity}
-            onChange={(e) =>
-              setField("expectedQuantity", Math.max(1, Number(e.target.value)))
-            }
-            disabled={readonly}
-            className="h-7 w-14 text-xs"
-          />
-        </label>
+        {/*
+          The per-template "expected quantity" field used to gate
+          whether a slot could accept multiple files. That gate is
+          gone — every slot now accepts unlimited files via the "Add
+          another" affordance in the case checklist. The column is
+          still on ref.template_documents (default 1, kept for
+          backwards compat) but it no longer affects behavior, so
+          we don't expose it here.
+        */}
       </div>
 
       <textarea

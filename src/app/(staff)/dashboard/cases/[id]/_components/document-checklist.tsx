@@ -70,15 +70,17 @@ function groupDocs(docs: TemplateDoc[]): Group[] {
     .sort((a, b) => a.displayOrder - b.displayOrder);
 }
 
-// Item-level "received" derivation. For single-file slots: at least one
-// file in (uploaded, accepted). For multi-file slots: expected_quantity
-// reached AND all live files are accepted.
-function itemReceived(files: FileRow[] | undefined, expected: number): boolean {
+// Item-level "received" derivation. A slot is "received" the moment
+// it has at least one live file in (uploaded, accepted). This is the
+// same threshold for every slot — multi-file slots no longer require
+// hitting an expected_quantity target because the quantity field is
+// deprecated (every slot accepts unlimited files by default; see the
+// drop of the "Add another" cap in document-row.tsx).
+function itemReceived(files: FileRow[] | undefined): boolean {
   if (!files || files.length === 0) return false;
-  if (expected <= 1) {
-    return files.some((f) => f.status === "uploaded" || f.status === "accepted");
-  }
-  return files.length >= expected && files.every((f) => f.status === "accepted");
+  return files.some(
+    (f) => f.status === "uploaded" || f.status === "accepted",
+  );
 }
 
 export function DocumentChecklist({
@@ -101,7 +103,7 @@ export function DocumentChecklist({
   shareButtonSlot?: React.ReactNode;
 }) {
   const receivedCount = templateDocs.filter((d) =>
-    itemReceived(liveByCode.get(d.document_code), d.expected_quantity),
+    itemReceived(liveByCode.get(d.document_code)),
   ).length;
 
   const groups = groupDocs(templateDocs);

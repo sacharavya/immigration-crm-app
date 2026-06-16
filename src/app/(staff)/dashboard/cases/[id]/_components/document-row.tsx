@@ -303,8 +303,14 @@ function validateFile(file: File): string | null {
 // ============================================================================
 
 export function DocumentRow(props: DocumentRowProps) {
-  const { templateDoc, files } = props;
-  const isMulti = templateDoc.expected_quantity > 1 || files.length > 1;
+  const { files } = props;
+  // Multi-file UI kicks in the moment a slot has more than one live
+  // file. expected_quantity USED to also trigger this; it no longer
+  // does — every slot accepts an unlimited number of files now.
+  // Slots with 0 or 1 files render the compact single-file UI plus a
+  // small "+ Add another file" affordance so staff/clients can grow
+  // the slot without staff having to set quantity ahead of time.
+  const isMulti = files.length > 1;
   return isMulti ? <MultiFileRow {...props} /> : <SingleFileRow {...props} />;
 }
 
@@ -327,6 +333,15 @@ function SingleFileRow({
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  // "Add another file" affordance — appears once the slot has its
+  // first live file. Goes to uploadFile (fresh group key, version 1)
+  // instead of the dispatcher so it never gets routed to a re-upload.
+  // After it lands, files.length becomes 2 and the slot re-renders
+  // as MultiFileRow (handled by DocumentRow's isMulti ternary).
+  const addInputRef = useRef<HTMLInputElement>(null);
+  const [addPending, startAddTransition] = useTransition();
+  const [addError, setAddError] = useState<string | null>(null);
 
   // Required-flag toggle (case-level override).
   const [isRequired, setIsRequired] = useState(templateDoc.is_required);
@@ -417,11 +432,42 @@ function SingleFileRow({
     startTransition(async () => {
       // Dispatcher wrappers (uploadDocument / uploadAsClient) auto-
       // route to uploadFile for fresh slots and reuploadFile for
-      // rejected slots. Single-file branch never adds siblings.
+      // rejected slots.
       const result = clientPortalToken
         ? await uploadAsClient(clientPortalToken, templateDoc.document_code, fd)
         : await uploadDocument(caseId, templateDoc.document_code, fd);
       if ("error" in result) setError(result.error);
+    });
+  }
+
+  function triggerAddSibling() {
+    setAddError(null);
+    addInputRef.current?.click();
+  }
+
+  function handleAddSiblingChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const validation = validateFile(file);
+    if (validation) {
+      setAddError(validation);
+      return;
+    }
+    const fd = new FormData();
+    fd.append("file", file);
+    startAddTransition(async () => {
+      // Always uploadFile (fresh group, version 1) for siblings —
+      // never reuploadFile. The dispatcher would refuse to add a
+      // sibling when the slot already has a non-rejected live row.
+      const result = clientPortalToken
+        ? await uploadFileAsClient(
+            clientPortalToken,
+            templateDoc.document_code,
+            fd,
+          )
+        : await uploadFile(caseId, templateDoc.document_code, fd);
+      if ("error" in result) setAddError(result.error);
     });
   }
 
@@ -438,6 +484,13 @@ function SingleFileRow({
         hidden
         accept={ACCEPT}
         onChange={handleChange}
+      />
+      <input
+        ref={addInputRef}
+        type="file"
+        hidden
+        accept={ACCEPT}
+        onChange={handleAddSiblingChange}
       />
 
       <div className="flex items-center gap-3">
@@ -503,6 +556,11 @@ function SingleFileRow({
           {error && (
             <p role="alert" className="mt-1 text-xs text-destructive">
               {error}
+            </p>
+          )}
+          {addError && (
+            <p role="alert" className="mt-1 text-xs text-destructive">
+              {addError}
             </p>
           )}
         </div>
@@ -585,6 +643,30 @@ function SingleFileRow({
                 <>
                   <UploadIcon className="mr-1 h-3.5 w-3.5" />
                   Upload
+                </>
+              )}
+            </Button>
+          )}
+
+          {/* "+ Add another file" — only appears once the slot already
+              has a non-rejected file. Rejected files use the Upload
+              button above (re-upload replaces the rejected version).
+              Adding a sibling here transitions the slot to the
+              MultiFileRow renderer on next render. */}
+          {canUpload && hasUpload && !isRejected && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={triggerAddSibling}
+              disabled={addPending}
+              title="Add another file to this slot"
+            >
+              {addPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <>
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Add another
                 </>
               )}
             </Button>
@@ -739,7 +821,11 @@ function MultiFileRow({
 
   const summary = deriveItemSummary(files, templateDoc.expected_quantity);
   const isConditional = templateDoc.condition_label !== null;
-  const canAddMore = canUpload && summary.liveCount < templateDoc.expected_quantity;
+  // No more upper bound on file count. Staff/clients can keep adding
+  // siblings — useful for multi-page passports, multi-month bank
+  // statements, etc. The slot turns "received" the moment any one
+  // file lands in uploaded|accepted.
+  const canAddMore = canUpload;
   const sortedFiles = [...files].sort((a, b) =>
     a.created_at.localeCompare(b.created_at),
   );
@@ -793,10 +879,11 @@ function MultiFileRow({
                 Optional
               </span>
             )}
-            <span className="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-stone-600">
-              {summary.approvedCount} of {templateDoc.expected_quantity}{" "}
-              approved
-            </span>
+            {summary.approvedCount > 0 && (
+              <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-800">
+                {summary.approvedCount} approved
+              </span>
+            )}
             {summary.pendingCount > 0 && (
               <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-800">
                 {summary.pendingCount} awaiting review
