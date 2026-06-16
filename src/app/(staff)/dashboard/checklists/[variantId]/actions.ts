@@ -333,15 +333,46 @@ export async function updateTemplateDocument(
   const { data: doc } = await supabase
     .schema("ref")
     .from("template_documents")
-    .select("service_template_id")
+    .select("service_template_id, document_code")
     .eq("id", v.templateDocumentId)
     .maybeSingle();
   if (!doc) return { error: "Template item not found" };
 
   const tpl = await templateIsPast(supabase, doc.service_template_id);
   if (tpl.error) return { error: tpl.error };
+
+  // If the doc's template just got clipped to "past" (createNewVersion
+  // shipped a successor while the staff editor was mid-edit), don't
+  // refuse — silently redirect the update to the matching doc on the
+  // newest editable version. The user's intent is "edit the item I'm
+  // looking at"; the SERVER knows the page is showing stale rows.
+  // Matched by document_code, which is stable across the version
+  // copy and unique within a template.
+  let targetDocumentId = v.templateDocumentId;
   if (tpl.past) {
-    return { error: "Past versions are read-only. Create a new version." };
+    if (!tpl.newerEditableTemplateId) {
+      return {
+        error:
+          "Past versions are read-only. Create a new version to edit.",
+      };
+    }
+    const { data: redirected } = await supabase
+      .schema("ref")
+      .from("template_documents")
+      .select("id")
+      .eq("service_template_id", tpl.newerEditableTemplateId)
+      .eq("document_code", doc.document_code)
+      .maybeSingle();
+    if (!redirected) {
+      // Successor template exists but doesn't have a matching item
+      // (e.g. staff deleted it from the new version). Surface a
+      // useful error rather than silently noop.
+      return {
+        error:
+          "This item isn't in the latest version. Refresh — the editor is showing a past version's items.",
+      };
+    }
+    targetDocumentId = redirected.id;
   }
 
   const updates: TemplateDocUpdate = {};
@@ -358,7 +389,7 @@ export async function updateTemplateDocument(
     .schema("ref")
     .from("template_documents")
     .update(updates)
-    .eq("id", v.templateDocumentId);
+    .eq("id", targetDocumentId);
   if (error) return { error: error.message };
 
   if (tpl.serviceTypeId) rev(tpl.serviceTypeId);
@@ -391,15 +422,26 @@ export async function addTemplateDocument(
   const supabase = await createClient();
   const tpl = await templateIsPast(supabase, templateId);
   if (tpl.error) return { error: tpl.error };
+
+  // If the editor's templateId just got clipped to past, redirect
+  // the insert to the newest editable version on the same variant.
+  // Same intent as the silent-redirect in updateTemplateDocument.
+  let targetTemplateId = templateId;
   if (tpl.past) {
-    return { error: "Past versions are read-only. Create a new version." };
+    if (!tpl.newerEditableTemplateId) {
+      return {
+        error:
+          "Past versions are read-only. Create a new version to edit.",
+      };
+    }
+    targetTemplateId = tpl.newerEditableTemplateId;
   }
 
   const { data: maxRow } = await supabase
     .schema("ref")
     .from("template_documents")
     .select("display_order")
-    .eq("service_template_id", templateId)
+    .eq("service_template_id", targetTemplateId)
     .eq("group_code", groupCode)
     .order("display_order", { ascending: false })
     .limit(1)
@@ -410,7 +452,7 @@ export async function addTemplateDocument(
     .schema("ref")
     .from("template_documents")
     .insert({
-      service_template_id: templateId,
+      service_template_id: targetTemplateId,
       group_code: groupCode,
       document_code: documentCode,
       document_label: label,
@@ -438,15 +480,44 @@ export async function removeTemplateDocument(
   const { data: doc } = await supabase
     .schema("ref")
     .from("template_documents")
-    .select("service_template_id")
+    .select("service_template_id, document_code")
     .eq("id", templateDocumentId)
     .maybeSingle();
   if (!doc) return { error: "Template item not found" };
 
   const tpl = await templateIsPast(supabase, doc.service_template_id);
   if (tpl.error) return { error: tpl.error };
+
+  // Silent redirect when the editor's row id belongs to a past
+  // template that was just superseded — same as
+  // updateTemplateDocument. The user thinks they're removing the
+  // item from the version they're viewing; the server knows the
+  // page is showing stale rows and applies the delete to the
+  // matching item on the newest editable version.
+  let targetTemplateId = doc.service_template_id;
+  let targetDocumentId = templateDocumentId;
   if (tpl.past) {
-    return { error: "Past versions are read-only. Create a new version." };
+    if (!tpl.newerEditableTemplateId) {
+      return {
+        error:
+          "Past versions are read-only. Create a new version to edit.",
+      };
+    }
+    const { data: redirected } = await supabase
+      .schema("ref")
+      .from("template_documents")
+      .select("id")
+      .eq("service_template_id", tpl.newerEditableTemplateId)
+      .eq("document_code", doc.document_code)
+      .maybeSingle();
+    if (!redirected) {
+      return {
+        error:
+          "This item isn't in the latest version. Refresh the page.",
+      };
+    }
+    targetTemplateId = tpl.newerEditableTemplateId;
+    targetDocumentId = redirected.id;
   }
 
   // Refuse if any in-flight cases use this template version.
@@ -454,7 +525,7 @@ export async function removeTemplateDocument(
     .schema("crm")
     .from("cases")
     .select("id", { count: "exact", head: true })
-    .eq("service_template_id", doc.service_template_id)
+    .eq("service_template_id", targetTemplateId)
     .neq("status", "closed")
     .is("deleted_at", null);
   if ((count ?? 0) > 0) {
@@ -467,7 +538,7 @@ export async function removeTemplateDocument(
     .schema("ref")
     .from("template_documents")
     .delete()
-    .eq("id", templateDocumentId);
+    .eq("id", targetDocumentId);
   if (error) return { error: error.message };
 
   if (tpl.serviceTypeId) rev(tpl.serviceTypeId);
@@ -485,7 +556,13 @@ export async function reorderTemplateDocuments(
   const tpl = await templateIsPast(supabase, templateId);
   if (tpl.error) return { error: tpl.error };
   if (tpl.past) {
-    return { error: "Past versions are read-only." };
+    // Reorder takes a list of row ids — silently redirecting them
+    // would require re-resolving each id by document_code, which is
+    // risky in bulk. Refresh is the safer call here.
+    return {
+      error:
+        "This version was just superseded. Refresh the page to reorder items on the latest version.",
+    };
   }
 
   // Sequential update of display_order. Postgres doesn't have native bulk
@@ -514,8 +591,19 @@ export async function removeGroupFromTemplate(
   const supabase = await createClient();
   const tpl = await templateIsPast(supabase, templateId);
   if (tpl.error) return { error: tpl.error };
+
+  // Redirect to the newest editable version when the editor's
+  // templateId got clipped. Group removals are not row-id-dependent
+  // (just templateId + groupCode) so the redirect is safe.
+  let targetTemplateId = templateId;
   if (tpl.past) {
-    return { error: "Past versions are read-only." };
+    if (!tpl.newerEditableTemplateId) {
+      return {
+        error:
+          "Past versions are read-only. Create a new version to edit.",
+      };
+    }
+    targetTemplateId = tpl.newerEditableTemplateId;
   }
 
   // Refuse if in-flight cases reference this template version.
@@ -523,7 +611,7 @@ export async function removeGroupFromTemplate(
     .schema("crm")
     .from("cases")
     .select("id", { count: "exact", head: true })
-    .eq("service_template_id", templateId)
+    .eq("service_template_id", targetTemplateId)
     .neq("status", "closed")
     .is("deleted_at", null);
   if ((count ?? 0) > 0) {
@@ -536,7 +624,7 @@ export async function removeGroupFromTemplate(
     .schema("ref")
     .from("template_documents")
     .delete()
-    .eq("service_template_id", templateId)
+    .eq("service_template_id", targetTemplateId)
     .eq("group_code", groupCode);
   if (error) return { error: error.message };
 
