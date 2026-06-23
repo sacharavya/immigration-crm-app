@@ -33,13 +33,13 @@ const DEFAULT_INPUT: CrsInput = {
 };
 
 const EDUCATION_OPTIONS: { value: EducationLevel; label: string }[] = [
-  { value: "lessThanSecondary", label: "Less than secondary school" },
-  { value: "secondary", label: "Secondary school (high school)" },
-  { value: "oneYear", label: "One-year post-secondary program" },
-  { value: "twoYear", label: "Two-year post-secondary program" },
-  { value: "bachelorOrThreeYear", label: "Bachelor's degree (3+ years)" },
-  { value: "twoOrMoreCredentials", label: "Two or more post-secondary credentials" },
-  { value: "masters", label: "Master's degree" },
+  { value: "lessThanSecondary", label: "Less than secondary school (no high school diploma)" },
+  { value: "secondary", label: "Secondary school diploma (high school)" },
+  { value: "oneYear", label: "One-year post-secondary credential (certificate or diploma)" },
+  { value: "twoYear", label: "Two-year post-secondary credential (diploma or associate degree)" },
+  { value: "bachelorOrThreeYear", label: "Bachelor's degree or three-year post-secondary credential" },
+  { value: "twoOrMoreCredentials", label: "Two or more post-secondary credentials (one must be 3+ years)" },
+  { value: "masters", label: "Master's degree (or equivalent professional degree)" },
   { value: "doctoral", label: "Doctoral degree (PhD)" },
 ];
 
@@ -213,8 +213,14 @@ export function CrsForm() {
             </div>
 
             {/* ── 1. About you ─────────────────────────── */}
-            <Section title="About you">
-              <Field label="Marital status">
+            <Section
+              title="About you"
+              description="Your age, education, and marital status form the foundation of your CRS score. Married applicants whose spouse is coming to Canada are scored differently than single applicants."
+            >
+              <Field
+                label="Marital status"
+                help="Select 'Married or common-law' if you are legally married or have been living with a partner for at least 12 consecutive months."
+              >
                 <RadioRow
                   name="marital"
                   options={[
@@ -234,7 +240,10 @@ export function CrsForm() {
 
               {isMarried && (
                 <>
-                  <Field label="Is your spouse or partner immigrating with you?">
+                  <Field
+                    label="Is your spouse or partner immigrating with you?"
+                    help="If your spouse will be included in your Express Entry application and plans to move to Canada with you, select Yes."
+                  >
                     <RadioRow
                       name="spouse-coming"
                       options={[
@@ -246,7 +255,10 @@ export function CrsForm() {
                     />
                   </Field>
                   {spouseComing && (
-                    <Field label="Are they already a Canadian citizen or permanent resident?">
+                    <Field
+                      label="Are they already a Canadian citizen or permanent resident?"
+                      help="If your spouse is already a citizen or PR of Canada, they do not count as an accompanying spouse for CRS purposes. You will be scored as a single applicant."
+                    >
                       <RadioRow
                         name="spouse-pr"
                         options={[
@@ -261,7 +273,10 @@ export function CrsForm() {
                 </>
               )}
 
-              <Field label="Age">
+              <Field
+                label="Age"
+                help="Your age on the date IRCC receives your Express Entry application. Maximum points are awarded between ages 20 and 29. Points decrease after 30 and reach zero at 45 or older."
+              >
                 <div className="flex items-center gap-3">
                   <input
                     type="range"
@@ -277,7 +292,10 @@ export function CrsForm() {
                 </div>
               </Field>
 
-              <Field label="Level of education">
+              <Field
+                label="Level of education"
+                help="Select your highest completed level of education. The credential must have been assessed by a designated organization (ECA) if it was earned outside Canada. 'Two or more credentials' requires at least one credential of three years or more."
+              >
                 <Select
                   options={EDUCATION_OPTIONS}
                   value={input.education}
@@ -287,8 +305,14 @@ export function CrsForm() {
             </Section>
 
             {/* ── 2. Language skills ────────────────────── */}
-            <Section title="Language skills">
-              <Field label="First official language">
+            <Section
+              title="Language skills"
+              description="Language proficiency is the single highest-scoring factor in CRS. You must provide test results from an IRCC-approved test taken within the last two years. Strong scores in a second official language earn additional points."
+            >
+              <Field
+                label="First official language"
+                help="Choose the language in which you score higher. This is the language you will claim as your primary for CRS. Most applicants choose English."
+              >
                 <RadioRow
                   name="first-lang"
                   options={[
@@ -302,7 +326,10 @@ export function CrsForm() {
                 />
               </Field>
 
-              <Field label="Test taken">
+              <Field
+                label="Test taken"
+                help="Only IRCC-approved tests are accepted: IELTS General Training or CELPIP General for English; TEF Canada or TCF Canada for French. IELTS Academic is not accepted."
+              >
                 <Select
                   options={
                     input.firstOfficialLanguage === "english"
@@ -336,6 +363,12 @@ export function CrsForm() {
                   />
                   I have scores for a second official language
                 </label>
+                <p className="mt-1 pl-6 text-xs text-stone-400">
+                  If your first language is English, the second would be French
+                  (and vice versa). Up to 24 additional points for CLB 5+ in
+                  each ability. Strong French (NCLC 7+) also earns a separate
+                  bonus of 25 or 50 points.
+                </p>
               </div>
 
               {hasSecond && (
@@ -367,14 +400,26 @@ export function CrsForm() {
             </Section>
 
             {/* ── 3. Work experience ───────────────────── */}
-            <Section title="Work experience">
-              <Field label="Canadian skilled work experience (years)">
+            <Section
+              title="Work experience"
+              description="Only skilled work experience counts: occupations classified as TEER 0, 1, 2, or 3 in the National Occupation Classification (NOC). Work must be paid, full-time (or part-time equivalent), and in one or more skilled occupations."
+            >
+              <Field
+                label="Canadian skilled work experience (years)"
+                help="Total years of full-time skilled work in Canada while authorized to work. Part-time counts at half (e.g., 2 years part-time = 1 year). Includes co-op and post-graduation work."
+              >
                 <NumberSelect max={5} value={input.canadianWorkYears} onChange={(v) => patch({ canadianWorkYears: v })} />
               </Field>
-              <Field label="Foreign skilled work experience (years)">
+              <Field
+                label="Foreign skilled work experience (years)"
+                help="Total years of full-time skilled work outside Canada within the last 10 years. Must be in a TEER 0, 1, 2, or 3 occupation. Self-employment does not count."
+              >
                 <NumberSelect max={5} value={input.foreignWorkYears} onChange={(v) => patch({ foreignWorkYears: v })} />
               </Field>
-              <Field label="Certificate of qualification in a trade (Canadian authority)">
+              <Field
+                label="Certificate of qualification in a trade (Canadian authority)"
+                help="A certificate issued by a Canadian provincial, territorial, or federal authority certifying that you are qualified to work in a skilled trade (e.g., electrician, plumber, welder). This is different from a diploma or degree."
+              >
                 <RadioRow
                   name="trade"
                   options={[
@@ -389,8 +434,14 @@ export function CrsForm() {
 
             {/* ── 4. Spouse details ────────────────────── */}
             {hasSpouse && (
-              <Section title="Spouse or partner details">
-                <Field label="Spouse's level of education">
+              <Section
+                title="Spouse or partner details"
+                description="Your spouse's education, language skills, and Canadian work experience contribute additional points. These are scored separately from your own qualifications and have lower maximums."
+              >
+                <Field
+                  label="Spouse's level of education"
+                  help="Your spouse's highest completed credential. Must be assessed by a designated organization (ECA) if earned outside Canada."
+                >
                   <Select
                     options={EDUCATION_OPTIONS}
                     value={input.spouse?.education ?? "lessThanSecondary"}
@@ -409,6 +460,11 @@ export function CrsForm() {
                   />
                   Spouse has language test scores
                 </label>
+                <p className="mt-1 pl-6 text-xs text-stone-400">
+                  Your spouse's language scores can earn up to 20 additional
+                  points. CLB 5+ in each ability is the minimum to score.
+                  Test must be from an IRCC-approved provider.
+                </p>
 
                 {hasSpouseLang && (
                   <>
@@ -432,7 +488,10 @@ export function CrsForm() {
                   </>
                 )}
 
-                <Field label="Spouse's Canadian work experience (years)">
+                <Field
+                  label="Spouse's Canadian work experience (years)"
+                  help="Your spouse's total years of full-time skilled work in Canada while authorized to work."
+                >
                   <NumberSelect
                     max={5}
                     value={input.spouse?.canadianWorkYears ?? 0}
@@ -443,8 +502,14 @@ export function CrsForm() {
             )}
 
             {/* ── 5. Additional points ─────────────────── */}
-            <Section title="Additional points">
-              <Field label="Provincial or territorial nomination">
+            <Section
+              title="Additional points"
+              description="These factors can significantly boost your score. A provincial nomination alone adds 600 points and virtually guarantees an invitation. French proficiency and Canadian education also contribute."
+            >
+              <Field
+                label="Provincial or territorial nomination"
+                help="Have you received an official nomination from a Canadian province or territory through their Provincial Nominee Program (PNP)? This adds 600 points to your CRS score."
+              >
                 <RadioRow
                   name="pnp"
                   options={[
@@ -457,12 +522,15 @@ export function CrsForm() {
                   }
                 />
               </Field>
-              <Field label="Post-secondary education in Canada">
+              <Field
+                label="Post-secondary education in Canada"
+                help="A credential earned at a Canadian institution (not an ECA-assessed foreign credential). Must be a diploma, certificate, or degree from a program of at least one year. Studying in Canada on a student visa counts."
+              >
                 <Select
                   options={[
                     { value: "none", label: "None" },
                     { value: "oneOrTwoYears", label: "One or two year credential" },
-                    { value: "threeYearsOrMore", label: "Three years or more" },
+                    { value: "threeYearsOrMore", label: "Three year credential or longer (includes master's or doctoral)" },
                   ]}
                   value={input.additional?.canadianEducation ?? "none"}
                   onChange={(v) =>
@@ -472,7 +540,10 @@ export function CrsForm() {
                   }
                 />
               </Field>
-              <Field label="Sibling in Canada (citizen/PR, 18+)">
+              <Field
+                label="Sibling in Canada (citizen/PR, 18+)"
+                help="Do you have a brother or sister who is a Canadian citizen or permanent resident and is 18 years of age or older? This includes siblings by blood, marriage, or adoption."
+              >
                 <RadioRow
                   name="sibling"
                   options={[
@@ -685,14 +756,21 @@ function LanguageBandInputs({
 
 function Section({
   title,
+  description,
   children,
 }: {
   title: string;
+  description?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="border border-stone-200 bg-white p-5">
       <h2 className="text-base font-semibold text-stone-900">{title}</h2>
+      {description && (
+        <p className="mt-1 text-xs leading-relaxed text-stone-500">
+          {description}
+        </p>
+      )}
       <div className="mt-4 space-y-4">{children}</div>
     </div>
   );
@@ -700,9 +778,11 @@ function Section({
 
 function Field({
   label,
+  help,
   children,
 }: {
   label: string;
+  help?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -710,6 +790,11 @@ function Field({
       <label className="block text-sm font-medium text-stone-700">
         {label}
       </label>
+      {help && (
+        <p className="mt-0.5 text-xs leading-relaxed text-stone-400">
+          {help}
+        </p>
+      )}
       <div className="mt-1.5">{children}</div>
     </div>
   );

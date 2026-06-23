@@ -134,12 +134,13 @@ const AGE_POINTS: Record<number, [number, number]> = {
   42: [28, 25],
   43: [17, 15],
   44: [6, 5],
+  45: [0, 0],
 };
 
 function agePoints(age: number, hasSpouse: boolean): number {
-  const clamped = Math.max(17, Math.min(45, age));
-  const entry = AGE_POINTS[clamped];
-  if (!entry) return 0; // 45+
+  if (age >= 45 || age < 17) return 0;
+  const entry = AGE_POINTS[age];
+  if (!entry) return 0;
   return hasSpouse ? entry[1] : entry[0];
 }
 
@@ -429,10 +430,11 @@ export function calculateCRS(input: CrsInput): CrsBreakdown {
     firstLang,
   );
 
-  // Education combination = max(eduLang, eduWork)
-  const skillEdu = Math.max(stEduLang, stEduWork);
-  // Foreign work combination = max(foreignLang, foreignWork)
-  const skillForeign = Math.max(stForeignLang, stForeignWork);
+  // Each sub-category (education, foreign work, trade cert) is capped at 50.
+  // Within education: language combo + Canadian work combo, capped at 50.
+  // Within foreign work: language combo + Canadian work combo, capped at 50.
+  const skillEdu = Math.min(50, stEduLang + stEduWork);
+  const skillForeign = Math.min(50, stForeignLang + stForeignWork);
   const skillTrade = stTrade;
 
   const skillTransferability = Math.min(
