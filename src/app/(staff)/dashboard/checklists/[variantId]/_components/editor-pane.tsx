@@ -251,13 +251,23 @@ function GroupSection({
   const [adding, setAdding] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newCode, setNewCode] = useState("");
+  const [codeManuallyEdited, setCodeManuallyEdited] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  function slugify(text: string): string {
+    return text
+      .toLowerCase()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-z0-9_]/g, "")
+      .slice(0, 50);
+  }
 
   function startAdd() {
     setAdding(true);
     setNewLabel("");
     setNewCode("");
+    setCodeManuallyEdited(false);
     setError(null);
   }
 
@@ -351,23 +361,23 @@ function GroupSection({
               <div className="flex items-center gap-2">
                 <Input
                   value={newLabel}
-                  onChange={(e) => setNewLabel(e.target.value)}
+                  onChange={(e) => {
+                    setNewLabel(e.target.value);
+                    if (!codeManuallyEdited) {
+                      setNewCode(slugify(e.target.value));
+                    }
+                  }}
                   placeholder="Item label (e.g. Passport bio page)"
                   disabled={pending}
                   className="flex-1"
                 />
                 <Input
                   value={newCode}
-                  onChange={(e) =>
-                    setNewCode(
-                      e.target.value
-                        .toLowerCase()
-                        .replace(/\s+/g, "_")
-                        .replace(/[^a-z0-9_]/g, "")
-                        .slice(0, 50),
-                    )
-                  }
-                  placeholder="code (e.g. passport_bio)"
+                  onChange={(e) => {
+                    setCodeManuallyEdited(true);
+                    setNewCode(slugify(e.target.value));
+                  }}
+                  placeholder="code (auto-generated)"
                   disabled={pending}
                   className="w-48 font-mono"
                 />

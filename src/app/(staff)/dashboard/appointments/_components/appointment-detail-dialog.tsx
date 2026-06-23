@@ -2,13 +2,23 @@
 
 import {
   AlertTriangle,
+  Calendar,
   CalendarClock,
   CalendarX,
+  Check,
   CheckCircle2,
+  Circle,
+  ClipboardList,
+  Copy,
   Loader2,
+  Mail,
+  MapPin,
   Pencil,
+  Phone,
   RefreshCw,
   UserX,
+  Video,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
@@ -43,9 +53,13 @@ type Mode = "view" | "reschedule" | "cancel" | "notes" | "reject_payment";
 
 const TORONTO_TZ = "America/Toronto";
 
-function formatDateTime(iso: string, tz: string): string {
+// ---------------------------------------------------------------------------
+// Formatters
+// ---------------------------------------------------------------------------
+
+function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("en-CA", {
-    timeZone: tz,
+    timeZone: TORONTO_TZ,
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -57,7 +71,6 @@ function formatDateTime(iso: string, tz: string): string {
 }
 
 function toLocalDateTimeInput(iso: string): string {
-  // YYYY-MM-DDTHH:mm in firm tz for the <input type="datetime-local">
   const d = new Date(iso);
   const fmt = d.toLocaleString("en-CA", {
     timeZone: TORONTO_TZ,
@@ -68,17 +81,109 @@ function toLocalDateTimeInput(iso: string): string {
     minute: "2-digit",
     hour12: false,
   });
-  // en-CA returns "YYYY-MM-DD, HH:mm" — normalise to the input format.
   return fmt.replace(", ", "T").slice(0, 16);
 }
 
 function localInputToIso(local: string): string {
-  // The datetime-local value is wall-clock in Toronto. We interpret it as
-  // such by building a Date in UTC and then offsetting back through the
-  // tz. Simpler: assume the browser is in the firm's tz (CRM staff). If
-  // not, the offset is wrong but practical impact is minor for v1.
   return new Date(local).toISOString();
 }
+
+function formatPhone(e164: string | null): string | null {
+  if (!e164) return null;
+  const match = e164.match(/^\+1(\d{3})(\d{3})(\d{4})$/);
+  if (match) return `+1 (${match[1]}) ${match[2]}-${match[3]}`;
+  return e164;
+}
+
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function durationLabel(appt: AppointmentRow): string | null {
+  const dur = appt.appointment_type?.duration_minutes;
+  if (!dur) return null;
+  return `${dur} min`;
+}
+
+// Parse prep notes into structured sections
+type PrepSection =
+  | { type: "heading"; text: string }
+  | { type: "checklist"; items: string[] }
+  | { type: "bullets"; items: string[] }
+  | { type: "quote"; text: string };
+
+function parsePrepNotes(raw: string): PrepSection[] {
+  const lines = raw.split("\n");
+  const sections: PrepSection[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i].trim();
+    if (!line) { i++; continue; }
+
+    // Quoted line
+    if (
+      (line.startsWith('"') && line.endsWith('"')) ||
+      (line.startsWith("\u201C") && line.includes("\u201D"))
+    ) {
+      sections.push({
+        type: "quote",
+        // Replace em dashes with commas
+        text: line.replace(/^["'\u201C]+|["'\u201D]+$/g, "").replace(/\u2014/g, ",").trim(),
+      });
+      i++;
+      continue;
+    }
+
+    // Heading: ends with ":"
+    if (line.endsWith(":") && !line.startsWith("- ")) {
+      const headingText = line.slice(0, -1).trim();
+      sections.push({ type: "heading", text: headingText });
+      i++;
+      const items: string[] = [];
+      while (i < lines.length) {
+        const next = lines[i].trim();
+        if (next.startsWith("- ")) {
+          items.push(next.slice(2).trim());
+          i++;
+        } else if (next === "") {
+          i++;
+          if (i < lines.length && lines[i].trim().startsWith("- ")) continue;
+          break;
+        } else break;
+      }
+      if (items.length > 0) {
+        const isChecklist = /cover|discuss|expect|review|include/i.test(headingText);
+        sections.push({ type: isChecklist ? "checklist" : "bullets", items });
+      }
+      continue;
+    }
+
+    // Standalone list items
+    if (line.startsWith("- ")) {
+      const items: string[] = [];
+      while (i < lines.length) {
+        const next = lines[i].trim();
+        if (next.startsWith("- ")) { items.push(next.slice(2).trim()); i++; }
+        else if (next === "") { i++; break; }
+        else break;
+      }
+      sections.push({ type: "bullets", items });
+      continue;
+    }
+
+    i++;
+  }
+  return sections;
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 
 export function AppointmentDetailDialog({
   appointment,
@@ -91,30 +196,37 @@ export function AppointmentDetailDialog({
   const [mode, setMode] = useState<Mode>("view");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [copied, setCopied] = useState(false);
 
   function close() {
     setOpen(false);
-    setTimeout(() => {
-      setMode("view");
-      setError(null);
-    }, 200);
+    setTimeout(() => { setMode("view"); setError(null); }, 200);
   }
 
-  function handleResult(
-    promise: Promise<{ ok: true } | { error: string }>,
-  ) {
+  function handleResult(promise: Promise<{ ok: true } | { error: string }>) {
     startTransition(async () => {
       const r = await promise;
-      if ("error" in r) {
-        setError(r.error);
-        return;
-      }
+      if ("error" in r) { setError(r.error); return; }
       close();
     });
   }
 
-  const editable =
-    appointment.status === "confirmed" && mode === "view";
+  async function copyLink(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard denied */ }
+  }
+
+  const editable = appointment.status === "confirmed" && mode === "view";
+  const isResolved = ["completed", "no_show", "cancelled"].includes(appointment.status);
+  const apptType = appointment.appointment_type?.name ?? "Appointment";
+  const dateStr = formatDateTime(appointment.starts_at);
+  const dur = durationLabel(appointment);
+  const joinUrl = appointment.teams_join_url ?? appointment.online_link;
+  const prepNotes = appointment.appointment_type?.preparation_notes;
+  const hasPrepContent = !!prepNotes?.trim();
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
@@ -128,395 +240,428 @@ export function AppointmentDetailDialog({
         {children ?? "View"}
       </DialogTrigger>
 
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>
-            {appointment.appointment_type?.name ?? "Appointment"}
-          </DialogTitle>
-          <DialogDescription>
-            {formatDateTime(appointment.starts_at, appointment.timezone)}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-3xl p-0 gap-0 overflow-hidden">
+        {/* ── Header ────────────────────────────────────────── */}
+        <div className="flex items-start justify-between border-b border-stone-200 px-6 py-4">
+          <div>
+            <h2 className="text-lg font-medium text-stone-900">{apptType}</h2>
+            <div className="mt-1 flex items-center gap-1.5 text-sm text-stone-500">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>{dateStr}{dur ? ` · ${dur}` : ""}</span>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${STATUS_TONE[appointment.status]}`}>
+                {STATUS_LABEL[appointment.status]}
+              </span>
+              {appointment.graph_sync_status === "synced" && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                  <RefreshCw className="h-3 w-3" /> Synced to Outlook
+                </span>
+              )}
+              {appointment.graph_sync_status === "failed" && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-amber-600" title={appointment.graph_sync_error ?? "Calendar sync failed"}>
+                  <AlertTriangle className="h-3 w-3" /> Sync failed
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={close}
+            aria-label="Close"
+            className="rounded-md p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
+        {/* ── APPT-8 payment sections (above body) ──────── */}
+        {mode === "view" && appointment.status === "awaiting_review" && (
+          <div className="border-b border-stone-200 px-6 py-4">
+            <PaymentReviewSection
+              appointment={appointment}
+              pending={pending}
+              onAccept={() => handleResult(acceptAppointmentPayment(appointment.id))}
+              onReject={() => setMode("reject_payment")}
+            />
+          </div>
+        )}
+        {mode === "view" && appointment.status === "pending_payment" && (
+          <div className="border-b border-stone-200 px-6 py-4">
+            <PendingPaymentSection appointment={appointment} />
+          </div>
+        )}
+
+        {/* ── Body ──────────────────────────────────────────── */}
         {mode === "view" && (
-          <>
-            {/* APPT-8: payment review surfaces above the rest of the dialog
-                so accept/reject is the obvious action when staff opens an
-                awaiting_review row. */}
-            {appointment.status === "awaiting_review" && (
-              <PaymentReviewSection
-                appointment={appointment}
-                pending={pending}
-                onAccept={() =>
-                  handleResult(acceptAppointmentPayment(appointment.id))
-                }
-                onReject={() => setMode("reject_payment")}
-              />
+          <div className="grid grid-cols-1 sm:grid-cols-[240px_1fr] min-h-[200px]">
+            {/* Left rail */}
+            <div className="border-b sm:border-b-0 sm:border-r border-stone-200 px-6 py-5 space-y-0">
+              {/* Client */}
+              <RailBlock label="Client">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--navy)] text-xs font-medium text-white">
+                    {initials(appointment.snapshot_client_name)}
+                  </div>
+                  <div className="min-w-0">
+                    {appointment.client ? (
+                      <Link href={`/dashboard/clients/${appointment.client.id}`} className="text-sm font-medium text-[var(--navy)] hover:underline">
+                        {appointment.snapshot_client_name}
+                      </Link>
+                    ) : (
+                      <span className="text-sm font-medium text-stone-800">{appointment.snapshot_client_name}</span>
+                    )}
+                  </div>
+                </div>
+                {appointment.snapshot_client_email && (
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-stone-500">
+                    <Mail className="h-3 w-3 shrink-0" />
+                    <a href={`mailto:${appointment.snapshot_client_email}`} className="hover:text-stone-800 hover:underline truncate">
+                      {appointment.snapshot_client_email}
+                    </a>
+                  </div>
+                )}
+                {appointment.snapshot_client_phone && (
+                  <div className="mt-1 flex items-center gap-1.5 text-xs text-stone-500">
+                    <Phone className="h-3 w-3 shrink-0" />
+                    <span>{formatPhone(appointment.snapshot_client_phone)}</span>
+                  </div>
+                )}
+              </RailBlock>
+
+              {/* Case */}
+              {appointment.case && (
+                <RailBlock label="Case">
+                  <Link href={`/dashboard/cases/${appointment.case.id}`} className="font-mono text-xs text-[var(--navy)] hover:underline">
+                    {appointment.case.case_number}
+                  </Link>
+                </RailBlock>
+              )}
+
+              {/* Location */}
+              <RailBlock label="Location">
+                {appointment.location_type === "online" ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5 text-sm text-stone-700">
+                      <Video className="h-3.5 w-3.5 text-stone-400" />
+                      {appointment.teams_join_url ? "Teams meeting" : "Online meeting"}
+                    </div>
+                    {joinUrl && (
+                      <>
+                        <a
+                          href={joinUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex w-full items-center justify-center gap-1.5 bg-[var(--navy)] px-3 py-2 text-xs font-medium text-white hover:bg-[var(--navy-light)]"
+                        >
+                          <Video className="h-3.5 w-3.5" /> Join meeting
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => copyLink(joinUrl)}
+                          className="flex w-full items-center justify-center gap-1.5 border border-stone-200 px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-50"
+                        >
+                          <Copy className="h-3 w-3" />
+                          {copied ? "Copied!" : "Copy meeting link"}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-1.5 text-sm text-stone-700">
+                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-stone-400" />
+                    <span>{appointment.onsite_address ?? "In person"}</span>
+                  </div>
+                )}
+              </RailBlock>
+
+              {/* Assigned */}
+              <RailBlock label="Assigned">
+                {appointment.assigned_staff ? (
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-200 text-[10px] font-medium text-stone-600">
+                      {initials(`${appointment.assigned_staff.first_name} ${appointment.assigned_staff.last_name}`)}
+                    </div>
+                    <span className="text-sm text-stone-700">
+                      {appointment.assigned_staff.first_name} {appointment.assigned_staff.last_name}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-sm text-stone-400">Unassigned</span>
+                )}
+              </RailBlock>
+
+              {/* Reason */}
+              <RailBlock label="Reason" last>
+                <p className="text-sm text-stone-700 whitespace-pre-wrap">
+                  {appointment.reason || <span className="text-stone-400">Not provided</span>}
+                </p>
+              </RailBlock>
+
+              {/* Staff notes */}
+              {appointment.staff_notes && (
+                <RailBlock label="Staff notes" last>
+                  <p className="text-sm text-stone-600 whitespace-pre-wrap">{appointment.staff_notes}</p>
+                </RailBlock>
+              )}
+
+              {/* Cancellation reason */}
+              {appointment.cancellation_reason && (
+                <RailBlock label="Cancellation reason" last>
+                  <p className="text-sm text-stone-600">{appointment.cancellation_reason}</p>
+                </RailBlock>
+              )}
+            </div>
+
+            {/* Right: prepare panel */}
+            {hasPrepContent && (
+              <div className="bg-stone-50/60 px-6 py-5">
+                <div className="flex items-center gap-2 text-sm font-medium text-stone-700">
+                  <ClipboardList className="h-4 w-4 text-stone-400" />
+                  What to prepare
+                </div>
+                <div className="mt-4 space-y-4">
+                  <PrepNotesDisplay notes={prepNotes!} />
+                </div>
+              </div>
             )}
-            {appointment.status === "pending_payment" && (
-              <PendingPaymentSection appointment={appointment} />
-            )}
-            <ViewMode appointment={appointment} />
-          </>
+          </div>
         )}
-        {mode === "reject_payment" && (
-          <RejectPaymentMode
-            pending={pending}
-            onBack={() => setMode("view")}
-            onSubmit={(reason) =>
-              handleResult(
-                rejectAppointmentPayment({ id: appointment.id, reason }),
-              )
-            }
-          />
-        )}
+
+        {/* ── Sub-modes (reschedule, cancel, notes, reject) ── */}
         {mode === "reschedule" && (
-          <RescheduleMode
-            appointment={appointment}
-            pending={pending}
-            onCancel={() => setMode("view")}
-            onSubmit={(starts, ends, reason) =>
-              handleResult(
-                rescheduleAppointment({
-                  id: appointment.id,
-                  starts_at: starts,
-                  ends_at: ends,
-                  reason,
-                }),
-              )
-            }
-          />
+          <div className="px-6 py-5">
+            <RescheduleMode
+              appointment={appointment}
+              pending={pending}
+              onCancel={() => setMode("view")}
+              onSubmit={(starts, ends, reason) =>
+                handleResult(rescheduleAppointment({ id: appointment.id, starts_at: starts, ends_at: ends, reason }))
+              }
+            />
+          </div>
         )}
         {mode === "cancel" && (
-          <CancelMode
-            pending={pending}
-            onBack={() => setMode("view")}
-            onSubmit={(reason) =>
-              handleResult(
-                cancelAppointment({ id: appointment.id, reason }),
-              )
-            }
-          />
+          <div className="px-6 py-5">
+            <CancelMode
+              pending={pending}
+              onBack={() => setMode("view")}
+              onSubmit={(reason) => handleResult(cancelAppointment({ id: appointment.id, reason }))}
+            />
+          </div>
         )}
         {mode === "notes" && (
-          <NotesMode
-            appointment={appointment}
-            pending={pending}
-            onCancel={() => setMode("view")}
-            onSubmit={(reason, staff_notes) =>
-              handleResult(
-                updateAppointmentNotes({
-                  id: appointment.id,
-                  reason,
-                  staff_notes,
-                }),
-              )
-            }
-          />
+          <div className="px-6 py-5">
+            <NotesMode
+              appointment={appointment}
+              pending={pending}
+              onCancel={() => setMode("view")}
+              onSubmit={(reason, staff_notes) =>
+                handleResult(updateAppointmentNotes({ id: appointment.id, reason, staff_notes }))
+              }
+            />
+          </div>
+        )}
+        {mode === "reject_payment" && (
+          <div className="px-6 py-5">
+            <RejectPaymentMode
+              pending={pending}
+              onBack={() => setMode("view")}
+              onSubmit={(reason) => handleResult(rejectAppointmentPayment({ id: appointment.id, reason }))}
+            />
+          </div>
         )}
 
+        {/* ── Error ─────────────────────────────────────────── */}
         {error && (
-          <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-            {error}
-          </p>
+          <div className="px-6 pb-2">
+            <p className="border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p>
+          </div>
         )}
 
+        {/* ── Footer actions ────────────────────────────────── */}
         {mode === "view" && (
-          <DialogFooter className="flex-wrap gap-2">
-            {editable && (
-              <>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 px-6 py-3">
+            {/* Left zone: lower emphasis */}
+            <div className="flex flex-wrap items-center gap-2">
+              {editable && (
                 <Button
                   variant="outline"
-                  size="sm"
-                  onClick={() => setMode("reschedule")}
-                  disabled={pending}
-                >
-                  <CalendarClock className="mr-1 h-3.5 w-3.5" />
-                  Reschedule
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setMode("notes")}
-                  disabled={pending}
-                >
-                  <Pencil className="mr-1 h-3.5 w-3.5" />
-                  Edit notes
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    handleResult(markCompleted(appointment.id))
-                  }
-                  disabled={pending}
-                >
-                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                  Mark completed
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleResult(markNoShow(appointment.id))}
-                  disabled={pending}
-                >
-                  <UserX className="mr-1 h-3.5 w-3.5" />
-                  Mark no-show
-                </Button>
-                <Button
-                  variant="destructive"
                   size="sm"
                   onClick={() => setMode("cancel")}
                   disabled={pending}
+                  className="text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700"
                 >
-                  <CalendarX className="mr-1 h-3.5 w-3.5" />
-                  Cancel
+                  <CalendarX className="mr-1 h-3.5 w-3.5" /> Cancel
                 </Button>
-              </>
-            )}
-            {appointment.graph_sync_status === "failed" && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  handleResult(retryCalendarSync(appointment.id))
-                }
-                disabled={pending}
-              >
-                <RefreshCw className="mr-1 h-3.5 w-3.5" />
-                Retry calendar sync
-              </Button>
-            )}
-          </DialogFooter>
+              )}
+              {(editable || isResolved) && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setMode("reschedule")} disabled={pending || isResolved}>
+                    <CalendarClock className="mr-1 h-3.5 w-3.5" /> Reschedule
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setMode("notes")} disabled={pending}>
+                    <Pencil className="mr-1 h-3.5 w-3.5" /> Edit notes
+                  </Button>
+                </>
+              )}
+              {appointment.graph_sync_status === "failed" && (
+                <Button variant="outline" size="sm" onClick={() => handleResult(retryCalendarSync(appointment.id))} disabled={pending}>
+                  <RefreshCw className="mr-1 h-3.5 w-3.5" /> Retry sync
+                </Button>
+              )}
+            </div>
+
+            {/* Right zone: outcomes or resolved indicator */}
+            <div className="flex items-center gap-2">
+              {isResolved ? (
+                <span className="text-xs text-stone-400">
+                  {appointment.status === "completed" ? "Marked completed" :
+                   appointment.status === "no_show" ? "Marked no-show" :
+                   "Cancelled"}
+                </span>
+              ) : editable ? (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => handleResult(markNoShow(appointment.id))} disabled={pending}>
+                    <UserX className="mr-1 h-3.5 w-3.5" /> Mark no-show
+                  </Button>
+                  <Button size="sm" onClick={() => handleResult(markCompleted(appointment.id))} disabled={pending}>
+                    <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Mark completed
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          </div>
         )}
       </DialogContent>
     </Dialog>
   );
 }
 
-function ViewMode({ appointment }: { appointment: AppointmentRow }) {
-  const { status, graph_sync_status, graph_sync_error } = appointment;
+// ---------------------------------------------------------------------------
+// Rail block
+// ---------------------------------------------------------------------------
+
+function RailBlock({ label, children, last }: { label: string; children: React.ReactNode; last?: boolean }) {
   return (
-    <div className="space-y-3 text-sm">
-      <div className="flex items-center gap-2">
-        <span
-          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${STATUS_TONE[status]}`}
-        >
-          {STATUS_LABEL[status]}
-        </span>
-        {graph_sync_status === "synced" && (
-          <span className="text-xs text-emerald-600">
-            ✓ Synced to Outlook
-          </span>
-        )}
-        {graph_sync_status === "failed" && (
-          <span
-            className="inline-flex items-center text-xs text-amber-600"
-            title={graph_sync_error ?? "Calendar sync failed"}
-          >
-            <AlertTriangle className="mr-1 h-3.5 w-3.5" /> Sync failed
-          </span>
-        )}
-      </div>
-
-      <DetailRow label="Client">
-        {appointment.client ? (
-          <Link
-            href={`/dashboard/clients/${appointment.client.id}`}
-            className="text-[var(--navy)] underline-offset-2 hover:underline"
-          >
-            {appointment.snapshot_client_name}
-          </Link>
-        ) : (
-          appointment.snapshot_client_name
-        )}
-        <span className="ml-2 text-xs text-stone-500">
-          {appointment.snapshot_client_email}
-          {appointment.snapshot_client_phone
-            ? ` · ${appointment.snapshot_client_phone}`
-            : ""}
-        </span>
-      </DetailRow>
-
-      {appointment.case && (
-        <DetailRow label="Case">
-          <Link
-            href={`/dashboard/cases/${appointment.case.id}`}
-            className="font-mono text-xs text-[var(--navy)] underline-offset-2 hover:underline"
-          >
-            {appointment.case.case_number}
-          </Link>
-        </DetailRow>
-      )}
-
-      <DetailRow label="Location">
-        {appointment.location_type === "online" ? (
-          <LocationOnline appointment={appointment} />
-        ) : (
-          (appointment.onsite_address ?? "Onsite")
-        )}
-      </DetailRow>
-
-      <DetailRow label="Assigned">
-        {appointment.assigned_staff
-          ? `${appointment.assigned_staff.first_name} ${appointment.assigned_staff.last_name}`
-          : "Unassigned"}
-      </DetailRow>
-
-      <DetailRow label="Reason">
-        <span className="whitespace-pre-wrap">{appointment.reason}</span>
-      </DetailRow>
-
-      {appointment.staff_notes && (
-        <DetailRow label="Staff notes">
-          <span className="whitespace-pre-wrap text-stone-600">
-            {appointment.staff_notes}
-          </span>
-        </DetailRow>
-      )}
-
-      {appointment.cancellation_reason && (
-        <DetailRow label="Cancellation reason">
-          {appointment.cancellation_reason}
-        </DetailRow>
-      )}
-
-      {appointment.appointment_type?.preparation_notes && (
-        <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
-            What to prepare for this appointment
-          </div>
-          <p className="mt-1 whitespace-pre-wrap text-sm text-stone-700">
-            {appointment.appointment_type.preparation_notes}
-          </p>
-        </div>
-      )}
+    <div className={`py-3 ${last ? "" : "border-b border-stone-100"}`}>
+      <div className="text-[11px] font-medium uppercase tracking-wider text-stone-400">{label}</div>
+      <div className="mt-1.5">{children}</div>
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Prep notes display
+// ---------------------------------------------------------------------------
+
+function PrepNotesDisplay({ notes }: { notes: string }) {
+  const sections = parsePrepNotes(notes);
+  return (
+    <>
+      {sections.map((section, idx) => {
+        switch (section.type) {
+          case "heading":
+            return <h3 key={idx} className="text-sm font-medium text-stone-800">{section.text}</h3>;
+          case "checklist":
+            return (
+              <ul key={idx} className="space-y-2">
+                {section.items.map((item, j) => (
+                  <li key={j} className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--gold)]" />
+                    <span className="text-sm text-stone-600">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            );
+          case "bullets":
+            return (
+              <ul key={idx} className="space-y-2">
+                {section.items.map((item, j) => (
+                  <li key={j} className="flex items-start gap-2">
+                    <Circle className="mt-1.5 h-2 w-2 shrink-0 fill-stone-400 text-stone-400" />
+                    <span className="text-sm text-stone-600">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            );
+          case "quote":
+            return (
+              <blockquote key={idx} className="border-l-2 border-stone-300 pl-3 text-sm italic text-stone-500">
+                {section.text}
+              </blockquote>
+            );
+        }
+      })}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-mode forms (preserved from original)
+// ---------------------------------------------------------------------------
+
 function RescheduleMode({
-  appointment,
-  pending,
-  onCancel,
-  onSubmit,
+  appointment, pending, onCancel, onSubmit,
 }: {
   appointment: AppointmentRow;
   pending: boolean;
   onCancel: () => void;
   onSubmit: (startsIso: string, endsIso: string, reason: string | null) => void;
 }) {
-  const durMs =
-    new Date(appointment.ends_at).getTime() -
-    new Date(appointment.starts_at).getTime();
-  const [startsLocal, setStartsLocal] = useState(
-    toLocalDateTimeInput(appointment.starts_at),
-  );
+  const durMs = new Date(appointment.ends_at).getTime() - new Date(appointment.starts_at).getTime();
+  const [startsLocal, setStartsLocal] = useState(toLocalDateTimeInput(appointment.starts_at));
   const [reason, setReason] = useState("");
 
   function submit() {
     const startsIso = localInputToIso(startsLocal);
-    const endsIso = new Date(
-      new Date(startsIso).getTime() + durMs,
-    ).toISOString();
+    const endsIso = new Date(new Date(startsIso).getTime() + durMs).toISOString();
     onSubmit(startsIso, endsIso, reason.trim() || null);
   }
 
   return (
     <div className="space-y-3">
+      <h3 className="text-sm font-medium text-stone-800">Reschedule appointment</h3>
       <div>
-        <Label className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-          New start time
-        </Label>
-        <Input
-          type="datetime-local"
-          value={startsLocal}
-          onChange={(e) => setStartsLocal(e.target.value)}
-        />
-        <p className="mt-1 text-[11px] text-stone-500">
-          Duration stays {Math.round(durMs / 60000)} min.
-        </p>
+        <Label className="text-xs font-medium text-stone-600">New start time</Label>
+        <Input type="datetime-local" value={startsLocal} onChange={(e) => setStartsLocal(e.target.value)} />
+        <p className="mt-1 text-[11px] text-stone-500">Duration stays {Math.round(durMs / 60000)} min.</p>
       </div>
       <div>
-        <Label className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-          Reason for reschedule (optional)
-        </Label>
-        <textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={2}
-          className="mt-1 w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm"
-        />
+        <Label className="text-xs font-medium text-stone-600">Reason for reschedule (optional)</Label>
+        <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className="mt-1 w-full border border-stone-200 bg-white px-3 py-2 text-sm" />
       </div>
-      <DialogFooter>
-        <Button variant="outline" onClick={onCancel} disabled={pending}>
-          Back
-        </Button>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={onCancel} disabled={pending}>Back</Button>
         <Button onClick={submit} disabled={pending}>
-          {pending ? (
-            <>
-              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-              Rescheduling…
-            </>
-          ) : (
-            "Confirm reschedule"
-          )}
+          {pending ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Rescheduling...</> : "Confirm reschedule"}
         </Button>
-      </DialogFooter>
+      </div>
     </div>
   );
 }
 
-function CancelMode({
-  pending,
-  onBack,
-  onSubmit,
-}: {
-  pending: boolean;
-  onBack: () => void;
-  onSubmit: (reason: string) => void;
-}) {
+function CancelMode({ pending, onBack, onSubmit }: { pending: boolean; onBack: () => void; onSubmit: (reason: string) => void }) {
   const [reason, setReason] = useState("");
   return (
     <div className="space-y-3">
-      <Label className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-        Cancellation reason
-      </Label>
-      <textarea
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        rows={3}
-        placeholder="Required. Visible to staff; not emailed to the client."
-        className="w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm"
-      />
-      <DialogFooter>
-        <Button variant="outline" onClick={onBack} disabled={pending}>
-          Back
+      <h3 className="text-sm font-medium text-stone-800">Cancel appointment</h3>
+      <div>
+        <Label className="text-xs font-medium text-stone-600">Cancellation reason</Label>
+        <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="Required. Visible to staff; not emailed to the client." className="mt-1 w-full border border-stone-200 bg-white px-3 py-2 text-sm" />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={onBack} disabled={pending}>Back</Button>
+        <Button variant="destructive" onClick={() => onSubmit(reason.trim())} disabled={pending || !reason.trim()}>
+          {pending ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Cancelling...</> : "Confirm cancel"}
         </Button>
-        <Button
-          variant="destructive"
-          onClick={() => onSubmit(reason.trim())}
-          disabled={pending || !reason.trim()}
-        >
-          {pending ? (
-            <>
-              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-              Cancelling…
-            </>
-          ) : (
-            "Confirm cancel"
-          )}
-        </Button>
-      </DialogFooter>
+      </div>
     </div>
   );
 }
 
 function NotesMode({
-  appointment,
-  pending,
-  onCancel,
-  onSubmit,
+  appointment, pending, onCancel, onSubmit,
 }: {
   appointment: AppointmentRow;
   pending: boolean;
@@ -527,84 +672,38 @@ function NotesMode({
   const [staffNotes, setStaffNotes] = useState(appointment.staff_notes ?? "");
   return (
     <div className="space-y-3">
+      <h3 className="text-sm font-medium text-stone-800">Edit notes</h3>
       <div>
-        <Label className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-          Reason
-        </Label>
-        <textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={2}
-          className="mt-1 w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm"
-        />
+        <Label className="text-xs font-medium text-stone-600">Reason</Label>
+        <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className="mt-1 w-full border border-stone-200 bg-white px-3 py-2 text-sm" />
       </div>
       <div>
-        <Label className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-          Staff notes
-        </Label>
-        <textarea
-          value={staffNotes}
-          onChange={(e) => setStaffNotes(e.target.value)}
-          rows={3}
-          className="mt-1 w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm"
-        />
+        <Label className="text-xs font-medium text-stone-600">Staff notes</Label>
+        <textarea value={staffNotes} onChange={(e) => setStaffNotes(e.target.value)} rows={3} className="mt-1 w-full border border-stone-200 bg-white px-3 py-2 text-sm" />
       </div>
-      <DialogFooter>
-        <Button variant="outline" onClick={onCancel} disabled={pending}>
-          Back
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={onCancel} disabled={pending}>Back</Button>
+        <Button onClick={() => onSubmit(reason.trim(), staffNotes.trim() || null)} disabled={pending || !reason.trim()}>
+          {pending ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Saving...</> : "Save"}
         </Button>
-        <Button
-          onClick={() => onSubmit(reason.trim(), staffNotes.trim() || null)}
-          disabled={pending || !reason.trim()}
-        >
-          {pending ? (
-            <>
-              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-              Saving…
-            </>
-          ) : (
-            "Save"
-          )}
-        </Button>
-      </DialogFooter>
-    </div>
-  );
-}
-
-function DetailRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
-        {label}
       </div>
-      <div className="text-sm text-stone-800">{children}</div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// APPT-8 payment-review surfaces
+// APPT-8 payment review
 // ---------------------------------------------------------------------------
 
 function formatFeeCad(value: string | number | null): string {
-  if (value === null) return "—";
+  if (value === null) return "N/A";
   const n = typeof value === "string" ? Number(value) : value;
-  if (Number.isNaN(n)) return "—";
-  return new Intl.NumberFormat("en-CA", {
-    style: "currency",
-    currency: "CAD",
-    maximumFractionDigits: 0,
-  }).format(n);
+  if (Number.isNaN(n)) return "N/A";
+  return new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(n);
 }
 
 function formatUploadedAgo(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "N/A";
   const ms = Date.now() - new Date(iso).getTime();
   const hours = Math.floor(ms / 3600000);
   if (hours < 1) return "just now";
@@ -615,10 +714,7 @@ function formatUploadedAgo(iso: string | null): string {
 }
 
 function PaymentReviewSection({
-  appointment,
-  pending,
-  onAccept,
-  onReject,
+  appointment, pending, onAccept, onReject,
 }: {
   appointment: AppointmentRow;
   pending: boolean;
@@ -627,15 +723,11 @@ function PaymentReviewSection({
 }) {
   const ref = appointment.id.slice(0, 8);
   return (
-    <div className="space-y-3 rounded-md border border-purple-200 bg-purple-50/40 p-4">
-      <div className="text-xs font-semibold uppercase tracking-wider text-purple-700">
-        Payment review
-      </div>
+    <div className="space-y-3 border border-purple-200 bg-purple-50/40 p-4">
+      <div className="text-xs font-medium uppercase tracking-wider text-purple-700">Payment review</div>
       <dl className="grid grid-cols-2 gap-y-1 text-sm text-stone-800">
         <dt className="text-stone-500">Fee</dt>
-        <dd className="font-medium tabular-nums">
-          {formatFeeCad(appointment.fee_cad_at_booking)}
-        </dd>
+        <dd className="font-medium tabular-nums">{formatFeeCad(appointment.fee_cad_at_booking)}</dd>
         <dt className="text-stone-500">Uploaded</dt>
         <dd>{formatUploadedAgo(appointment.payment_uploaded_at)} by client</dd>
         <dt className="text-stone-500">Expected sender</dt>
@@ -644,49 +736,23 @@ function PaymentReviewSection({
         <dd className="font-mono text-xs">{ref}</dd>
       </dl>
       {appointment.payment_screenshot_url ? (
-        <a
-          href={appointment.payment_screenshot_url}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center rounded-md border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100"
-        >
-          Open screenshot →
+        <a href={appointment.payment_screenshot_url} target="_blank" rel="noreferrer" className="inline-flex items-center border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100">
+          Open screenshot
         </a>
       ) : (
-        <p className="text-[11px] text-stone-500">
-          Screenshot URL not loaded — open this appointment from{" "}
-          <code className="font-mono">/dashboard/appointments</code> to view it.
-        </p>
+        <p className="text-[11px] text-stone-500">Screenshot URL not loaded. Open from /dashboard/appointments to view it.</p>
       )}
       <div className="flex flex-wrap gap-2 pt-1">
-        <Button
-          size="sm"
-          onClick={onAccept}
-          disabled={pending}
-          className="bg-emerald-600 hover:bg-emerald-700"
-        >
-          ✓ Accept payment
-        </Button>
-        <Button
-          size="sm"
-          variant="destructive"
-          onClick={onReject}
-          disabled={pending}
-        >
-          ✗ Reject payment
-        </Button>
+        <Button size="sm" onClick={onAccept} disabled={pending} className="bg-emerald-600 hover:bg-emerald-700">Accept payment</Button>
+        <Button size="sm" variant="destructive" onClick={onReject} disabled={pending}>Reject payment</Button>
       </div>
     </div>
   );
 }
 
-function PendingPaymentSection({
-  appointment,
-}: {
-  appointment: AppointmentRow;
-}) {
+function PendingPaymentSection({ appointment }: { appointment: AppointmentRow }) {
   return (
-    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+    <div className="border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
       <strong>Awaiting payment proof from client.</strong>
       <p className="mt-1 text-xs text-amber-800">
         Fee: {formatFeeCad(appointment.fee_cad_at_booking)} · Reference{" "}
@@ -697,121 +763,30 @@ function PendingPaymentSection({
   );
 }
 
-function RejectPaymentMode({
-  pending,
-  onBack,
-  onSubmit,
-}: {
-  pending: boolean;
-  onBack: () => void;
-  onSubmit: (reason: string) => void;
-}) {
-  const COMMON_REASONS = [
-    "Amount does not match",
-    "Wrong recipient",
-    "Cannot verify transfer",
-    "Other",
-  ];
+function RejectPaymentMode({ pending, onBack, onSubmit }: { pending: boolean; onBack: () => void; onSubmit: (reason: string) => void }) {
+  const COMMON_REASONS = ["Amount does not match", "Wrong recipient", "Cannot verify transfer", "Other"];
   const [reason, setReason] = useState<string>(COMMON_REASONS[0]);
   const [otherText, setOtherText] = useState("");
-
   const effective = reason === "Other" ? otherText.trim() : reason;
 
   return (
     <div className="space-y-3">
-      <Label className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-        Reason for rejection
-      </Label>
-      <select
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        disabled={pending}
-        className="h-9 w-full rounded-md border border-stone-200 bg-white px-3 text-sm"
-      >
-        {COMMON_REASONS.map((r) => (
-          <option key={r} value={r}>
-            {r}
-          </option>
-        ))}
-      </select>
+      <h3 className="text-sm font-medium text-stone-800">Reject payment</h3>
+      <div>
+        <Label className="text-xs font-medium text-stone-600">Reason for rejection</Label>
+        <select value={reason} onChange={(e) => setReason(e.target.value)} disabled={pending} className="mt-1 h-9 w-full border border-stone-200 bg-white px-3 text-sm">
+          {COMMON_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </div>
       {reason === "Other" && (
-        <textarea
-          value={otherText}
-          onChange={(e) => setOtherText(e.target.value)}
-          rows={3}
-          disabled={pending}
-          placeholder="Tell the client what went wrong."
-          className="w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm"
-        />
+        <textarea value={otherText} onChange={(e) => setOtherText(e.target.value)} rows={3} disabled={pending} placeholder="Tell the client what went wrong." className="w-full border border-stone-200 bg-white px-3 py-2 text-sm" />
       )}
-      <DialogFooter>
-        <Button variant="outline" onClick={onBack} disabled={pending}>
-          Back
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={onBack} disabled={pending}>Back</Button>
+        <Button variant="destructive" onClick={() => onSubmit(effective)} disabled={pending || !effective}>
+          {pending ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Rejecting...</> : "Confirm rejection"}
         </Button>
-        <Button
-          variant="destructive"
-          onClick={() => onSubmit(effective)}
-          disabled={pending || !effective}
-        >
-          {pending ? (
-            <>
-              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-              Rejecting…
-            </>
-          ) : (
-            "Confirm rejection"
-          )}
-        </Button>
-      </DialogFooter>
+      </div>
     </div>
-  );
-}
-
-// APPT-7: prominent join button when a Teams meeting is attached, with
-// the full URL shown in monospace below for copy-paste. Falls back to
-// the manual online_link, and finally to a "no link set yet" message.
-function LocationOnline({ appointment }: { appointment: AppointmentRow }) {
-  if (appointment.teams_join_url) {
-    return (
-      <div className="space-y-2">
-        <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-          Microsoft Teams meeting
-        </div>
-        <a
-          href={appointment.teams_join_url}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 rounded-md bg-[var(--navy)] px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-[var(--navy)]/90"
-        >
-          Join meeting →
-        </a>
-        <div className="break-all font-mono text-[11px] text-stone-500">
-          {appointment.teams_join_url}
-        </div>
-      </div>
-    );
-  }
-  if (appointment.online_link) {
-    return (
-      <div className="space-y-1">
-        <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-          Online meeting
-        </div>
-        <a
-          href={appointment.online_link}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 rounded-md border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100"
-        >
-          Join link →
-        </a>
-        <div className="break-all font-mono text-[11px] text-stone-500">
-          {appointment.online_link}
-        </div>
-      </div>
-    );
-  }
-  return (
-    <span className="text-stone-500">Online — no link set yet</span>
   );
 }

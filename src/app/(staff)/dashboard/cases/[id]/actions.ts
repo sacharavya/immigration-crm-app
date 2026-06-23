@@ -8,7 +8,12 @@ import { z } from "zod";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
 import { tryAutoAdvanceFromRetainerPending } from "@/lib/cases/auto-advance";
-import { sendEmail } from "@/lib/email/client";
+import {
+  sendCaseDecisionEmail,
+  sendCaseEventEmail,
+  sendCasePhaseAdvanceEmail,
+} from "@/lib/email/case-notifications";
+import { sendEmail, type EmailAttachment } from "@/lib/email/client";
 import { logEmail } from "@/lib/email/log";
 import { shouldRateLimit } from "@/lib/email/rate-limit";
 import { casePaymentRequestEmail } from "@/lib/email/templates/case-payment-request";
@@ -31,7 +36,9 @@ import {
 import {
   MILESTONE_LABEL,
   MILESTONE_STATUS,
+  PHASE_LABELS,
   nextMilestones,
+  phaseIndex,
   type CaseStatus,
   type Milestone,
 } from "@/lib/utils/phase";
@@ -1612,7 +1619,12 @@ const recordEventSchema = z.object({
   note: z.string().trim().max(500).optional().nullable(),
 });
 
-export type RecordEventInput = z.infer<typeof recordEventSchema>;
+export type RecordEventInput = z.infer<typeof recordEventSchema> & {
+  notifyClient?: boolean;
+  clientNote?: string | null;
+  attachmentDocId?: string | null;
+  attachmentFormData?: FormData;
+};
 export type RecordEventResult =
   | { ok: true }
   | { error: string; gateBlocked?: boolean };
@@ -1625,6 +1637,7 @@ export async function recordEvent(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   const { caseId, milestone, occurredAt, note } = parsed.data;
+  const { notifyClient, clientNote, attachmentDocId, attachmentFormData } = input;
   const targetStatus: CaseStatus = MILESTONE_STATUS[milestone];
 
   const supabase = await createClient();
@@ -1722,6 +1735,41 @@ export async function recordEvent(
       occurred_at: occurred,
       created_by: staff.id,
     });
+
+  // Email notification (fire-and-forget; failure does not roll back).
+  if (notifyClient) {
+    // Build file attachment from FormData upload if provided
+    const attachments: EmailAttachment[] = [];
+    if (attachmentFormData) {
+      const file = attachmentFormData.get("file");
+      if (file instanceof File && file.size > 0) {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        attachments.push({ filename: file.name, content: buffer });
+      }
+    }
+
+    const isDecision =
+      targetStatus === "passport_requested" || targetStatus === "refused";
+
+    if (isDecision) {
+      await sendCaseDecisionEmail(supabase, caseId, targetStatus === "passport_requested" ? "approved" : "refused", {
+        staffNote: clientNote ?? undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
+        staffId: staff.id,
+        attachmentDocId: attachmentDocId ?? undefined,
+      });
+    } else {
+      const fromPhase = phaseIndex(caseRow.status);
+      const toPhase = phaseIndex(targetStatus);
+      await sendCasePhaseAdvanceEmail(
+        supabase,
+        caseId,
+        fromPhase ? PHASE_LABELS[fromPhase] : caseRow.status,
+        toPhase ? PHASE_LABELS[toPhase] : targetStatus,
+        { staffNote: clientNote ?? undefined, staffId: staff.id },
+      );
+    }
+  }
 
   revalidatePath(`/dashboard/cases/${caseId}`);
   return { ok: true };
@@ -1934,6 +1982,12 @@ function eventAllowsStatus(
 export async function recordCaseEvent(
   caseId: string,
   payload: RecordCaseEventInput,
+  emailOpts?: {
+    notifyClient?: boolean;
+    clientNote?: string;
+    attachmentDocId?: string;
+    attachmentFormData?: FormData;
+  },
 ): Promise<RecordCaseEventResult> {
   if (!z.string().uuid().safeParse(caseId).success) {
     return { error: "Invalid case id" };
@@ -2076,6 +2130,42 @@ export async function recordCaseEvent(
         })
         .eq("id", caseId);
     }
+  }
+
+  // Email notification (fire-and-forget).
+  if (emailOpts?.notifyClient) {
+    const attachments: EmailAttachment[] = [];
+    if (emailOpts.attachmentFormData) {
+      const file = emailOpts.attachmentFormData.get("file");
+      if (file instanceof File && file.size > 0) {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        attachments.push({ filename: file.name, content: buffer });
+      }
+    }
+
+    await sendCaseEventEmail(supabase, caseId, data.event_type, {
+      staffNote: emailOpts.clientNote ?? undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
+      staffId: me.id,
+      attachmentDocId: emailOpts.attachmentDocId ?? undefined,
+      scheduledDate:
+        "scheduled_date" in data ? (data.scheduled_date as string) : undefined,
+      location: "location" in data ? (data.location as string) : undefined,
+      whatWasAsked:
+        "what_ircc_asked_for" in data
+          ? (data.what_ircc_asked_for as string)
+          : undefined,
+      documentList:
+        "documents" in data && Array.isArray(data.documents)
+          ? (data.documents as { label: string }[]).map((d) => d.label)
+          : undefined,
+      dueDate:
+        "due_date" in data
+          ? (data.due_date as string)
+          : "overall_due_date" in data
+            ? (data.overall_due_date as string)
+            : undefined,
+    });
   }
 
   revalidatePath(`/dashboard/cases/${caseId}`);

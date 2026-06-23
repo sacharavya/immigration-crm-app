@@ -1,7 +1,7 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import { useState, useTransition } from "react";
+import { Loader2, Mail, Paperclip, Upload } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +30,11 @@ type Stage =
   | { kind: "confirm"; milestone: Milestone }
   | { kind: "blocked"; reason: string };
 
+export type CaseDocOption = {
+  id: string;
+  displayName: string;
+};
+
 type Props = {
   caseId: string;
   currentStatus: CaseStatus;
@@ -37,6 +42,8 @@ type Props = {
   retainerMinimumCad: number | null;
   collectedCad: number;
   triggerLabel?: string;
+  /** Case documents available for attachment in emails. */
+  caseDocuments?: CaseDocOption[];
 };
 
 function todayIsoDate(): string {
@@ -50,6 +57,7 @@ export function RecordEventDialog({
   retainerMinimumCad,
   collectedCad,
   triggerLabel = "+ Record event",
+  caseDocuments = [],
 }: Props) {
   const milestones = nextMilestones(currentStatus);
   const [open, setOpen] = useState(false);
@@ -68,21 +76,40 @@ export function RecordEventDialog({
     setStage({ kind: "confirm", milestone });
   }
 
-  function submit(milestone: Milestone, occurredAtIso: string, note: string) {
+  function submit(
+    milestone: Milestone,
+    occurredAtIso: string,
+    note: string,
+    emailOpts?: {
+      notifyClient: boolean;
+      clientNote?: string;
+      attachmentFile?: File;
+      attachmentDocId?: string;
+    },
+  ) {
     startTransition(async () => {
+      // Build FormData if there's a file attachment
+      let attachmentFormData: FormData | undefined;
+      if (emailOpts?.notifyClient && emailOpts.attachmentFile) {
+        attachmentFormData = new FormData();
+        attachmentFormData.append("file", emailOpts.attachmentFile);
+      }
+
       const result = await recordEvent({
         caseId,
         milestone,
         occurredAt: occurredAtIso,
         note: note.trim() || null,
+        notifyClient: emailOpts?.notifyClient ?? false,
+        clientNote: emailOpts?.clientNote?.trim() || null,
+        attachmentDocId: emailOpts?.attachmentDocId || null,
+        attachmentFormData,
       });
       if ("error" in result) {
         if (result.gateBlocked) {
           setStage({ kind: "blocked", reason: result.error });
           return;
         }
-        // Surface as a generic alert in the confirm view; the user can
-        // step back and try again.
         alert(result.error);
         return;
       }
@@ -110,8 +137,11 @@ export function RecordEventDialog({
           <ConfirmView
             milestone={stage.milestone}
             pending={pending}
+            caseDocuments={caseDocuments}
             onBack={() => setStage({ kind: "pick" })}
-            onSubmit={(occurred, note) => submit(stage.milestone, occurred, note)}
+            onSubmit={(occurred, note, emailOpts) =>
+              submit(stage.milestone, occurred, note, emailOpts)
+            }
           />
         ) : (
           <PickView milestones={milestones} onPick={pick} />
@@ -154,16 +184,25 @@ function PickView({
   );
 }
 
+type EmailOpts = {
+  notifyClient: boolean;
+  clientNote?: string;
+  attachmentFile?: File;
+  attachmentDocId?: string;
+};
+
 function ConfirmView({
   milestone,
   pending,
+  caseDocuments,
   onBack,
   onSubmit,
 }: {
   milestone: Milestone;
   pending: boolean;
+  caseDocuments: CaseDocOption[];
   onBack: () => void;
-  onSubmit: (occurredAtIso: string, note: string) => void;
+  onSubmit: (occurredAtIso: string, note: string, emailOpts?: EmailOpts) => void;
 }) {
   const [date, setDate] = useState(todayIsoDate());
   const [note, setNote] = useState("");
@@ -171,15 +210,29 @@ function ConfirmView({
   const needsConfirm = MILESTONE_NEEDS_CONFIRM.has(milestone);
   const today = todayIsoDate();
 
+  // Email notification state
+  const [notifyClient, setNotifyClient] = useState(false);
+  const [clientNote, setClientNote] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentDocId, setAttachmentDocId] = useState("");
+  const [attachMode, setAttachMode] = useState<"upload" | "existing">("upload");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const isDecision =
+    milestone === "decision_approved" || milestone === "decision_refused";
+
   function handleSubmit() {
     if (needsConfirm && !confirmed) {
       setConfirmed(true);
       return;
     }
-    // Convert YYYY-MM-DD to a UTC instant. We pin to noon UTC so the date
-    // doesn't drift across the dateline when displayed locally.
     const occurred = new Date(`${date}T12:00:00Z`).toISOString();
-    onSubmit(occurred, note);
+    onSubmit(occurred, note, {
+      notifyClient,
+      clientNote: clientNote.trim() || undefined,
+      attachmentFile: attachMode === "upload" ? attachmentFile ?? undefined : undefined,
+      attachmentDocId: attachMode === "existing" && attachmentDocId ? attachmentDocId : undefined,
+    });
   }
 
   if (needsConfirm && confirmed) {
@@ -263,6 +316,116 @@ function ConfirmView({
             className="mt-1 w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/30"
           />
         </label>
+
+        {/* ── Client email notification ────────────────────── */}
+        <div className="border-t border-stone-100 pt-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={notifyClient}
+              onChange={(e) => setNotifyClient(e.target.checked)}
+              className="h-4 w-4 rounded border-stone-300 accent-[var(--navy)]"
+            />
+            <Mail className="h-3.5 w-3.5 text-stone-400" />
+            <span className="font-medium text-stone-700">
+              {isDecision
+                ? "Send decision notification to client"
+                : "Notify client by email"}
+            </span>
+          </label>
+
+          {notifyClient && (
+            <div className="mt-3 space-y-3 rounded-md border border-stone-100 bg-stone-50/50 p-3">
+              {/* Client note */}
+              <label className="block text-sm">
+                <span className="block text-xs font-medium text-stone-600">
+                  Personal note to client (optional)
+                </span>
+                <textarea
+                  rows={2}
+                  value={clientNote}
+                  onChange={(e) => setClientNote(e.target.value)}
+                  placeholder={
+                    isDecision
+                      ? "Any personal message to include in the email..."
+                      : "Additional context for the client..."
+                  }
+                  className="mt-1 w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm"
+                />
+              </label>
+
+              {/* Attachment */}
+              <div>
+                <span className="block text-xs font-medium text-stone-600">
+                  <Paperclip className="mr-1 inline h-3 w-3" />
+                  Attach a file (optional)
+                </span>
+
+                <div className="mt-1.5 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAttachMode("upload")}
+                    className={`rounded-md border px-2.5 py-1 text-xs ${
+                      attachMode === "upload"
+                        ? "border-[var(--navy)] bg-[var(--navy)] text-white"
+                        : "border-stone-200 bg-white text-stone-600"
+                    }`}
+                  >
+                    Upload new
+                  </button>
+                  {caseDocuments.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setAttachMode("existing")}
+                      className={`rounded-md border px-2.5 py-1 text-xs ${
+                        attachMode === "existing"
+                          ? "border-[var(--navy)] bg-[var(--navy)] text-white"
+                          : "border-stone-200 bg-white text-stone-600"
+                      }`}
+                    >
+                      From case files
+                    </button>
+                  )}
+                </div>
+
+                {attachMode === "upload" && (
+                  <div className="mt-2">
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      onChange={(e) =>
+                        setAttachmentFile(e.target.files?.[0] ?? null)
+                      }
+                      className="block w-full text-sm text-stone-600 file:mr-2 file:rounded-md file:border file:border-stone-200 file:bg-white file:px-2 file:py-1 file:text-xs file:text-stone-600"
+                    />
+                    {attachmentFile && (
+                      <p className="mt-1 text-xs text-stone-500">
+                        {attachmentFile.name} (
+                        {(attachmentFile.size / 1024).toFixed(0)} KB)
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {attachMode === "existing" && caseDocuments.length > 0 && (
+                  <select
+                    value={attachmentDocId}
+                    onChange={(e) => setAttachmentDocId(e.target.value)}
+                    className="mt-2 h-9 w-full rounded-md border border-stone-200 bg-white px-3 text-sm"
+                  >
+                    <option value="">Select a document...</option>
+                    {caseDocuments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.displayName}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <DialogFooter>
@@ -273,10 +436,12 @@ function ConfirmView({
           {pending ? (
             <>
               <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-              Recording…
+              {notifyClient ? "Sending..." : "Recording..."}
             </>
           ) : milestone === "decision_refused" ? (
             "Continue"
+          ) : notifyClient ? (
+            "Record & send email"
           ) : (
             "Record"
           )}

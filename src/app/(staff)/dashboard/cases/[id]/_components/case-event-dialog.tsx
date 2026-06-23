@@ -1,7 +1,7 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { Loader2, Mail, Paperclip } from "lucide-react";
+import { useMemo, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -128,17 +128,29 @@ function todayPlusYears(years: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+type CaseDocOption = { id: string; displayName: string };
+
 export function CaseEventDialog({
   caseId,
   currentStatus,
+  caseDocuments = [],
 }: {
   caseId: string;
   currentStatus: CaseStatus;
+  caseDocuments?: CaseDocOption[];
 }) {
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<EventKind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // Email notification state (shared across all event forms)
+  const [notifyClient, setNotifyClient] = useState(false);
+  const [clientNote, setClientNote] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentDocId, setAttachmentDocId] = useState("");
+  const [attachMode, setAttachMode] = useState<"upload" | "existing">("upload");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const visibleGroups = useMemo(() => {
     return EVENT_GROUPS.map((g) => ({
@@ -154,6 +166,11 @@ export function CaseEventDialog({
   function reset() {
     setPicked(null);
     setError(null);
+    setNotifyClient(false);
+    setClientNote("");
+    setAttachmentFile(null);
+    setAttachmentDocId("");
+    setAttachMode("upload");
   }
   function close() {
     setOpen(false);
@@ -163,7 +180,21 @@ export function CaseEventDialog({
   function submit(payload: RecordCaseEventInput) {
     setError(null);
     startTransition(async () => {
-      const result = await recordCaseEvent(caseId, payload);
+      let attachmentFormData: FormData | undefined;
+      if (notifyClient && attachMode === "upload" && attachmentFile) {
+        attachmentFormData = new FormData();
+        attachmentFormData.append("file", attachmentFile);
+      }
+
+      const result = await recordCaseEvent(caseId, payload, {
+        notifyClient,
+        clientNote: clientNote.trim() || undefined,
+        attachmentDocId:
+          notifyClient && attachMode === "existing" && attachmentDocId
+            ? attachmentDocId
+            : undefined,
+        attachmentFormData,
+      });
       if ("error" in result) {
         setError(result.error);
         return;
@@ -185,13 +216,117 @@ export function CaseEventDialog({
         {picked === null ? (
           <PickView groups={visibleGroups} onPick={setPicked} />
         ) : (
-          <EventForm
-            kind={picked}
-            pending={pending}
-            error={error}
-            onBack={reset}
-            onSubmit={submit}
-          />
+          <>
+            <EventForm
+              kind={picked}
+              pending={pending}
+              error={error}
+              onBack={reset}
+              onSubmit={submit}
+            />
+            {/* Email notification section (rendered below the form's DialogFooter) */}
+            {picked !== null && (
+              <div className="border-t border-stone-100 px-1 pt-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={notifyClient}
+                    onChange={(e) => setNotifyClient(e.target.checked)}
+                    className="h-4 w-4 rounded border-stone-300 accent-[var(--navy)]"
+                  />
+                  <Mail className="h-3.5 w-3.5 text-stone-400" />
+                  <span className="font-medium text-stone-700">
+                    Notify client by email
+                  </span>
+                </label>
+
+                {notifyClient && (
+                  <div className="mt-3 space-y-3 rounded-md border border-stone-100 bg-stone-50/50 p-3">
+                    <label className="block text-sm">
+                      <span className="block text-xs font-medium text-stone-600">
+                        Personal note to client (optional)
+                      </span>
+                      <textarea
+                        rows={2}
+                        value={clientNote}
+                        onChange={(e) => setClientNote(e.target.value)}
+                        placeholder="Additional context for the client..."
+                        className="mt-1 w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm"
+                      />
+                    </label>
+
+                    <div>
+                      <span className="block text-xs font-medium text-stone-600">
+                        <Paperclip className="mr-1 inline h-3 w-3" />
+                        Attach a file (optional)
+                      </span>
+                      <div className="mt-1.5 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setAttachMode("upload")}
+                          className={`rounded-md border px-2.5 py-1 text-xs ${
+                            attachMode === "upload"
+                              ? "border-[var(--navy)] bg-[var(--navy)] text-white"
+                              : "border-stone-200 bg-white text-stone-600"
+                          }`}
+                        >
+                          Upload new
+                        </button>
+                        {caseDocuments.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setAttachMode("existing")}
+                            className={`rounded-md border px-2.5 py-1 text-xs ${
+                              attachMode === "existing"
+                                ? "border-[var(--navy)] bg-[var(--navy)] text-white"
+                                : "border-stone-200 bg-white text-stone-600"
+                            }`}
+                          >
+                            From case files
+                          </button>
+                        )}
+                      </div>
+
+                      {attachMode === "upload" && (
+                        <div className="mt-2">
+                          <input
+                            ref={fileRef}
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                            onChange={(e) =>
+                              setAttachmentFile(e.target.files?.[0] ?? null)
+                            }
+                            className="block w-full text-sm text-stone-600 file:mr-2 file:rounded-md file:border file:border-stone-200 file:bg-white file:px-2 file:py-1 file:text-xs file:text-stone-600"
+                          />
+                          {attachmentFile && (
+                            <p className="mt-1 text-xs text-stone-500">
+                              {attachmentFile.name} (
+                              {(attachmentFile.size / 1024).toFixed(0)} KB)
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {attachMode === "existing" && caseDocuments.length > 0 && (
+                        <select
+                          value={attachmentDocId}
+                          onChange={(e) => setAttachmentDocId(e.target.value)}
+                          className="mt-2 h-9 w-full rounded-md border border-stone-200 bg-white px-3 text-sm"
+                        >
+                          <option value="">Select a document...</option>
+                          {caseDocuments.map((d) => (
+                            <option key={d.id} value={d.id}>
+                              {d.displayName}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </DialogContent>
     </Dialog>

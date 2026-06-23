@@ -84,7 +84,7 @@ export function StepPickType({
           Regulated Canadian Immigration Consultant
         </p>
         <p className="mt-0.5 text-xs text-stone-500">
-          RCIC# R710661
+          RCIC# R711181
         </p>
         <p className="mt-0.5 text-xs text-stone-400">
           Licensed by the College of Immigration and Citizenship Consultants
