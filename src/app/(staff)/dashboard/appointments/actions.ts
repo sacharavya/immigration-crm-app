@@ -1,5 +1,7 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
+
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -17,6 +19,7 @@ import {
   sendAppointmentConfirmation,
   sendAppointmentReschedule,
   sendInternalNotification,
+  sendPaymentPending,
   sendPaymentRejected,
 } from "@/lib/email/appointments";
 import { createClient } from "@/lib/supabase/server";
@@ -128,11 +131,11 @@ export async function createAppointment(
 
   const supabase = await createClient();
 
-  // Type-specific rules: requires_case
+  // Type-specific rules: requires_case + fee
   const { data: typeRow } = await supabase
     .schema("crm")
     .from("appointment_types")
-    .select("requires_case")
+    .select("requires_case, fee_cad")
     .eq("id", input.appointment_type_id)
     .eq("active", true)
     .is("deleted_at", null)
@@ -142,6 +145,57 @@ export async function createAppointment(
     return { error: "This appointment type requires a case." };
   }
 
+  const fee = typeRow.fee_cad == null ? null : Number(typeRow.fee_cad);
+  const isPaid = fee !== null && fee > 0;
+
+  // Paid consultations need a client_id downstream (payment row +
+  // files.documents CHECK). If staff didn't link one, find-or-create a
+  // lead client from the snapshot fields — same as the public flow.
+  let resolvedClientId = input.client_id;
+  if (isPaid && !resolvedClientId) {
+    const emailLower = input.snapshot_client_email.toLowerCase();
+    const { data: existing } = await supabase
+      .schema("crm")
+      .from("clients")
+      .select("id")
+      .eq("email", emailLower)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (existing) {
+      resolvedClientId = existing.id;
+    } else {
+      const { data: nextNumber } = await supabase
+        .schema("crm")
+        .rpc("generate_client_number");
+      if (!nextNumber) {
+        return { error: "Could not generate client number." };
+      }
+      const parts = input.snapshot_client_name.trim().split(/\s+/);
+      const given = parts[0];
+      const family = parts.length > 1 ? parts.slice(1).join(" ") : null;
+      const { data: newClient, error: clientErr } = await supabase
+        .schema("crm")
+        .from("clients")
+        .insert({
+          client_number: nextNumber,
+          legal_name_full: input.snapshot_client_name.trim(),
+          given_names: given,
+          family_name: family,
+          email: emailLower,
+          phone_primary: input.snapshot_client_phone,
+          status: "lead",
+          source: "staff_booking",
+        })
+        .select("id")
+        .single();
+      if (clientErr || !newClient) {
+        return { error: "Could not create client record." };
+      }
+      resolvedClientId = newClient.id;
+    }
+  }
+
   // Slot guard
   if (!(await isSlotFree(supabase, input.starts_at, input.ends_at, null))) {
     return { error: "That slot is no longer free. Pick another time." };
@@ -149,12 +203,23 @@ export async function createAppointment(
 
   const staff = await getStaff();
 
+  // APPT-9: paid consultations follow the universal flow regardless of
+  // booking source. Staff-booked paid types land in pending_payment, the
+  // client receives a payment-instruction email with a management link,
+  // and the slot is held until midnight. Confirmation email + calendar
+  // sync only fire after staff accepts the payment proof.
+  const managementToken = isPaid ? randomBytes(32).toString("hex") : null;
+  const endsAt = new Date(input.ends_at);
+  const managementTokenExpiresAt = managementToken
+    ? new Date(endsAt.getTime() + 24 * 60 * 60 * 1000).toISOString()
+    : null;
+
   const { data: inserted, error: insertErr } = await supabase
     .schema("crm")
     .from("appointments")
     .insert({
       appointment_type_id: input.appointment_type_id,
-      client_id: input.client_id,
+      client_id: resolvedClientId,
       case_id: input.case_id,
       snapshot_client_name: input.snapshot_client_name,
       snapshot_client_email: input.snapshot_client_email,
@@ -169,8 +234,13 @@ export async function createAppointment(
       reason: input.reason,
       staff_notes: input.staff_notes,
       booking_source: "staff",
-      graph_sync_status: "pending",
       created_by: staff?.id,
+      // Paid: pending_payment, no calendar sync yet. Free: confirmed, sync immediately.
+      status: isPaid ? "pending_payment" : "confirmed",
+      fee_cad_at_booking: isPaid ? fee : null,
+      graph_sync_status: isPaid ? null : "pending",
+      management_token: managementToken,
+      management_token_expires_at: managementTokenExpiresAt,
     })
     .select("id")
     .single();
@@ -179,25 +249,31 @@ export async function createAppointment(
     return { error: insertErr?.message ?? "Could not create appointment." };
   }
 
-  // Fire-and-update Graph sync. Never throws; flips graph_sync_status.
   const admin = adminClient();
-  await syncAppointmentCreate(admin, inserted.id);
 
-  // APPT-5: client confirmation + internal staff notification. Failures
-  // log but do not roll back the appointment.
-  if (input.send_confirmation_email) {
-    const confRes = await sendAppointmentConfirmation(admin, inserted.id);
-    if (confRes.ok) {
-      await admin
-        .schema("crm")
-        .from("appointments")
-        .update({ confirmation_email_sent_at: new Date().toISOString() })
-        .eq("id", inserted.id);
+  if (isPaid) {
+    // Send payment-instruction email to the client (e-transfer details +
+    // management URL for uploading proof). No calendar sync, no
+    // confirmation — those fire only after staff accepts the proof.
+    await sendPaymentPending(admin, inserted.id);
+    await sendInternalNotification(admin, inserted.id);
+  } else {
+    // Free flow: Graph sync + confirmation + internal notification.
+    await syncAppointmentCreate(admin, inserted.id);
+    if (input.send_confirmation_email) {
+      const confRes = await sendAppointmentConfirmation(admin, inserted.id);
+      if (confRes.ok) {
+        await admin
+          .schema("crm")
+          .from("appointments")
+          .update({ confirmation_email_sent_at: new Date().toISOString() })
+          .eq("id", inserted.id);
+      }
     }
+    await sendInternalNotification(admin, inserted.id);
   }
-  await sendInternalNotification(admin, inserted.id);
 
-  revalidateLinked(input.case_id, input.client_id);
+  revalidateLinked(input.case_id, resolvedClientId);
   return { ok: true, id: inserted.id };
 }
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 
-// Public case payment-request portal. Same chrome shape as /book and
+// Public case payment-request portal. Same chrome shape as /book-an-appointment and
 // /intake — branded header, firm-info footer, noindex meta so leaked
 // tokens don't get indexed.
 

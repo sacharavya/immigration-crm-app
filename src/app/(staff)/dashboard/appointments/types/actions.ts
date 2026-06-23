@@ -59,7 +59,7 @@ async function requireManageSettings(): Promise<
 function revalidateAll() {
   revalidatePath("/dashboard/appointments/types");
   revalidatePath("/dashboard/appointments");
-  revalidatePath("/book"); // public types may have shifted
+  revalidatePath("/book-an-appointment"); // public types may have shifted
 }
 
 // ---------------------------------------------------------------------------

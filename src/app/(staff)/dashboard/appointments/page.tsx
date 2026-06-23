@@ -134,7 +134,7 @@ export default async function AppointmentsPage({
     .schema("crm")
     .from("appointment_types")
     .select(
-      "id, name, code, duration_minutes, requires_case, default_location_type",
+      "id, name, code, duration_minutes, requires_case, default_location_type, fee_cad",
     )
     .eq("active", true)
     .is("deleted_at", null)
@@ -146,6 +146,7 @@ export default async function AppointmentsPage({
     duration_minutes: t.duration_minutes,
     requires_case: t.requires_case,
     default_location_type: t.default_location_type as LocationType,
+    fee_cad: t.fee_cad,
   }));
 
   const { data: staffRows } = await supabase

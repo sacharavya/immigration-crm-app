@@ -190,7 +190,7 @@ function AppointmentNotActive({ status }: { status: string }) {
           : "No further changes can be made online. Please contact us if you have questions."}
       </p>
       <a
-        href="/book"
+        href="/book-an-appointment"
         className="mt-4 inline-block text-sm text-[var(--navy)] underline-offset-2 hover:underline"
       >
         Back to booking

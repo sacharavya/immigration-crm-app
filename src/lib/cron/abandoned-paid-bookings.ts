@@ -1,13 +1,21 @@
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { fromZonedTime } from "date-fns-tz";
 
 import { sendAbandonedBooking } from "@/lib/email/appointments";
 import type { Database } from "@/lib/supabase/types";
 
 // Reusable sweep for the end-of-day abandoned-bookings job.
 // Cancels paid consultations that have been stuck in pending_payment
-// for >18h without ever advancing to awaiting_review. awaiting_review
-// is INTENTIONALLY EXCLUDED — staff must make the accept/reject call,
-// never the cron.
+// past midnight Toronto time without ever advancing to awaiting_review.
+// awaiting_review is INTENTIONALLY EXCLUDED — staff must make the
+// accept/reject call, never the cron.
+//
+// "12:00 AM beginning of today" in America/Toronto is the cutoff: any
+// pending_payment row created before that instant is abandoned. This is
+// universal — applies to both public-portal and staff-booked paid
+// consultations.
+
+const FIRM_TZ = "America/Toronto";
 
 export type AbandonedBookingsResult = {
   cancelled: number;
@@ -30,8 +38,13 @@ function adminClient() {
 
 export async function runAbandonedPaidBookingsSweep(): Promise<AbandonedBookingsResult> {
   const supabase = adminClient();
-  const now = new Date();
-  const cutoff = new Date(now.getTime() - 18 * 60 * 60 * 1000);
+
+  // Midnight at the beginning of today in the firm's timezone, converted
+  // to a UTC instant. Any pending_payment created before this is stale.
+  const todayInToronto = new Date().toLocaleDateString("en-CA", {
+    timeZone: FIRM_TZ,
+  }); // "YYYY-MM-DD"
+  const cutoff = fromZonedTime(`${todayInToronto}T00:00:00`, FIRM_TZ);
 
   const { data: abandoned, error } = await supabase
     .schema("crm")

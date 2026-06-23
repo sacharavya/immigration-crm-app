@@ -111,15 +111,15 @@ function formatForClient(iso: string, timezone: string) {
 // getBaseUrl() is async (it reads request headers as a fallback when
 // NEXT_PUBLIC_APP_URL is missing). Forgetting to await it stringifies
 // the Promise into the email body — every recipient gets a link like
-// `[object Promise]/book/manage/<token>`. Keep these helpers async to
+// `[object Promise]/book-an-appointment/manage/<token>`. Keep these helpers async to
 // force every caller through await at the type level.
 async function managementUrl(token: string | null): Promise<string | null> {
   if (!token) return null;
-  return `${await getBaseUrl()}/book/manage/${token}`;
+  return `${await getBaseUrl()}/book-an-appointment/manage/${token}`;
 }
 
 async function rebookUrl(): Promise<string> {
-  return `${await getBaseUrl()}/book`;
+  return `${await getBaseUrl()}/book-an-appointment`;
 }
 
 async function dashboardUrl(appointmentId: string): Promise<string> {
@@ -321,7 +321,7 @@ export async function sendAppointmentCancellation(
     dateDisplay: dates.dateDisplay,
     timeDisplay: dates.timeDisplay,
     timezoneDisplay: dates.timezoneDisplay,
-    // Rebook URL only makes sense when /book is reachable to this prospect;
+    // Rebook URL only makes sense when /book-an-appointment is reachable to this prospect;
     // safe to always include since the page itself respects the feature flag.
     rebookUrl: await rebookUrl(),
   });
@@ -537,7 +537,7 @@ export async function sendPaymentPending(
     referenceCode: row.id.slice(0, 8),
     managementUrl:
       (await managementUrl(row.management_token)) ??
-      `${await getBaseUrl()}/book`,
+      `${await getBaseUrl()}/book-an-appointment`,
   });
 
   const res = await sendEmail({

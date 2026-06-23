@@ -1,4 +1,4 @@
-// Nested layout for the public booking surface (`/book` + `/book/manage/...`).
+// Nested layout for the public booking surface (`/book-an-appointment` + `/book-an-appointment/manage/...`).
 // The root layout at src/app/layout.tsx still owns <html>/<body>; this layer
 // just wraps the page content in a minimal public chrome (header + footer)
 // with no staff theming, no auth helpers, no sidebar.

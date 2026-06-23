@@ -149,7 +149,7 @@ export function TypeFormDialog({
           </DialogTitle>
           <DialogDescription>
             Types control what staff can schedule and (when made public) what
-            prospects see at /book.
+            prospects see at /book-an-appointment.
           </DialogDescription>
         </DialogHeader>
 

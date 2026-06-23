@@ -320,7 +320,10 @@ export async function prepareRetainerForSending(
   | { ok: true; rcicStaffId: string }
   | {
       error: string;
-      code?: "rcic_signature_missing" | "rcic_not_assigned";
+      code?:
+        | "rcic_signature_missing"
+        | "rcic_not_assigned"
+        | "client_incomplete";
     }
 > {
   const g = await gate();
@@ -390,10 +393,40 @@ export async function prepareRetainerForSending(
     };
   }
 
-  // Service description + fee breakdown are auto-derived from the case
-  // (quoted_fee_cad, retainer_minimum_cad, service_types.name) at send
-  // time — no inline form, no "details incomplete" gate. The send
-  // action snapshots the derived values onto the retainer row.
+  // Client completeness gate — the retainer renders legal name, address,
+  // email, and phone. A lead created from an appointment booking will
+  // only have name + email + phone; address fields will be blank. Sending
+  // a retainer with missing identity/contact data is unprofessional and
+  // creates legal issues, so we block it here.
+  const { data: clientForGate } = await supabase
+    .schema("crm")
+    .from("clients")
+    .select(
+      "legal_name_full, given_names, family_name, email, phone_primary, address_line1, city, province_state, postal_code",
+    )
+    .eq("id", ctx.caseRow.client_id)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (clientForGate) {
+    const missing: string[] = [];
+    if (!clientForGate.legal_name_full?.trim()) missing.push("full legal name");
+    if (!clientForGate.given_names?.trim()) missing.push("given name");
+    if (!clientForGate.family_name?.trim()) missing.push("family name");
+    if (!clientForGate.email?.trim()) missing.push("email");
+    if (!clientForGate.phone_primary?.trim()) missing.push("phone");
+    if (!clientForGate.address_line1?.trim()) missing.push("address");
+    if (!clientForGate.city?.trim()) missing.push("city");
+    if (!clientForGate.province_state?.trim()) missing.push("province");
+    if (!clientForGate.postal_code?.trim()) missing.push("postal code");
+
+    if (missing.length > 0) {
+      return {
+        error: `Client profile is incomplete — missing: ${missing.join(", ")}. Update the client's personal details before sending the retainer.`,
+        code: "client_incomplete" as const,
+      };
+    }
+  }
 
   return { ok: true, rcicStaffId };
 }

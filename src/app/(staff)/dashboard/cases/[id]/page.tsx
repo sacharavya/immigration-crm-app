@@ -538,7 +538,7 @@ export default async function CasePage({ params, searchParams }: Props) {
       .schema("crm")
       .from("appointment_types")
       .select(
-        "id, name, code, duration_minutes, requires_case, default_location_type",
+        "id, name, code, duration_minutes, requires_case, default_location_type, fee_cad",
       )
       .eq("active", true)
       .is("deleted_at", null)
@@ -588,6 +588,7 @@ export default async function CasePage({ params, searchParams }: Props) {
     duration_minutes: t.duration_minutes,
     requires_case: t.requires_case,
     default_location_type: t.default_location_type as LocationType,
+    fee_cad: t.fee_cad,
   }));
   const officeAddress =
     appointmentSettingsRes.data?.office_address ??

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { runAbandonedPaidBookingsSweep } from "@/lib/cron/abandoned-paid-bookings";
 import { runAppointmentRemindersSweep } from "@/lib/cron/appointment-reminders";
+import { verifyCronAuth } from "@/lib/cron/auth";
 import { runDriveMovesSweep } from "@/lib/cron/drive-moves";
 
 // Consolidated daily cron. Vercel Hobby tier allows exactly ONE
@@ -23,18 +24,8 @@ export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const expected = process.env.CRON_SECRET
-    ? `Bearer ${process.env.CRON_SECRET}`
-    : null;
-  if (!expected) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured" },
-      { status: 500 },
-    );
-  }
-  if (req.headers.get("authorization") !== expected) {
-    return new NextResponse("Unauthorized", { status: 401 });
-  }
+  const authError = verifyCronAuth(req);
+  if (authError) return authError;
 
   const [reminders, abandoned, driveMoves] = await Promise.allSettled([
     runAppointmentRemindersSweep(),

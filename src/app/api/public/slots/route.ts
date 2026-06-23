@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getOpenSlotsForType } from "@/lib/appointments/get-open-slots";
 
-// Public, anonymous endpoint the /book slot picker calls each time the
+// Public, anonymous endpoint the /book-an-appointment slot picker calls each time the
 // prospect changes the date. Service-role inside; reads only — no writes.
 // Day bucketing goes through date-fns-tz (the same library APPT-2 added)
 // so a "date" param maps to its real UTC bounds on either side of a DST

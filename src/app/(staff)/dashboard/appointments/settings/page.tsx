@@ -47,8 +47,8 @@ export default async function AppointmentSettingsPage() {
     reqHeaders.get("x-forwarded-proto") ??
     (process.env.NODE_ENV === "production" ? "https" : "http");
   const publicBookingUrl = host
-    ? `${proto}://${host}/book`
-    : `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/book`;
+    ? `${proto}://${host}/book-an-appointment`
+    : `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/book-an-appointment`;
 
   const incrementRaw = settings.slot_increment_minutes;
   const increment: 15 | 30 | 60 =
@@ -64,7 +64,7 @@ export default async function AppointmentSettingsPage() {
         </h1>
         <p className="mt-1 text-sm text-stone-600">
           Booking hours, location defaults, and the toggle that exposes
-          /book to the world.
+          /book-an-appointment to the world.
         </p>
       </header>
 

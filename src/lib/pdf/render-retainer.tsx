@@ -178,6 +178,29 @@ export async function loadRetainerData(
       "Client record not found for this case",
     );
   }
+
+  // Client completeness gate — a lead created from an appointment
+  // booking will only have name + email + phone. Missing address or
+  // identity fields produce a retainer full of blanks.
+  if (requireSignature) {
+    const missing: string[] = [];
+    if (!client.legal_name_full?.trim()) missing.push("full legal name");
+    if (!client.given_names?.trim()) missing.push("given name");
+    if (!client.family_name?.trim()) missing.push("family name");
+    if (!client.email?.trim()) missing.push("email");
+    if (!client.phone_primary?.trim()) missing.push("phone");
+    if (!client.address_line1?.trim()) missing.push("address");
+    if (!client.city?.trim()) missing.push("city");
+    if (!client.province_state?.trim()) missing.push("province");
+    if (!client.postal_code?.trim()) missing.push("postal code");
+    if (missing.length > 0) {
+      throw new RetainerRenderError(
+        "data_incomplete",
+        `Client profile is incomplete — missing: ${missing.join(", ")}. Update the client's personal details before generating the retainer.`,
+      );
+    }
+  }
+
   // RCIC absence / mis-flagging is fatal only when the caller demands a
   // valid signature (PDF generation, public signing). For previews
   // (requireSignature=false) we render placeholders so the Retainer

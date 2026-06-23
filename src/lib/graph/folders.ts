@@ -161,7 +161,7 @@ export async function ensureCaseRetainerFolder(
  * Returns the drive id + the parent item id of the
  * "Consultation Payments/{year}" folder, creating the path lazily.
  *
- * APPT-8: consultation appointments booked via /book don't have a case
+ * APPT-8: consultation appointments booked via /book-an-appointment don't have a case
  * folder yet (the prospect isn't a client until they retain), so their
  * Interac e-transfer screenshots need to live somewhere outside the
  * case hierarchy. They land under

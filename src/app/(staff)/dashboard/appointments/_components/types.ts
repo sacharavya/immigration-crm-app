@@ -21,6 +21,7 @@ export type AppointmentTypeOption = {
   duration_minutes: number;
   requires_case: boolean;
   default_location_type: LocationType;
+  fee_cad: string | number | null;
 };
 
 export type StaffOption = {

@@ -71,8 +71,6 @@ export async function verifyIntakeToken(
     console.error("[intake-portal] verify: DB error", {
       code: error.code,
       message: error.message,
-      details: error.details,
-      hint: error.hint,
     });
     return { ok: false, error: "Invalid link" };
   }

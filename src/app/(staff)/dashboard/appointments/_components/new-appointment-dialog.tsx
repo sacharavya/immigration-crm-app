@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarPlus, Loader2 } from "lucide-react";
+import { CalendarPlus, DollarSign, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -102,6 +102,9 @@ export function NewAppointmentDialog({
     () => types.find((t) => t.id === typeId) ?? null,
     [types, typeId],
   );
+
+  const feeRaw = selectedType?.fee_cad == null ? null : Number(selectedType.fee_cad);
+  const isPaid = feeRaw !== null && feeRaw > 0;
 
   // When the type changes, snap duration/location defaults.
   useEffect(() => {
@@ -249,11 +252,15 @@ export function NewAppointmentDialog({
               onChange={(e) => setTypeId(e.target.value)}
               className="h-9 w-full rounded-md border border-stone-200 bg-white px-3 text-sm"
             >
-              {types.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} · {t.duration_minutes} min
-                </option>
-              ))}
+              {types.map((t) => {
+                const fee = t.fee_cad == null ? null : Number(t.fee_cad);
+                const feeLabel = fee && fee > 0 ? ` · $${fee}` : "";
+                return (
+                  <option key={t.id} value={t.id}>
+                    {t.name} · {t.duration_minutes} min{feeLabel}
+                  </option>
+                );
+              })}
             </select>
           </Field>
 
@@ -265,6 +272,22 @@ export function NewAppointmentDialog({
               onChange={(e) => setDate(e.target.value)}
             />
           </Field>
+
+          {isPaid && (
+            <div className="sm:col-span-2 flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+              <DollarSign className="h-4 w-4 shrink-0 text-amber-600" />
+              <div className="flex-1">
+                <span className="font-medium">
+                  Paid consultation · ${feeRaw?.toFixed(2)} CAD
+                </span>
+                <p className="mt-0.5 text-xs text-amber-700">
+                  Client will receive payment instructions by email. The slot is
+                  held until payment is confirmed. Unconfirmed bookings are
+                  released at midnight.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="sm:col-span-2">
             <Label className="text-xs font-semibold uppercase tracking-wider text-stone-500">
@@ -448,15 +471,17 @@ export function NewAppointmentDialog({
             />
           </div>
 
-          <label className="sm:col-span-2 inline-flex items-center gap-2 text-sm text-stone-700">
-            <input
-              type="checkbox"
-              checked={sendEmail}
-              onChange={(e) => setSendEmail(e.target.checked)}
-              className="h-4 w-4 rounded border-stone-300"
-            />
-            Send confirmation email to client (queued; sending in a later release)
-          </label>
+          {!isPaid && (
+            <label className="sm:col-span-2 inline-flex items-center gap-2 text-sm text-stone-700">
+              <input
+                type="checkbox"
+                checked={sendEmail}
+                onChange={(e) => setSendEmail(e.target.checked)}
+                className="h-4 w-4 rounded border-stone-300"
+              />
+              Send confirmation email to client
+            </label>
+          )}
         </div>
 
         {error && (

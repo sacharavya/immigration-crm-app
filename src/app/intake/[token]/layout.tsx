@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 
-// Public client-self-serve intake. Same chrome shape as /book layout
+// Public client-self-serve intake. Same chrome shape as /book-an-appointment layout
 // (logo header, firm-info footer) so the visual experience matches
 // every other public surface the firm sends to clients.
 

@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { fileTypeFromBuffer } from "file-type";
 import { z } from "zod";
 
 import { syncAppointmentCreate } from "@/lib/appointments/sync";
@@ -39,7 +40,11 @@ const bookSchema = z.object({
   starts_at: z.string().datetime(),
   name: z.string().min(1).max(200),
   email: z.string().email().max(200),
-  phone: z.string().min(1).max(50),
+  phone: z
+    .string()
+    .min(1)
+    .max(50)
+    .regex(/^[\d\s()+\-./]+$/, "Invalid phone number format"),
   reason: z.string().min(1).max(2000),
   location_type: z.enum(["online", "onsite"]),
   consent: z.literal(true),
@@ -337,15 +342,16 @@ export async function uploadPaymentProof(
   const { data: appt } = await supabase
     .schema("crm")
     .from("appointments")
-    .select(
-      "id, client_id, status, starts_at, snapshot_client_name",
-    )
+    .select("id, client_id, status, starts_at, snapshot_client_name")
     .eq("management_token", token)
     .is("deleted_at", null)
     .maybeSingle();
   if (!appt) return { ok: false, error: "invalid_token" };
   if (appt.status !== "pending_payment") {
     return { ok: false, error: "not_pending_payment" };
+  }
+  if (!appt.client_id) {
+    return { ok: false, error: "missing_client" };
   }
 
   // Upload to OneDrive under Consultation Payments/{year}/. Year is taken
@@ -358,6 +364,17 @@ export async function uploadPaymentProof(
   const ext = mimeToExtension(file.type);
   const safeName = `${appt.id.slice(0, 8)}_${slugifyName(appt.snapshot_client_name)}_${Date.now()}${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
+
+  // Magic-byte verification — the browser-reported MIME type is
+  // trivially spoofed. Check actual file content before uploading.
+  const detected = await fileTypeFromBuffer(buffer);
+  if (detected && !ALLOWED_PROOF_MIME.has(detected.mime)) {
+    return { ok: false, error: "unsupported_file_type" };
+  }
+  // PDFs sometimes lack a detectable magic byte via file-type (rare
+  // but possible for linearized PDFs). If file.type says PDF and
+  // detection returns undefined, accept it — the MIME allowlist
+  // already passed above.
 
   let driveItem: { id: string; webUrl: string; driveId: string };
   try {
@@ -407,7 +424,11 @@ export async function uploadPaymentProof(
     return { ok: false, error: "doc_insert_failed" };
   }
 
-  const { error: updErr } = await supabase
+  // Atomic guard: only flip to awaiting_review if the row is still in
+  // pending_payment. If a concurrent upload already claimed it, this
+  // UPDATE matches zero rows and we return an error — prevents the
+  // TOCTOU race where two simultaneous uploads both succeed.
+  const { data: flipped, error: updErr } = await supabase
     .schema("crm")
     .from("appointments")
     .update({
@@ -415,13 +436,20 @@ export async function uploadPaymentProof(
       payment_uploaded_at: new Date().toISOString(),
       status: "awaiting_review",
     })
-    .eq("id", appt.id);
+    .eq("id", appt.id)
+    .eq("status", "pending_payment")
+    .select("id")
+    .maybeSingle();
   if (updErr) {
     console.error(
       "[book.uploadPaymentProof] appointment status flip failed:",
       updErr,
     );
     return { ok: false, error: "update_failed" };
+  }
+  if (!flipped) {
+    // Another concurrent upload already claimed this appointment.
+    return { ok: false, error: "not_pending_payment" };
   }
 
   // Notify the assigned RCIC (or info@ fallback) that a proof is waiting.

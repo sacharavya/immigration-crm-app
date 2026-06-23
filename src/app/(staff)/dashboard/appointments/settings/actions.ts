@@ -169,6 +169,6 @@ export async function updateAppointmentSettings(
 
   revalidatePath("/dashboard/appointments/settings");
   revalidatePath("/dashboard/appointments");
-  revalidatePath("/book");
+  revalidatePath("/book-an-appointment");
   return { ok: true };
 }
