@@ -79,7 +79,7 @@ export default function HomePage() {
           </div>
           <p className="mt-6 text-xs text-stone-400">
             Licensed by the College of Immigration and Citizenship Consultants
-            (CICC) &middot; RCIC# R710661
+            (CICC) &middot; RCIC# R711181
           </p>
         </div>
       </section>
@@ -156,7 +156,7 @@ export default function HomePage() {
       <footer className="border-t border-stone-200 bg-stone-50 px-6 py-6 text-center text-xs text-stone-500">
         &copy; {new Date().getFullYear()} Big Bang Immigration Consulting Inc.
         &middot; Licensed by the College of Immigration and Citizenship
-        Consultants (CICC) &middot; RCIC# R710661
+        Consultants (CICC) &middot; RCIC# R711181
       </footer>
     </main>
   );
