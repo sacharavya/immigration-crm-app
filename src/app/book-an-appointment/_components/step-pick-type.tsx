@@ -1,7 +1,12 @@
 "use client";
 
-import { ArrowRight, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import {
+  ArrowRight,
+  Clock,
+  FolderOpen,
+  MessageSquare,
+} from "lucide-react";
+import Image from "next/image";
 
 import type { PublicBookingType } from "./types";
 
@@ -15,6 +20,34 @@ function formatFee(fee: number | null): string {
   }).format(fee);
 }
 
+function cardMeta(code: string): {
+  icon: React.ReactNode;
+  badge: string | null;
+  badgeColor: string;
+} {
+  const iconClass = "h-5 w-5 text-[var(--gold)]";
+  switch (code) {
+    case "initial_consultation":
+      return {
+        icon: <MessageSquare className={iconClass} />,
+        badge: "New clients",
+        badgeColor: "bg-sky-50 text-sky-700 border-sky-200",
+      };
+    case "case_review":
+      return {
+        icon: <FolderOpen className={iconClass} />,
+        badge: "Existing clients",
+        badgeColor: "bg-violet-50 text-violet-700 border-violet-200",
+      };
+    default:
+      return {
+        icon: <Clock className={iconClass} />,
+        badge: null,
+        badgeColor: "",
+      };
+  }
+}
+
 export function StepPickType({
   types,
   onSelect,
@@ -22,153 +55,116 @@ export function StepPickType({
   types: PublicBookingType[];
   onSelect: (t: PublicBookingType) => void;
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  function pick(t: PublicBookingType) {
-    // Types without prep notes go straight through. Types with notes
-    // expand the card so the prospect can see "what to expect" before
-    // committing to picking a time.
-    if (!t.preparation_notes?.trim()) {
-      onSelect(t);
-      return;
-    }
-    setExpandedId(t.id);
-  }
-
   return (
-    <div className="space-y-4">
-      <header>
-        <h1 className="text-xl font-semibold text-stone-900">
+    <div className="space-y-6">
+      {/* ── Hero band ──────────────────────────────────────────── */}
+      <div className="-mx-6 -mt-8 px-6 pb-6 pt-8">
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
           Book an appointment
         </h1>
-        <p className="mt-1 text-sm text-stone-600">
-          Pick the kind of meeting you&apos;d like.
+        <p className="mt-1.5 text-sm leading-relaxed text-stone-600">
+          Schedule a meeting with our team. Pick the option that fits your
+          situation.
         </p>
-      </header>
+      </div>
 
+      {/* ── Consultant card ────────────────────────────────────── */}
+      <div className="flex flex-col items-center py-2 text-center">
+        <Image
+          src="/RCIC.png"
+          alt="RCIC — Regulated Canadian Immigration Consultant"
+          width={400}
+          height={400}
+          className="h-auto w-44 object-contain"
+        />
+        <p className="mt-3 text-base font-semibold text-stone-900">
+          Big Bang Immigration Consulting
+        </p>
+        <p className="mt-1 text-sm text-stone-600">
+          Regulated Canadian Immigration Consultant
+        </p>
+        <p className="mt-0.5 text-xs text-stone-500">
+          RCIC# R710661
+        </p>
+        <p className="mt-0.5 text-xs text-stone-400">
+          Licensed by the College of Immigration and Citizenship Consultants
+        </p>
+      </div>
+
+      {/* ── Meeting type cards ─────────────────────────────────── */}
       <ul className="space-y-3">
-        {types.map((t) => {
-          const expanded = expandedId === t.id;
-          return (
-            <li key={t.id}>
-              {expanded ? (
-                <ExpandedCard
-                  type={t}
-                  onCollapse={() => setExpandedId(null)}
-                  onContinue={() => onSelect(t)}
-                />
-              ) : (
-                <CollapsedCard type={t} onPick={() => pick(t)} />
-              )}
-            </li>
-          );
-        })}
+        {types.map((t) => (
+          <li key={t.id}>
+            <TypeCard type={t} onSelect={() => onSelect(t)} />
+          </li>
+        ))}
       </ul>
     </div>
   );
 }
 
-function CollapsedCard({
+function TypeCard({
   type,
-  onPick,
+  onSelect,
 }: {
   type: PublicBookingType;
-  onPick: () => void;
+  onSelect: () => void;
 }) {
   const isPaid = type.fee_cad !== null && type.fee_cad > 0;
+  const meta = cardMeta(type.code);
+
   return (
     <button
       type="button"
-      onClick={onPick}
-      className="group flex w-full items-start gap-4 rounded-md border border-stone-200 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-[var(--navy)]/40 hover:shadow-md"
+      onClick={onSelect}
+      className="group flex w-full items-start gap-4 border border-stone-200 bg-white p-5 text-left"
+      style={{ borderLeftWidth: 4, borderLeftColor: "var(--navy)" }}
     >
+      {/* Icon */}
+      <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--navy)]/[0.06]">
+        {meta.icon}
+      </div>
+
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-base font-semibold text-stone-900">
             {type.name}
           </h2>
-          <span className="text-xs text-stone-500">
-            · {type.duration_minutes} minutes
-          </span>
+          {meta.badge && (
+            <span
+              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${meta.badgeColor}`}
+            >
+              {meta.badge}
+            </span>
+          )}
         </div>
+
+        <p className="mt-1 text-xs text-stone-500">
+          {type.duration_minutes} minutes
+        </p>
+
         {type.description && (
-          <p className="mt-1 text-sm text-stone-600">{type.description}</p>
-        )}
-        {isPaid && (
-          <p className="mt-2 text-xs font-medium text-amber-800">
-            Payment via Interac e-transfer required to confirm booking.
+          <p className="mt-1.5 text-sm leading-relaxed text-stone-600">
+            {type.description}
           </p>
         )}
-        {!isPaid && (
-          <div className="mt-2 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-            Free
-          </div>
+
+        {isPaid && (
+          <p className="mt-2 text-xs font-medium text-amber-800">
+            Payment via Interac e-Transfer required to confirm booking.
+          </p>
         )}
       </div>
-      <div className="flex shrink-0 flex-col items-end gap-1">
-        {isPaid && (
-          <div className="text-lg font-semibold tabular-nums text-[var(--navy)]">
-            {formatFee(type.fee_cad)}
-          </div>
-        )}
+
+      {/* Price + arrow */}
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <div
+          className={`text-lg font-semibold tabular-nums ${isPaid ? "text-[var(--navy)]" : "text-emerald-600"}`}
+        >
+          {formatFee(type.fee_cad)}
+        </div>
         <ArrowRight className="h-5 w-5 text-stone-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--navy)]" />
       </div>
     </button>
-  );
-}
-
-function ExpandedCard({
-  type,
-  onCollapse,
-  onContinue,
-}: {
-  type: PublicBookingType;
-  onCollapse: () => void;
-  onContinue: () => void;
-}) {
-  return (
-    <div className="rounded-md border border-[var(--navy)]/40 bg-white p-5 shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-stone-900">
-            {type.name}
-          </h2>
-          <p className="mt-0.5 text-xs text-stone-500">
-            {type.duration_minutes} minutes · {formatFee(type.fee_cad)}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onCollapse}
-          className="inline-flex items-center gap-1 rounded-md border border-stone-200 bg-white px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
-        >
-          <ChevronUp className="h-3.5 w-3.5" /> Collapse
-        </button>
-      </div>
-
-      {type.description && (
-        <p className="mt-3 text-sm text-stone-700">{type.description}</p>
-      )}
-
-      <div className="mt-4 border-t border-stone-100 pt-4">
-        <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-          What to expect
-        </div>
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-stone-700">
-          {type.preparation_notes}
-        </p>
-      </div>
-
-      <div className="mt-5 flex justify-end">
-        <button
-          type="button"
-          onClick={onContinue}
-          className="inline-flex items-center gap-1 rounded-md bg-[var(--navy)] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[var(--navy)]/90"
-        >
-          Continue to time selection
-          <ArrowRight className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
   );
 }

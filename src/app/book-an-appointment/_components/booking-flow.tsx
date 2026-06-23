@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { bookAppointment } from "../actions";
 
@@ -31,6 +31,16 @@ export function BookingFlow({
   firmTimezone: string;
   officeAddress: string;
 }) {
+  // Detect the visitor's browser timezone. Falls back to the firm's
+  // timezone on SSR or if Intl is unavailable.
+  const clientTimezone = useMemo(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+      return firmTimezone;
+    }
+  }, [firmTimezone]);
+
   const [state, setState] = useState<FlowState>(() =>
     types.length === 1
       ? { step: "pick-slot", type: types[0] }
@@ -80,6 +90,7 @@ export function BookingFlow({
       reason: input.reason,
       location_type: input.location_type,
       consent: true,
+      client_timezone: clientTimezone,
     });
     setState({
       step: "result",
@@ -103,6 +114,7 @@ export function BookingFlow({
       <StepPickSlot
         type={state.type}
         firmTimezone={firmTimezone}
+        clientTimezone={clientTimezone}
         canGoBack={types.length > 1}
         onBack={back}
         onSelect={(slot) =>
@@ -117,7 +129,7 @@ export function BookingFlow({
       <StepDetails
         type={state.type}
         slot={state.slot}
-        firmTimezone={firmTimezone}
+        clientTimezone={clientTimezone}
         submitting={state.step === "submitting"}
         onBack={back}
         onSubmit={submit}
@@ -131,7 +143,7 @@ export function BookingFlow({
       result={state.result}
       type={state.type}
       slot={state.slot}
-      firmTimezone={firmTimezone}
+      clientTimezone={clientTimezone}
       officeAddress={officeAddress}
       onPickAnotherSlot={() =>
         setState({ step: "pick-slot", type: state.type })

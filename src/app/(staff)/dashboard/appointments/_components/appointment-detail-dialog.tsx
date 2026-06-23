@@ -82,8 +82,10 @@ function localInputToIso(local: string): string {
 
 export function AppointmentDetailDialog({
   appointment,
+  children,
 }: {
   appointment: AppointmentRow;
+  children?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("view");
@@ -116,8 +118,14 @@ export function AppointmentDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
-      <DialogTrigger className="inline-flex h-8 items-center rounded-md border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 shadow-sm transition-colors hover:bg-stone-100">
-        View
+      <DialogTrigger
+        className={
+          children
+            ? undefined
+            : "inline-flex h-8 items-center rounded-md border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 shadow-sm transition-colors hover:bg-stone-100"
+        }
+      >
+        {children ?? "View"}
       </DialogTrigger>
 
       <DialogContent className="max-w-xl">

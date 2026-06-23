@@ -95,7 +95,7 @@ export function PaymentUploadCard({
 
   if (done) {
     return (
-      <div className="space-y-3 rounded-md border border-emerald-200 bg-white p-6 shadow-sm">
+      <div className="space-y-3 border border-emerald-200 bg-white p-6">
         <h1 className="text-xl font-semibold text-stone-900">
           Got it. We&apos;ve received your payment proof.
         </h1>
@@ -108,7 +108,7 @@ export function PaymentUploadCard({
   }
 
   return (
-    <div className="space-y-5 rounded-md border border-stone-200 bg-white p-6 shadow-sm">
+    <div className="space-y-5 border border-stone-200 bg-white p-6">
       <div className="flex items-start gap-3">
         <div className="text-2xl">⌛</div>
         <div>

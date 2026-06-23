@@ -48,6 +48,7 @@ const bookSchema = z.object({
   reason: z.string().min(1).max(2000),
   location_type: z.enum(["online", "onsite"]),
   consent: z.literal(true),
+  client_timezone: z.string().max(100).optional(),
 });
 
 function splitName(full: string): { given: string; family: string | null } {
@@ -243,7 +244,7 @@ export async function bookAppointment(
       snapshot_client_phone: data.phone,
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
-      timezone: settings.timezone,
+      timezone: data.client_timezone || settings.timezone,
       location_type: locationType,
       online_link: onlineLink,
       onsite_address: onsiteAddress,

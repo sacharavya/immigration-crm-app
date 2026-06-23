@@ -8,7 +8,7 @@ const DEFAULT_MESSAGE =
 
 export function BookingDisabled({ message }: { message?: string } = {}) {
   return (
-    <div className="rounded-md border border-stone-200 bg-white px-6 py-12 text-center shadow-sm">
+    <div className="border border-stone-200 bg-white px-6 py-12 text-center">
       <h1 className="text-xl font-semibold text-stone-900">
         Booking is currently unavailable
       </h1>

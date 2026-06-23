@@ -36,7 +36,7 @@ export default async function AppointmentsPage({
   if (!staffCan(me, "manage_appointments")) redirect("/dashboard");
 
   const params = await searchParams;
-  const view = params.view ?? "list";
+  const view = params.view ?? "calendar";
 
   const supabase = await createClient();
 
@@ -218,7 +218,7 @@ export default async function AppointmentsPage({
       />
 
       {view === "calendar" ? (
-        <AppointmentsCalendar />
+        <AppointmentsCalendar appointments={appointments} />
       ) : (
         <AppointmentsList appointments={appointments} />
       )}

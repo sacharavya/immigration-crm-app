@@ -99,12 +99,18 @@ async function loadAppointment(
 
 function formatForClient(iso: string, timezone: string) {
   const zoned = toZonedTime(new Date(iso), timezone);
+  // Derive a human-readable timezone label like "EDT", "NPT", "IST"
+  // from the IANA timezone and the specific instant (handles DST).
+  const tzAbbr = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    timeZoneName: "short",
+  })
+    .formatToParts(new Date(iso))
+    .find((p) => p.type === "timeZoneName")?.value ?? timezone.replace(/_/g, " ");
   return {
     dateDisplay: format(zoned, "EEEE, MMMM d, yyyy"),
     timeDisplay: format(zoned, "h:mm a"),
-    // Compact tz label — a future refinement can detect EDT vs EST at the
-    // exact instant; for v1 the firm-wide label is enough.
-    timezoneDisplay: "Toronto time",
+    timezoneDisplay: tzAbbr,
   };
 }
 
