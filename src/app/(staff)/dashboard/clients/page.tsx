@@ -186,7 +186,12 @@ export default async function ClientsPage({ searchParams }: Props) {
   }
 
   // Check case events for decision milestones (catches cases that
-  // already moved to closed after the decision was recorded)
+  // already moved to closed after the decision was recorded).
+  // Also look up the case's service_type_id for approved cases so
+  // immigration_status_detail can show the service type name.
+  const caseServiceTypeMap = new Map(
+    (casesRaw ?? []).map((c) => [c.id, c.service_type_id]),
+  );
   for (const ev of eventsRaw ?? []) {
     if (ev.event_type !== "status_changed") continue;
     const data = ev.event_data as { milestone?: string } | null;
@@ -195,8 +200,12 @@ export default async function ClientsPage({ searchParams }: Props) {
     if (!clientId) continue;
     const info = casesByClient.get(clientId);
     if (!info) continue;
-    if (data.milestone === "decision_approved" && !info.lastDecisionStatus) {
+    if (data.milestone === "decision_approved") {
       info.lastDecisionStatus = "passport_requested";
+      // Set the approved service type so the worklist can show it
+      if (!info.approvedServiceTypeId) {
+        info.approvedServiceTypeId = caseServiceTypeMap.get(ev.case_id) ?? null;
+      }
     }
     if (data.milestone === "decision_refused" && !info.lastDecisionStatus) {
       info.lastDecisionStatus = "refused";

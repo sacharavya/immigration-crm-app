@@ -182,16 +182,7 @@ export function WorklistTable({
                   )}
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-stone-400">None</span>
-                  <Link
-                    href={`/dashboard/cases/new?client=${row.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-0.5 text-[11px] font-medium text-[var(--navy)] hover:underline"
-                  >
-                    <Plus className="h-3 w-3" /> New case
-                  </Link>
-                </div>
+                <span className="text-xs text-stone-400">None</span>
               )}
             </div>
 
