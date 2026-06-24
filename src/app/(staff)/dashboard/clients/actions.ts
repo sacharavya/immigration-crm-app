@@ -142,3 +142,45 @@ export async function createClientStandalone(
   revalidatePath("/dashboard/clients");
   return { ok: true, id: newClient.id };
 }
+
+// ---------------------------------------------------------------------------
+// updateImmigrationStatus
+// ---------------------------------------------------------------------------
+
+import {
+  immigrationStatusSchema,
+  type ImmigrationStatusInput,
+} from "@/lib/validators/client-immigration";
+
+export async function updateImmigrationStatus(
+  clientId: string,
+  raw: unknown,
+): Promise<{ ok: true } | { error: string }> {
+  const staff = await getStaff();
+  if (!staff) return { error: "Not authenticated" };
+  if (!staffCan(staff, "edit_clients")) return { error: "Not authorized" };
+  if (!z.string().uuid().safeParse(clientId).success) return { error: "Invalid id" };
+
+  const parsed = immigrationStatusSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  const supabase = await createClient();
+  const { error: updErr } = await supabase
+    .schema("crm")
+    .from("clients")
+    .update({
+      immigration_status: parsed.data.immigration_status,
+      immigration_status_expiry: parsed.data.immigration_status_expiry,
+      immigration_status_note: parsed.data.immigration_status_note,
+    } as never)
+    .eq("id", clientId)
+    .is("deleted_at", null);
+
+  if (updErr) return { error: updErr.message };
+
+  revalidatePath("/dashboard/clients");
+  revalidatePath(`/dashboard/clients/${clientId}`);
+  return { ok: true };
+}

@@ -1,107 +1,312 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { buttonVariants } from "@/components/ui/button";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
+import {
+  deriveWorklistRow,
+  segmentCounts,
+  SORT_FNS,
+  type RawClientRow,
+} from "@/lib/clients/worklist";
 import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils/index";
 
-import { ClientsTable, type ClientRow } from "./_components/clients-table";
+import { WorklistShell } from "./_components/worklist-shell";
 
-export default async function ClientsPage() {
+export const dynamic = "force-dynamic";
+
+function isUuid(v: string | undefined): v is string {
+  return typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v);
+}
+
+type Props = {
+  searchParams: Promise<{
+    segment?: string;
+    sort?: string;
+    q?: string;
+    owner?: string;
+    stage?: string;
+    service?: string;
+    imm_status?: string;
+    citizenship?: string;
+    expiry?: string;
+  }>;
+};
+
+export default async function ClientsPage({ searchParams }: Props) {
   const me = await getStaff();
   if (!me) redirect("/login");
+  if (!staffCan(me, "view_clients")) redirect("/dashboard");
 
-  if (!staffCan(me, "view_clients")) {
-    redirect("/dashboard?error=forbidden_view_clients");
-  }
+  const sp = await searchParams;
+  const activeSegment = sp.segment ?? "all";
+  const activeSort = sp.sort ?? "urgency";
+  const searchQuery = sp.q?.trim().toLowerCase() ?? "";
+  const filterOwner = isUuid(sp.owner) ? sp.owner : null;
+  const filterStages = sp.stage ? sp.stage.split(",").filter(Boolean) : [];
+  const filterServices = sp.service ? sp.service.split(",").filter(Boolean) : [];
+  const filterImmStatuses = sp.imm_status ? sp.imm_status.split(",").filter(Boolean) : [];
+  const filterCitizenships = sp.citizenship ? sp.citizenship.split(",").filter(Boolean) : [];
+  const filterExpiry = sp.expiry ?? null;
 
   const supabase = await createClient();
 
-  const { data: clients } = await supabase
-    .schema("crm")
-    .from("clients")
-    .select(
-      `
-        id,
-        client_number,
-        legal_name_full,
-        email,
-        phone_primary,
-        country_of_citizenship,
-        created_at
-      `,
-    )
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(200);
+  // ── Fetch all data in parallel ─────────────────────────────────
+  const [
+    { data: clients },
+    { data: casesRaw },
+    { data: tasksRaw },
+    { data: eventsRaw },
+    { data: docsRequired },
+    { data: docsUploaded },
+    { data: staffList },
+    { data: serviceTypes },
+    { data: countries },
+  ] = await Promise.all([
+    supabase
+      .schema("crm")
+      .from("clients")
+      .select(
+        "id, client_number, legal_name_full, email, phone_primary, country_of_citizenship, assigned_rcic, created_at, source",
+      )
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(500) as unknown as Promise<{ data: Array<{
+        id: string; client_number: string; legal_name_full: string;
+        email: string | null; phone_primary: string | null;
+        country_of_citizenship: string | null; assigned_rcic: string | null;
+        immigration_status: string | null; immigration_status_expiry: string | null;
+        created_at: string; source: string | null;
+      }> | null }>,
+    supabase
+      .schema("crm")
+      .from("cases")
+      .select("id, client_id, status, service_type_id, assigned_rcic, submitted_at")
+      .is("deleted_at", null),
+    supabase
+      .schema("crm")
+      .from("tasks")
+      .select("client_id, case_id, title, due_date, status")
+      .is("deleted_at", null)
+      .in("status", ["open", "in_progress"]),
+    supabase
+      .schema("crm")
+      .from("case_events")
+      .select("case_id, event_type, event_data, created_at")
+      .in("event_type", [
+        "additional_info_requested",
+        "additional_documents_requested",
+        "biometrics_requested",
+      ]),
+    supabase
+      .schema("crm")
+      .from("case_required_documents")
+      .select("case_id, document_code"),
+    supabase
+      .schema("files")
+      .from("documents")
+      .select("case_id, document_code, status")
+      .is("deleted_at", null)
+      .in("status", ["uploaded", "under_review", "accepted"]),
+    supabase
+      .schema("crm")
+      .from("staff")
+      .select("id, first_name, last_name")
+      .is("deleted_at", null)
+      .eq("is_active", true)
+      .order("first_name"),
+    supabase
+      .schema("ref")
+      .from("service_types")
+      .select("id, name")
+      .is("deactivated_at", null)
+      .order("name"),
+    supabase
+      .schema("ref")
+      .from("countries")
+      .select("code, name")
+      .order("name"),
+  ]);
 
-  const clientIds = (clients ?? []).map((c) => c.id);
+  // ── JS joins ───────────────────────────────────────────────────
+  const casesByClient = new Map<
+    string,
+    { total: number; open: number; latestStatus: string | null; latestId: string | null; latestServiceTypeId: string | null }
+  >();
+  const caseClientMap = new Map<string, string>();
 
-  const { data: caseRows } = clientIds.length
-    ? await supabase
-        .schema("crm")
-        .from("cases")
-        .select("client_id, status")
-        .is("deleted_at", null)
-        .in("client_id", clientIds)
-    : { data: [] as Array<{ client_id: string; status: string }> };
+  for (const c of casesRaw ?? []) {
+    caseClientMap.set(c.id, c.client_id);
+    const prev = casesByClient.get(c.client_id) ?? {
+      total: 0, open: 0, latestStatus: null, latestId: null, latestServiceTypeId: null,
+    };
+    prev.total++;
+    if (c.status !== "closed") {
+      prev.open++;
+      prev.latestStatus = c.status;
+      prev.latestId = c.id;
+      prev.latestServiceTypeId = c.service_type_id;
+    }
+    casesByClient.set(c.client_id, prev);
+  }
 
-  const totalCasesByClient = new Map<string, number>();
-  const openCasesByClient = new Map<string, number>();
-  for (const row of caseRows ?? []) {
-    totalCasesByClient.set(
-      row.client_id,
-      (totalCasesByClient.get(row.client_id) ?? 0) + 1,
-    );
-    if (row.status !== "closed") {
-      openCasesByClient.set(
-        row.client_id,
-        (openCasesByClient.get(row.client_id) ?? 0) + 1,
-      );
+  const tasksByClient = new Map<string, { due: string; title: string }>();
+  for (const t of tasksRaw ?? []) {
+    if (!t.due_date) continue;
+    const clientId = t.client_id ?? caseClientMap.get(t.case_id ?? "");
+    if (!clientId) continue;
+    const prev = tasksByClient.get(clientId);
+    if (!prev || t.due_date < prev.due) {
+      tasksByClient.set(clientId, { due: t.due_date, title: t.title });
     }
   }
 
-  const rows: ClientRow[] = (clients ?? []).map((c) => ({
-    id: c.id,
-    clientNumber: c.client_number,
-    legalName: c.legal_name_full,
-    email: c.email,
-    phone: c.phone_primary,
-    citizenship: c.country_of_citizenship,
-    createdAt: c.created_at,
-    totalCases: totalCasesByClient.get(c.id) ?? 0,
-    openCases: openCasesByClient.get(c.id) ?? 0,
-  }));
+  const irccByClient = new Map<string, { due: string | null }>();
+  for (const ev of eventsRaw ?? []) {
+    const clientId = caseClientMap.get(ev.case_id);
+    if (!clientId) continue;
+    const data = ev.event_data as { due_date?: string; overall_due_date?: string } | null;
+    const due = data?.due_date ?? data?.overall_due_date ?? null;
+    const prev = irccByClient.get(clientId);
+    if (!prev) {
+      irccByClient.set(clientId, { due });
+    } else if (due && (!prev.due || due < prev.due)) {
+      irccByClient.set(clientId, { due });
+    }
+  }
 
-  const total = rows.length;
-  const canCreateClients = staffCan(me, "create_clients");
+  const requiredByCaseDoc = new Set<string>();
+  for (const d of docsRequired ?? []) {
+    requiredByCaseDoc.add(`${d.case_id}:${d.document_code}`);
+  }
+  const uploadedByCaseDoc = new Set<string>();
+  for (const d of docsUploaded ?? []) {
+    if (d.case_id && d.document_code) {
+      uploadedByCaseDoc.add(`${d.case_id}:${d.document_code}`);
+    }
+  }
+  const missingDocsByClient = new Map<string, number>();
+  for (const key of requiredByCaseDoc) {
+    if (!uploadedByCaseDoc.has(key)) {
+      const caseId = key.split(":")[0];
+      const clientId = caseClientMap.get(caseId);
+      if (clientId) {
+        missingDocsByClient.set(clientId, (missingDocsByClient.get(clientId) ?? 0) + 1);
+      }
+    }
+  }
+
+  // ── Build raw rows and derive ──────────────────────────────────
+  const rawRows: RawClientRow[] = (clients ?? []).map((c) => {
+    const caseInfo = casesByClient.get(c.id);
+    const taskInfo = tasksByClient.get(c.id);
+    const irccInfo = irccByClient.get(c.id);
+    return {
+      id: c.id,
+      client_number: c.client_number,
+      legal_name_full: c.legal_name_full,
+      email: c.email,
+      phone_primary: c.phone_primary,
+      country_of_citizenship: c.country_of_citizenship,
+      assigned_rcic: c.assigned_rcic,
+      immigration_status: c.immigration_status as RawClientRow["immigration_status"],
+      immigration_status_expiry: c.immigration_status_expiry,
+      created_at: c.created_at,
+      source: c.source,
+      total_cases: caseInfo?.total ?? 0,
+      open_cases: caseInfo?.open ?? 0,
+      latest_case_status: caseInfo?.latestStatus ?? null,
+      latest_case_id: caseInfo?.latestId ?? null,
+      latest_case_service_type_id: caseInfo?.latestServiceTypeId ?? null,
+      nearest_task_due: taskInfo?.due ?? null,
+      nearest_task_title: taskInfo?.title ?? null,
+      has_ircc_request: irccInfo !== undefined,
+      ircc_request_due: irccInfo?.due ?? null,
+      missing_required_docs: missingDocsByClient.get(c.id) ?? 0,
+    };
+  });
+
+  const allRows = rawRows.map(deriveWorklistRow);
+  const counts = segmentCounts(allRows);
+
+  // ── Apply filters ──────────────────────────────────────────────
+  let filtered = allRows;
+
+  if (activeSegment === "attention") filtered = filtered.filter((r) => r.urgency !== "normal");
+  else if (activeSegment === "active") filtered = filtered.filter((r) => r.segment === "active");
+  else if (activeSegment === "leads") filtered = filtered.filter((r) => r.segment === "lead");
+  else if (activeSegment === "past") filtered = filtered.filter((r) => r.segment === "past");
+
+  if (searchQuery) {
+    filtered = filtered.filter(
+      (r) =>
+        r.legal_name_full.toLowerCase().includes(searchQuery) ||
+        r.client_number.toLowerCase().includes(searchQuery) ||
+        (r.email?.toLowerCase().includes(searchQuery) ?? false),
+    );
+  }
+
+  if (filterOwner) filtered = filtered.filter((r) => r.assigned_rcic === filterOwner);
+  if (filterStages.length > 0) filtered = filtered.filter((r) => filterStages.includes(r.stage));
+  if (filterServices.length > 0) filtered = filtered.filter((r) => r.latest_case_service_type_id && filterServices.includes(r.latest_case_service_type_id));
+  if (filterImmStatuses.length > 0) {
+    const hasNull = filterImmStatuses.includes("not_on_file");
+    const vals = filterImmStatuses.filter((s) => s !== "not_on_file");
+    filtered = filtered.filter((r) => (hasNull && !r.immigration_status) || (r.immigration_status && vals.includes(r.immigration_status)));
+  }
+  if (filterCitizenships.length > 0) filtered = filtered.filter((r) => r.country_of_citizenship && filterCitizenships.includes(r.country_of_citizenship));
+  if (filterExpiry === "expired") {
+    filtered = filtered.filter((r) => r.immigration_status_expiry && new Date(r.immigration_status_expiry) < new Date());
+  } else if (filterExpiry) {
+    const days = parseInt(filterExpiry, 10);
+    if (!isNaN(days)) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() + days);
+      filtered = filtered.filter((r) => r.immigration_status_expiry && new Date(r.immigration_status_expiry) <= cutoff && new Date(r.immigration_status_expiry) >= new Date());
+    }
+  }
+
+  const sortFn = SORT_FNS[activeSort] ?? SORT_FNS.urgency;
+  filtered.sort(sortFn);
+
+  // ── Lookups for display ────────────────────────────────────────
+  const staffById = Object.fromEntries(
+    (staffList ?? []).map((s) => [s.id, `${s.first_name} ${s.last_name}`.trim()]),
+  );
+  const countryNameByCode = new Map((countries ?? []).map((c) => [c.code, c.name]));
+  const distinctCitizenships = Array.from(new Set((clients ?? []).map((c) => c.country_of_citizenship).filter(Boolean)))
+    .map((code) => ({ code: code!, name: countryNameByCode.get(code!) ?? code! }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const params = {
+    segment: activeSegment !== "all" ? activeSegment : null,
+    sort: activeSort !== "urgency" ? activeSort : null,
+    q: searchQuery || null,
+    owner: filterOwner,
+    stage: filterStages.length > 0 ? filterStages.join(",") : null,
+    service: filterServices.length > 0 ? filterServices.join(",") : null,
+    imm_status: filterImmStatuses.length > 0 ? filterImmStatuses.join(",") : null,
+    citizenship: filterCitizenships.length > 0 ? filterCitizenships.join(",") : null,
+    expiry: filterExpiry,
+  };
 
   return (
-    <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--navy)]">
-            Clients
-          </h1>
-          <p className="mt-1 text-sm text-stone-500">
-            {total === 0
-              ? "No clients yet."
-              : `${total} client${total === 1 ? "" : "s"}.`}
-          </p>
-        </div>
-        {canCreateClients && (
-          <Link
-            href="/dashboard/clients/new"
-            className={cn(buttonVariants({ size: "sm" }))}
-          >
-            + New client
-          </Link>
-        )}
+    <div className="space-y-4 px-6 py-6">
+      <div>
+        <h1 className="text-xl font-semibold text-stone-900">Clients</h1>
+        <p className="mt-1 text-sm text-stone-500">
+          Worklist sorted by urgency. Clients needing attention surface first.
+        </p>
       </div>
 
-      <ClientsTable rows={rows} />
-    </main>
+      <WorklistShell
+        rows={filtered}
+        counts={counts}
+        params={params}
+        staffById={staffById}
+        ownerOptions={(staffList ?? []).map((s) => ({ id: s.id, name: `${s.first_name} ${s.last_name}`.trim() }))}
+        serviceTypeOptions={(serviceTypes ?? []).map((s) => ({ id: s.id, name: s.name }))}
+        citizenshipOptions={distinctCitizenships}
+      />
+    </div>
   );
 }
