@@ -80,12 +80,7 @@ export function RecordEventDialog({
     milestone: Milestone,
     occurredAtIso: string,
     note: string,
-    emailOpts?: {
-      notifyClient: boolean;
-      clientNote?: string;
-      attachmentFile?: File;
-      attachmentDocId?: string;
-    },
+    emailOpts?: EmailOpts,
   ) {
     startTransition(async () => {
       // Build FormData if there's a file attachment
@@ -104,6 +99,7 @@ export function RecordEventDialog({
         clientNote: emailOpts?.clientNote?.trim() || null,
         attachmentDocId: emailOpts?.attachmentDocId || null,
         attachmentFormData,
+        statusExpiry: emailOpts?.statusExpiry || null,
       });
       if ("error" in result) {
         if (result.gateBlocked) {
@@ -189,6 +185,7 @@ type EmailOpts = {
   clientNote?: string;
   attachmentFile?: File;
   attachmentDocId?: string;
+  statusExpiry?: string; // YYYY-MM-DD, for approved decisions
 };
 
 function ConfirmView({
@@ -216,10 +213,12 @@ function ConfirmView({
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [attachmentDocId, setAttachmentDocId] = useState("");
   const [attachMode, setAttachMode] = useState<"upload" | "existing">("upload");
+  const [statusExpiry, setStatusExpiry] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const isDecision =
     milestone === "decision_approved" || milestone === "decision_refused";
+  const isApproved = milestone === "decision_approved";
 
   function handleSubmit() {
     if (needsConfirm && !confirmed) {
@@ -232,6 +231,7 @@ function ConfirmView({
       clientNote: clientNote.trim() || undefined,
       attachmentFile: attachMode === "upload" ? attachmentFile ?? undefined : undefined,
       attachmentDocId: attachMode === "existing" && attachmentDocId ? attachmentDocId : undefined,
+      statusExpiry: isApproved && statusExpiry ? statusExpiry : undefined,
     });
   }
 
@@ -316,6 +316,25 @@ function ConfirmView({
             className="mt-1 w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/30"
           />
         </label>
+
+        {/* ── Status expiry (approval only) ─────────────────── */}
+        {isApproved && (
+          <label className="block text-sm">
+            <span className="block text-xs font-medium text-stone-600">
+              Immigration status expiry date
+            </span>
+            <p className="mt-0.5 text-[11px] text-stone-400">
+              When does the approved permit or status expire? This updates the
+              client's immigration status automatically.
+            </p>
+            <input
+              type="date"
+              value={statusExpiry}
+              onChange={(e) => setStatusExpiry(e.target.value)}
+              className="mt-1 h-9 w-full rounded-md border border-stone-200 bg-white px-3 text-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/30"
+            />
+          </label>
+        )}
 
         {/* ── Client email notification ────────────────────── */}
         <div className="border-t border-stone-100 pt-3">

@@ -68,6 +68,8 @@ export type RawClientRow = {
   missing_required_docs: number;
   // Derived from approved case service type
   immigration_status_detail: string | null; // e.g. "Work Permit - SOWP"
+  // Decision outcome from events (persists after case is closed)
+  last_decision_status: string | null; // "passport_requested" or "refused"
 };
 
 export type WorklistRow = RawClientRow & {
@@ -109,37 +111,39 @@ export function computeSegment(
   return "past";
 }
 
-export function computeStage(
-  latestCaseStatus: string | null,
-  totalCases: number,
-  immigrationStatus: ImmigrationStatusType | null,
-): ClientStage {
-  if (totalCases === 0) return "lead";
-  if (!latestCaseStatus) {
-    // All cases closed but no open case status tracked.
-    // If immigration status exists, the decision was made.
-    if (immigrationStatus && immigrationStatus !== "no_status") return "decision";
-    return "closed";
+export function computeStage(row: RawClientRow): ClientStage {
+  if (row.total_cases === 0) return "lead";
+
+  // If there's an open case, derive from its status
+  if (row.latest_case_status) {
+    switch (row.latest_case_status) {
+      case "retainer_pending":
+        return "retained";
+      case "documentation_in_progress":
+      case "documentation_review":
+        return "preparing";
+      case "submitted_to_ircc":
+        return "submitted";
+      case "passport_requested":
+      case "refused":
+        return "decision";
+      case "closed":
+        break; // fall through to decision check below
+      default:
+        return "lead";
+    }
   }
 
-  switch (latestCaseStatus) {
-    case "retainer_pending":
-      return "retained";
-    case "documentation_in_progress":
-    case "documentation_review":
-      return "preparing";
-    case "submitted_to_ircc":
-      return "submitted";
-    case "passport_requested":
-    case "refused":
-      return "decision";
-    case "closed":
-      // Case closed after decision: show "Decision" not "Closed"
-      if (immigrationStatus && immigrationStatus !== "no_status") return "decision";
-      return "closed";
-    default:
-      return "lead";
+  // All cases closed: check if a decision was ever recorded.
+  // This persists the outcome (approved/refused) after archiving.
+  if (row.last_decision_status) return "decision";
+
+  // Immigration status set from a prior approval also indicates decision
+  if (row.immigration_status && row.immigration_status !== "no_status") {
+    return "decision";
   }
+
+  return "closed";
 }
 
 export const STAGE_LABELS: Record<ClientStage, string> = {
@@ -292,7 +296,7 @@ export function computeUrgency(
 
 export function deriveWorklistRow(raw: RawClientRow): WorklistRow {
   const segment = computeSegment(raw.total_cases, raw.open_cases);
-  const stage = computeStage(raw.latest_case_status, raw.total_cases, raw.immigration_status);
+  const stage = computeStage(raw);
   const nextAction = computeNextAction(raw);
   const nearestDeadline = computeNearestDeadline(raw);
   const urgency = computeUrgency(

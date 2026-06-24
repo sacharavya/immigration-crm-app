@@ -1625,6 +1625,7 @@ export type RecordEventInput = z.infer<typeof recordEventSchema> & {
   clientNote?: string | null;
   attachmentDocId?: string | null;
   attachmentFormData?: FormData;
+  statusExpiry?: string | null; // YYYY-MM-DD, for approved decisions
 };
 export type RecordEventResult =
   | { ok: true }
@@ -1638,7 +1639,7 @@ export async function recordEvent(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   const { caseId, milestone, occurredAt, note } = parsed.data;
-  const { notifyClient, clientNote, attachmentDocId, attachmentFormData } = input;
+  const { notifyClient, clientNote, attachmentDocId, attachmentFormData, statusExpiry } = input;
   const targetStatus: CaseStatus = MILESTONE_STATUS[milestone];
 
   const supabase = await createClient();
@@ -1741,7 +1742,8 @@ export async function recordEvent(
             .from("clients")
             .update({
               immigration_status: immStatus,
-              immigration_status_note: `Auto-set from approved case: ${svcType.name}`,
+              immigration_status_expiry: statusExpiry || null,
+              immigration_status_note: `${svcType.name}`,
             } as never)
             .eq("id", approvedCase.client_id);
         }

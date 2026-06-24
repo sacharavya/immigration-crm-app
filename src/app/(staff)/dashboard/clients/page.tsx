@@ -96,6 +96,7 @@ export default async function ClientsPage({ searchParams }: Props) {
         "additional_info_requested",
         "additional_documents_requested",
         "biometrics_requested",
+        "status_changed",
       ]),
     supabase
       .schema("crm")
@@ -130,14 +131,23 @@ export default async function ClientsPage({ searchParams }: Props) {
   // ── JS joins ───────────────────────────────────────────────────
   const casesByClient = new Map<
     string,
-    { total: number; open: number; latestStatus: string | null; latestId: string | null; latestServiceTypeId: string | null; approvedServiceTypeId: string | null }
+    {
+      total: number;
+      open: number;
+      latestStatus: string | null;
+      latestId: string | null;
+      latestServiceTypeId: string | null;
+      approvedServiceTypeId: string | null;
+      lastDecisionStatus: string | null; // "passport_requested" or "refused" from events
+    }
   >();
   const caseClientMap = new Map<string, string>();
 
   for (const c of casesRaw ?? []) {
     caseClientMap.set(c.id, c.client_id);
     const prev = casesByClient.get(c.client_id) ?? {
-      total: 0, open: 0, latestStatus: null, latestId: null, latestServiceTypeId: null, approvedServiceTypeId: null,
+      total: 0, open: 0, latestStatus: null, latestId: null,
+      latestServiceTypeId: null, approvedServiceTypeId: null, lastDecisionStatus: null,
     };
     prev.total++;
     if (c.status !== "closed") {
@@ -146,11 +156,37 @@ export default async function ClientsPage({ searchParams }: Props) {
       prev.latestId = c.id;
       prev.latestServiceTypeId = c.service_type_id;
     }
-    // Track the most recently approved case's service type
-    if (c.status === "passport_requested" || (c.status === "closed" && c.submitted_at)) {
+    // Track decision outcomes (persists even after case is closed)
+    if (c.status === "passport_requested") {
+      prev.lastDecisionStatus = "passport_requested";
+      prev.approvedServiceTypeId = c.service_type_id;
+    } else if (c.status === "refused") {
+      prev.lastDecisionStatus = "refused";
+    }
+    // For closed cases that went through a decision (have decided_at),
+    // check the immigration status on the client to infer approval
+    if (c.status === "closed" && c.submitted_at && !prev.lastDecisionStatus) {
       prev.approvedServiceTypeId = c.service_type_id;
     }
     casesByClient.set(c.client_id, prev);
+  }
+
+  // Check case events for decision milestones (catches cases that
+  // already moved to closed after the decision was recorded)
+  for (const ev of eventsRaw ?? []) {
+    if (ev.event_type !== "status_changed") continue;
+    const data = ev.event_data as { milestone?: string } | null;
+    if (!data?.milestone) continue;
+    const clientId = caseClientMap.get(ev.case_id);
+    if (!clientId) continue;
+    const info = casesByClient.get(clientId);
+    if (!info) continue;
+    if (data.milestone === "decision_approved" && !info.lastDecisionStatus) {
+      info.lastDecisionStatus = "passport_requested";
+    }
+    if (data.milestone === "decision_refused" && !info.lastDecisionStatus) {
+      info.lastDecisionStatus = "refused";
+    }
   }
 
   // Build service type display: "Category - Service Type Name"
@@ -232,6 +268,7 @@ export default async function ClientsPage({ searchParams }: Props) {
       immigration_status_detail: caseInfo?.approvedServiceTypeId
         ? serviceNameById.get(caseInfo.approvedServiceTypeId) ?? null
         : null,
+      last_decision_status: caseInfo?.lastDecisionStatus ?? null,
     };
   });
 
