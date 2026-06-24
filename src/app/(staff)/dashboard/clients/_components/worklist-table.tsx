@@ -172,10 +172,26 @@ export function WorklistTable({
                     </div>
                   )}
                 </div>
+              ) : row.immigration_status_detail ? (
+                // No immigration_status set on client, but an approved case
+                // exists. Show the service type as the inferred status.
+                <div className="truncate text-xs text-stone-600">
+                  {row.immigration_status_detail}
+                  {row.last_decision_status === "passport_requested" && (
+                    <span className="ml-1 text-emerald-600">(Approved)</span>
+                  )}
+                </div>
               ) : (
-                <span className="inline-flex items-center gap-1 text-xs text-stone-400">
-                  <Plus className="h-3 w-3" /> Not on file
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-stone-400">None</span>
+                  <Link
+                    href={`/dashboard/cases/new?client=${row.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-0.5 text-[11px] font-medium text-[var(--navy)] hover:underline"
+                  >
+                    <Plus className="h-3 w-3" /> New case
+                  </Link>
+                </div>
               )}
             </div>
 
