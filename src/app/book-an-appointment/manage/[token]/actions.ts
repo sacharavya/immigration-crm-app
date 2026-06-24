@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { adminClient } from "@/lib/supabase/admin";
 import { z } from "zod";
 
 import {
@@ -11,7 +11,6 @@ import {
   sendAppointmentCancellation,
   sendAppointmentReschedule,
 } from "@/lib/email/appointments";
-import type { Database } from "@/lib/supabase/types";
 
 // Public reschedule/cancel actions invoked from /book/manage/[token].
 // Authentication is the token itself. CRM is the source of truth: a failed
@@ -23,18 +22,6 @@ export type ManageResult = Ok | Err;
 
 const TOKEN_RE = /^[0-9a-f]{64}$/i;
 
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
-    );
-  }
-  return createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 const rescheduleSchema = z.object({
   token: z.string().regex(TOKEN_RE),

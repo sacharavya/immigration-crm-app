@@ -189,69 +189,6 @@ function clientGreetingName(c: {
 }
 
 // ---------------------------------------------------------------------------
-// updateRetainerDetails — fee breakdown + service description
-// ---------------------------------------------------------------------------
-
-const detailsSchema = z.object({
-  retainerId: z.string().uuid(),
-  service_description: z.string().trim().min(1).max(200),
-  government_fee_cad: z.coerce.number().min(0),
-  first_installment_cad: z.coerce.number().positive(),
-  second_installment_cad: z.coerce.number().positive(),
-  hst_cad: z.coerce.number().min(0),
-  withdrawal_refund_floor_cad: z.coerce.number().min(0),
-});
-
-export async function updateRetainerDetails(
-  input: z.input<typeof detailsSchema>,
-): Promise<{ ok: true } | { error: string }> {
-  const g = await gate();
-  if (!g.ok) return { error: g.error };
-
-  const parsed = detailsSchema.safeParse(input);
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
-  }
-
-  const ctx = await loadRetainerWithCase(parsed.data.retainerId);
-  if (!ctx) return { error: "Retainer not found" };
-  if (ctx.retainer.status === "signed" || ctx.retainer.status === "uploaded") {
-    return { error: "Cannot edit a signed retainer. Void it and start over." };
-  }
-
-  // Installments must reconstitute the case's quoted fee. The retainer
-  // snapshot fields (quoted_fee_cad_at_signing) are set at send time,
-  // so pre-send we validate against the live cases.quoted_fee_cad.
-  const quoted = Number(ctx.caseRow.quoted_fee_cad);
-  const sum = parsed.data.first_installment_cad + parsed.data.second_installment_cad;
-  if (Math.abs(sum - quoted) > FEE_TOLERANCE_CENTS) {
-    return {
-      error: `First + Second installments must equal the case's quoted fee (${quoted} CAD). Currently: ${sum} CAD.`,
-    };
-  }
-
-  const supabase = await createClient();
-  const updates: RetainerUpdate = {
-    service_description: parsed.data.service_description,
-    government_fee_cad: parsed.data.government_fee_cad,
-    first_installment_cad: parsed.data.first_installment_cad,
-    second_installment_cad: parsed.data.second_installment_cad,
-    hst_cad: parsed.data.hst_cad,
-    withdrawal_refund_floor_cad: parsed.data.withdrawal_refund_floor_cad,
-    quoted_fee_cad_at_signing: quoted,
-  };
-  const { error } = await supabase
-    .schema("crm")
-    .from("retainer_agreements")
-    .update(updates)
-    .eq("id", parsed.data.retainerId);
-  if (error) return { error: error.message };
-
-  rev(ctx.caseRow.id);
-  return { ok: true };
-}
-
-// ---------------------------------------------------------------------------
 // setRetainerRcic — explicitly assign which RCIC counter-signs this
 // retainer. The case's `assigned_rcic` may be a non-RCIC staff member
 // (e.g. an admin running the case); the retainer's `rcic_id` is the

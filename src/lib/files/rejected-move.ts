@@ -1,24 +1,11 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { adminClient } from "@/lib/supabase/admin";
 
 import { ensureRejectedFolderUnder } from "@/lib/graph/folders";
 import {
   composeRejectedFileName,
   moveAndRenameDriveItem,
 } from "@/lib/graph/move";
-import type { Database } from "@/lib/supabase/types";
 
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
-    );
-  }
-  return createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 // Increment 5: invoked at the end of a successful re-upload to move
 // the just-superseded OneDrive item into the case's "99 Rejected"

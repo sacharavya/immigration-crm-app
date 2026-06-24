@@ -26,7 +26,7 @@ export default async function NewClientPage() {
   return (
     <div className="min-h-dvh bg-stone-50">
       <header className="border-b border-stone-200 bg-stone-50">
-        <div className="mx-auto flex max-w-5xl items-center px-6 py-4 text-sm">
+        <div className="flex items-center px-6 py-4 text-sm">
           <Link
             href="/dashboard/clients"
             className="text-stone-500 hover:text-stone-800"
@@ -38,7 +38,7 @@ export default async function NewClientPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-8">
+      <main className="px-6 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-[var(--navy)]">
             New client

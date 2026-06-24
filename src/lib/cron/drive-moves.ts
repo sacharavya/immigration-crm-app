@@ -1,8 +1,7 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { adminClient } from "@/lib/supabase/admin";
 
 import { ensureRejectedFolderUnder } from "@/lib/graph/folders";
 import { moveAndRenameDriveItem } from "@/lib/graph/move";
-import type { Database } from "@/lib/supabase/types";
 
 // Increment 5: daily sweep of files.pending_drive_moves. Re-uploads
 // enqueue a row here and attempt the OneDrive move inline. If the
@@ -24,18 +23,6 @@ export type DriveMovesSweepResult = {
   abandoned: number;
 };
 
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
-    );
-  }
-  return createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 export async function runDriveMovesSweep(): Promise<DriveMovesSweepResult> {
   const supabase = adminClient();

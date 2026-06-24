@@ -1,12 +1,11 @@
 "use server";
 
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { adminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 
 import { enqueueAndAttemptRejectedMove } from "@/lib/files/rejected-move";
 import { ensureCaseCategoryFolder } from "@/lib/graph/folders";
 import { uploadFile as graphUploadFile } from "@/lib/graph/uploads";
-import type { Database } from "@/lib/supabase/types";
 import {
   ALLOWED_EXTENSIONS_HUMAN,
   ALLOWED_MIME_TYPES_SET,
@@ -32,18 +31,6 @@ const ACTIVE_STATUSES = [
   "documentation_review",
 ] as const;
 
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
-    );
-  }
-  return createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 export type ClientPortalCase = {
   id: string;

@@ -871,7 +871,7 @@ export default async function CasePage({ params, searchParams }: Props) {
   return (
     <div className="min-h-dvh bg-stone-50">
       <header className="border-b border-stone-200 bg-stone-50">
-        <div className="mx-auto flex max-w-7xl items-center px-6 py-4 text-sm">
+        <div className="flex items-center px-6 py-4 text-sm">
           <Link href="/dashboard" className="text-stone-500 hover:text-stone-800">
             Cases
           </Link>
@@ -882,7 +882,7 @@ export default async function CasePage({ params, searchParams }: Props) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-4 px-6 py-6">
+      <main className="space-y-4 px-6 py-6">
         {folderPending && (
           <div
             role="alert"

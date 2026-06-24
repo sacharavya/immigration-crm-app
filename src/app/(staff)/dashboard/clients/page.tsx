@@ -130,14 +130,14 @@ export default async function ClientsPage({ searchParams }: Props) {
   // ── JS joins ───────────────────────────────────────────────────
   const casesByClient = new Map<
     string,
-    { total: number; open: number; latestStatus: string | null; latestId: string | null; latestServiceTypeId: string | null }
+    { total: number; open: number; latestStatus: string | null; latestId: string | null; latestServiceTypeId: string | null; approvedServiceTypeId: string | null }
   >();
   const caseClientMap = new Map<string, string>();
 
   for (const c of casesRaw ?? []) {
     caseClientMap.set(c.id, c.client_id);
     const prev = casesByClient.get(c.client_id) ?? {
-      total: 0, open: 0, latestStatus: null, latestId: null, latestServiceTypeId: null,
+      total: 0, open: 0, latestStatus: null, latestId: null, latestServiceTypeId: null, approvedServiceTypeId: null,
     };
     prev.total++;
     if (c.status !== "closed") {
@@ -146,8 +146,15 @@ export default async function ClientsPage({ searchParams }: Props) {
       prev.latestId = c.id;
       prev.latestServiceTypeId = c.service_type_id;
     }
+    // Track the most recently approved case's service type
+    if (c.status === "passport_requested" || (c.status === "closed" && c.submitted_at)) {
+      prev.approvedServiceTypeId = c.service_type_id;
+    }
     casesByClient.set(c.client_id, prev);
   }
+
+  // Build service type display: "Category - Service Type Name"
+  const serviceNameById = new Map((serviceTypes ?? []).map((s) => [s.id, s.name]));
 
   const tasksByClient = new Map<string, { due: string; title: string }>();
   for (const t of tasksRaw ?? []) {
@@ -222,6 +229,9 @@ export default async function ClientsPage({ searchParams }: Props) {
       has_ircc_request: irccInfo !== undefined,
       ircc_request_due: irccInfo?.due ?? null,
       missing_required_docs: missingDocsByClient.get(c.id) ?? 0,
+      immigration_status_detail: caseInfo?.approvedServiceTypeId
+        ? serviceNameById.get(caseInfo.approvedServiceTypeId) ?? null
+        : null,
     };
   });
 

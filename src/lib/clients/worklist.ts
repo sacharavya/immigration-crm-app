@@ -66,6 +66,8 @@ export type RawClientRow = {
   ircc_request_due: string | null;
   // Derived from documents join
   missing_required_docs: number;
+  // Derived from approved case service type
+  immigration_status_detail: string | null; // e.g. "Work Permit - SOWP"
 };
 
 export type WorklistRow = RawClientRow & {
@@ -110,9 +112,15 @@ export function computeSegment(
 export function computeStage(
   latestCaseStatus: string | null,
   totalCases: number,
+  immigrationStatus: ImmigrationStatusType | null,
 ): ClientStage {
   if (totalCases === 0) return "lead";
-  if (!latestCaseStatus) return "lead";
+  if (!latestCaseStatus) {
+    // All cases closed but no open case status tracked.
+    // If immigration status exists, the decision was made.
+    if (immigrationStatus && immigrationStatus !== "no_status") return "decision";
+    return "closed";
+  }
 
   switch (latestCaseStatus) {
     case "retainer_pending":
@@ -126,6 +134,8 @@ export function computeStage(
     case "refused":
       return "decision";
     case "closed":
+      // Case closed after decision: show "Decision" not "Closed"
+      if (immigrationStatus && immigrationStatus !== "no_status") return "decision";
       return "closed";
     default:
       return "lead";
@@ -282,7 +292,7 @@ export function computeUrgency(
 
 export function deriveWorklistRow(raw: RawClientRow): WorklistRow {
   const segment = computeSegment(raw.total_cases, raw.open_cases);
-  const stage = computeStage(raw.latest_case_status, raw.total_cases);
+  const stage = computeStage(raw.latest_case_status, raw.total_cases, raw.immigration_status);
   const nextAction = computeNextAction(raw);
   const nearestDeadline = computeNearestDeadline(raw);
   const urgency = computeUrgency(

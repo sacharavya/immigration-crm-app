@@ -87,57 +87,6 @@ export function TextField({
   );
 }
 
-export function NumberField({
-  label,
-  initial,
-  save,
-  min = 0,
-  max = 40,
-  disabled,
-}: {
-  label: string;
-  initial: number | null;
-  save: SaveFn<number | null>;
-  min?: number;
-  max?: number;
-  disabled?: boolean;
-}) {
-  const initialStr =
-    initial === null || initial === undefined ? "" : String(initial);
-  const [value, setValue] = useState<string>(initialStr);
-  useSyncedInitial(initialStr, value, setValue);
-
-  const parsed: number | null =
-    value.trim() === "" ? null : Number(value);
-  const valid =
-    parsed === null || (!Number.isNaN(parsed) && parsed >= min && parsed <= max);
-
-  const { state, error } = useDebouncedAutosave<number | null>(
-    parsed,
-    save,
-    { enabled: valid && !disabled },
-  );
-
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-          {label}
-        </label>
-        <SavingIndicator state={state} error={error} />
-      </div>
-      <Input
-        type="number"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        disabled={disabled}
-      />
-    </div>
-  );
-}
-
 export function SelectField<V extends string>({
   label,
   initial,

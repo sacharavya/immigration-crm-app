@@ -2,7 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { adminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -23,24 +23,11 @@ import {
   sendPaymentRejected,
 } from "@/lib/email/appointments";
 import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@/lib/supabase/types";
 
 // All gated by manage_appointments. The Graph calendar sync is a side
 // effect: a failed sync flags the row (graph_sync_status='failed') but
 // does NOT roll back the CRM write. CRM is the source of truth.
 
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
-    );
-  }
-  return createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 const uuid = z.string().uuid();
 const isoDateTime = z.string().datetime();

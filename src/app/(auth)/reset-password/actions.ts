@@ -1,10 +1,9 @@
 "use server";
 
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { adminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@/lib/supabase/types";
 import { resetPasswordSchema } from "@/lib/validators/auth";
 
 export type ResetPasswordState = {
@@ -19,18 +18,6 @@ export type ResetPasswordState = {
 // the user's own staff row. RLS on crm.staff restricts UPDATE to
 // super_user/admin roles, so non-admin staff would otherwise be unable
 // to clear the flag themselves and end up looping back into this page.
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
-    );
-  }
-  return createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 export async function resetPassword(
   _prev: ResetPasswordState,

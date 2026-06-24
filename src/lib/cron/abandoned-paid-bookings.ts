@@ -1,8 +1,7 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { adminClient } from "@/lib/supabase/admin";
 import { fromZonedTime } from "date-fns-tz";
 
 import { sendAbandonedBooking } from "@/lib/email/appointments";
-import type { Database } from "@/lib/supabase/types";
 
 // Reusable sweep for the end-of-day abandoned-bookings job.
 // Cancels paid consultations that have been stuck in pending_payment
@@ -23,18 +22,6 @@ export type AbandonedBookingsResult = {
   cutoff: string;
 };
 
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
-    );
-  }
-  return createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 export async function runAbandonedPaidBookingsSweep(): Promise<AbandonedBookingsResult> {
   const supabase = adminClient();

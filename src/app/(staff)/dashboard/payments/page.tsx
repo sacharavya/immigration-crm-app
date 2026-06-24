@@ -263,7 +263,7 @@ export default async function PaymentsPage({ searchParams }: Props) {
   }).length;
 
   return (
-    <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
+    <main className="space-y-6 px-6 py-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-[var(--navy)]">
           Payments

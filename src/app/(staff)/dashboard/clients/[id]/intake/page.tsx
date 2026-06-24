@@ -127,7 +127,7 @@ export default async function IntakePage({ params }: Props) {
   return (
     <div className="min-h-dvh bg-stone-50">
       <header className="border-b border-stone-200 bg-stone-50">
-        <div className="mx-auto flex max-w-7xl items-center px-6 py-4 text-sm">
+        <div className="flex items-center px-6 py-4 text-sm">
           <Link
             href="/dashboard/clients"
             className="text-stone-500 hover:text-stone-800"
@@ -146,7 +146,7 @@ export default async function IntakePage({ params }: Props) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-6">
+      <main className="px-6 py-6">
         <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-[var(--navy)]">

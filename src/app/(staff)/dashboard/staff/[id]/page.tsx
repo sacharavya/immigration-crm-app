@@ -60,7 +60,7 @@ export default async function StaffDetailPage({ params }: Props) {
   return (
     <div className="min-h-dvh bg-stone-50">
       <header className="border-b border-stone-200 bg-stone-50">
-        <div className="mx-auto flex max-w-3xl items-center px-6 py-4 text-sm">
+        <div className="flex items-center px-6 py-4 text-sm">
           <Link
             href="/dashboard/staff"
             className="text-stone-500 hover:text-stone-800"
@@ -74,7 +74,7 @@ export default async function StaffDetailPage({ params }: Props) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl space-y-4 px-6 py-6">
+      <main className="space-y-4 px-6 py-6">
         <StaffEditForm
           actorRole={me.role}
           staff={{

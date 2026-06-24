@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 
 import {
   staffCan,
@@ -35,13 +35,4 @@ export function useStaff(): StaffWithOverrides {
     );
   }
   return staff;
-}
-
-/**
- * Convenience permission check for client components. Memoised on staff +
- * permission so unchanged props don't re-walk the lookup.
- */
-export function useCan(permission: Permission): boolean {
-  const staff = useStaff();
-  return useMemo(() => staffCan(staff, permission), [staff, permission]);
 }

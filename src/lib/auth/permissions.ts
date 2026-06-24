@@ -260,18 +260,3 @@ export function staffCan(
   }
   return ROLE_PERMISSIONS[staff.role].has(permission);
 }
-
-/**
- * Materialise the full set of permissions a staff member effectively has,
- * after applying overrides. Useful for snapshotting into context or for
- * cheap multi-check lookups in render-heavy code.
- */
-export function resolvePermissions(
-  staff: StaffWithOverrides,
-): ReadonlySet<Permission> {
-  const set = new Set<Permission>();
-  for (const perm of ALL_PERMISSIONS) {
-    if (staffCan(staff, perm)) set.add(perm);
-  }
-  return set;
-}

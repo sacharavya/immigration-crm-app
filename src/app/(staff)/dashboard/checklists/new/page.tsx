@@ -83,7 +83,7 @@ export default async function NewVariantPage({ searchParams }: Props) {
       : "";
 
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-6 py-8">
+    <main className="space-y-6 px-6 py-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-[var(--navy)]">
           Create checklist

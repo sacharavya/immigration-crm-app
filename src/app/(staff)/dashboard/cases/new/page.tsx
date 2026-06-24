@@ -148,7 +148,7 @@ export default async function NewCasePage({ searchParams }: Props) {
   return (
     <div className="min-h-dvh bg-stone-50">
       <header className="border-b border-stone-200 bg-stone-50">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
+        <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3 text-sm text-stone-500">
             <Link href="/dashboard" className="hover:text-stone-800">
               Cases
@@ -159,7 +159,7 @@ export default async function NewCasePage({ searchParams }: Props) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-8">
+      <main className="px-6 py-8">
         <NewCaseWizard
           categories={categories}
           variants={variants}

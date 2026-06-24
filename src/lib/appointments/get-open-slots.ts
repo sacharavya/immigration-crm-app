@@ -1,7 +1,6 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { adminClient } from "@/lib/supabase/admin";
 
 import { getBusyIntervals } from "@/lib/graph/calendar";
-import type { Database } from "@/lib/supabase/types";
 
 import { generateOpenSlots, type HoursByWeekday, type Slot } from "./slots";
 
@@ -13,18 +12,6 @@ import { generateOpenSlots, type HoursByWeekday, type Slot } from "./slots";
 // app (no shared factory exists). crm tables need an explicit .schema("crm")
 // because PostgREST defaults to the public schema.
 
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
-    );
-  }
-  return createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 export async function getOpenSlotsForType(
   appointmentTypeId: string,

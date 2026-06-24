@@ -147,15 +147,12 @@ export default async function AuditPage({ searchParams }: Props) {
   }));
 
   return (
-    <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
+    <main className="space-y-6 px-6 py-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-[var(--navy)]">
-          Audit log
-        </h1>
+        <h1 className="text-xl font-semibold text-stone-900">Activity log</h1>
         <p className="mt-1 text-sm text-stone-500">
-          Every insert, update, and delete across the system. Click a
-          row to expand the diff. Showing the most recent
-          {" "}{projected.length} of {ROW_LIMIT} max.
+          Recent changes across the system. Click any entry to see details.
+          Showing {projected.length} most recent.
         </p>
       </div>
 

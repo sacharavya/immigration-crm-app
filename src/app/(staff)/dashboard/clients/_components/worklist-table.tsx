@@ -154,6 +154,9 @@ export function WorklistTable({
                 <div>
                   <div className="truncate text-xs text-stone-700">
                     {IMMIGRATION_STATUS_LABELS[row.immigration_status]}
+                    {row.immigration_status_detail && (
+                      <span className="text-stone-400"> - {row.immigration_status_detail}</span>
+                    )}
                   </div>
                   {countdown && (
                     <div

@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { adminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
@@ -18,7 +18,6 @@ import {
   renderRetainerPdf,
   RetainerRenderError,
 } from "@/lib/pdf/render-retainer";
-import type { Database } from "@/lib/supabase/types";
 
 // Public server actions for the /sign/retainer/[token] page. No auth.
 // Token validation gates every write. Service-role client bypasses RLS
@@ -53,18 +52,6 @@ type SubmitResult =
   | { ok: true; download_path: string | null }
   | { error: string };
 
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
-    );
-  }
-  return createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 async function captureRequestMetadata() {
   const h = await headers();

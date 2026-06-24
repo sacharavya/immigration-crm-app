@@ -1,9 +1,8 @@
 import "server-only";
 
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { adminClient } from "@/lib/supabase/admin";
 import { cookies } from "next/headers";
 
-import type { Database } from "@/lib/supabase/types";
 
 // Cookie that carries the verified intake-portal token from the
 // public /intake/<token> page to the server actions invoked from
@@ -28,18 +27,6 @@ export type PortalActor = {
 
 export type GateFailure = { ok: false; error: string };
 
-export function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
-    );
-  }
-  return createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 // Resolves a token to a client row and rejects on submit-lock. Returns
 // the same shape regardless of failure reason — never leak whether

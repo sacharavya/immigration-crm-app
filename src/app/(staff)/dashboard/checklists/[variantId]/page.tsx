@@ -182,7 +182,7 @@ export default async function VariantEditorPage({ params, searchParams }: Props)
   }));
 
   return (
-    <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
+    <main className="space-y-6 px-6 py-8">
       <VariantEditorShell
         variant={summary}
         versions={versions}

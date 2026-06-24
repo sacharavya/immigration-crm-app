@@ -152,7 +152,7 @@ export default async function CasesArchivePage({ searchParams }: Props) {
     : rowsAll;
 
   return (
-    <main className="mx-auto max-w-7xl space-y-4 px-6 py-6">
+    <main className="space-y-4 px-6 py-6">
       <header className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-[var(--navy)]">
           <ArchiveIcon className="h-4 w-4" />

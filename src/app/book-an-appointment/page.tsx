@@ -1,6 +1,5 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { adminClient } from "@/lib/supabase/admin";
 
-import type { Database } from "@/lib/supabase/types";
 
 import { BookingDisabled } from "./_components/booking-disabled";
 import { BookingFlow } from "./_components/booking-flow";
@@ -8,18 +7,6 @@ import type { LocationType, PublicBookingType } from "./_components/types";
 
 export const dynamic = "force-dynamic";
 
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
-    );
-  }
-  return createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 export default async function BookPage() {
   const supabase = adminClient();

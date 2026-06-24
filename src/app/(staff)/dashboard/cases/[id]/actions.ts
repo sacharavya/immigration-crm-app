@@ -27,6 +27,7 @@ import {
 import { uploadFile as graphUploadFile } from "@/lib/graph/uploads";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
+import { SERVICE_TYPE_TO_IMMIGRATION_STATUS } from "@/lib/validators/client-immigration";
 import {
   ALLOWED_EXTENSIONS_HUMAN,
   ALLOWED_MIME_TYPES_SET,
@@ -1714,6 +1715,38 @@ export async function recordEvent(
       .update(updates)
       .eq("id", caseId);
     if (updateErr) return { error: updateErr.message };
+  }
+
+  // Auto-populate client immigration status when a case is approved.
+  // Looks up the service type code and maps it to an immigration status.
+  if (targetStatus === "passport_requested") {
+    const { data: approvedCase } = await supabase
+      .schema("crm")
+      .from("cases")
+      .select("client_id, service_type_id")
+      .eq("id", caseId)
+      .maybeSingle();
+    if (approvedCase?.service_type_id) {
+      const { data: svcType } = await supabase
+        .schema("ref")
+        .from("service_types")
+        .select("code, name, category_code")
+        .eq("id", approvedCase.service_type_id)
+        .maybeSingle();
+      if (svcType) {
+        const immStatus = SERVICE_TYPE_TO_IMMIGRATION_STATUS[svcType.code];
+        if (immStatus && approvedCase.client_id) {
+          await supabase
+            .schema("crm")
+            .from("clients")
+            .update({
+              immigration_status: immStatus,
+              immigration_status_note: `Auto-set from approved case: ${svcType.name}`,
+            } as never)
+            .eq("id", approvedCase.client_id);
+        }
+      }
+    }
   }
 
   const description = note?.trim()

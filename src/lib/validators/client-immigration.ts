@@ -36,6 +36,25 @@ export const NO_EXPIRY_STATUSES = new Set<ImmigrationStatusType>([
   "citizen",
 ]);
 
+/**
+ * Maps service type codes to the immigration status the client holds
+ * after approval. Used to auto-populate immigration_status when a case
+ * is approved (decision_approved milestone).
+ */
+export const SERVICE_TYPE_TO_IMMIGRATION_STATUS: Record<string, ImmigrationStatusType> = {
+  PGWP: "pgwp",
+  STUDY_PERMIT: "study_permit",
+  WORK_PERMIT_OPEN: "work_permit",
+  WORK_PERMIT_LMIA: "work_permit",
+  VISITOR_VISA: "visitor",
+  VISITOR_RECORD: "visitor_record",
+  PR_EXPRESS: "permanent_resident",
+  PR_PNP: "permanent_resident",
+  CITIZENSHIP: "citizen",
+  SPONSORSHIP: "work_permit",
+  BRIDGING_OWP: "bridging_owp",
+};
+
 const optionalDate = z
   .string()
   .trim()

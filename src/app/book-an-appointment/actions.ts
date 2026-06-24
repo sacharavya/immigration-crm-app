@@ -2,7 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { adminClient } from "@/lib/supabase/admin";
 import { fileTypeFromBuffer } from "file-type";
 import { z } from "zod";
 
@@ -15,25 +15,12 @@ import {
 } from "@/lib/email/appointments";
 import { ensureConsultationPaymentsFolder } from "@/lib/graph/folders";
 import { uploadFile } from "@/lib/graph/uploads";
-import type { Database } from "@/lib/supabase/types";
 
 import type { BookingResult } from "./_components/types";
 
 // Service-role client. The booking page is anonymous, so every query goes
 // through service-role (matching the upload portal pattern). No user
 // session exists to drive RLS.
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
-    );
-  }
-  return createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 const bookSchema = z.object({
   appointment_type_id: z.string().uuid(),

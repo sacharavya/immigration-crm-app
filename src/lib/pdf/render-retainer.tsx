@@ -17,14 +17,13 @@
 // handling) was retired in favour of this.
 
 import { renderToBuffer } from "@react-pdf/renderer";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { adminClient } from "@/lib/supabase/admin";
 
 import { RetainerPdfDocument } from "@/components/retainer/retainer-pdf-document";
 import type { RetainerData } from "@/components/retainer/retainer-document";
 import { splitLegalName } from "@/lib/clients/name";
 import { getLetterheadLogoDataUrl } from "@/lib/retainer/logo";
 import { resolveServiceLabel } from "@/lib/retainer/service-label";
-import type { Database } from "@/lib/supabase/types";
 
 export class RetainerRenderError extends Error {
   constructor(
@@ -41,18 +40,6 @@ export class RetainerRenderError extends Error {
   }
 }
 
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
-    );
-  }
-  return createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 /**
  * Loads a retainer + its related case/client/RCIC and assembles the
