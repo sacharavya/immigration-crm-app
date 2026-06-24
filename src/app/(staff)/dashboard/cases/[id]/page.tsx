@@ -299,9 +299,9 @@ export default async function CasePage({ params, searchParams }: Props) {
     supabase
       .schema("crm")
       .from("clients")
-      .select("legal_name_full, client_number, family_name, given_names, email")
+      .select("legal_name_full, client_number, family_name, given_names, email, immigration_status_expiry")
       .eq("id", caseRow.client_id)
-      .maybeSingle(),
+      .maybeSingle() as unknown as Promise<{ data: { legal_name_full: string; client_number: string; family_name: string | null; given_names: string | null; email: string | null; immigration_status_expiry: string | null } | null }>,
     supabase
       .schema("ref")
       .from("service_types")
@@ -858,13 +858,30 @@ export default async function CasePage({ params, searchParams }: Props) {
   // actually pending instead.
   const retainerSigned =
     retainerRow?.status === "signed" || retainerRow?.status === "uploaded";
+
+  // For closed cases, determine if there was an approval or refusal
+  // so we show the actual outcome instead of just "Closed".
+  let closedOutcome: "approved" | "refused" | null = null;
+  if (caseRow.status === "closed") {
+    const events = eventsRes.data ?? [];
+    for (const ev of events) {
+      const data = ev.event_data as { milestone?: string } | null;
+      if (data?.milestone === "decision_approved") { closedOutcome = "approved"; break; }
+      if (data?.milestone === "decision_refused") { closedOutcome = "refused"; break; }
+    }
+  }
+
   const pill =
-    caseRow.status === "retainer_pending" && retainerSigned
-      ? {
-          label: retainerSatisfied ? "Retainer Signed" : "Awaiting Payment",
-          className: "bg-emerald-100 text-emerald-800",
-        }
-      : statusPill[caseRow.status];
+    caseRow.status === "closed" && closedOutcome === "approved"
+      ? { label: "Approved (Closed)", className: "bg-emerald-100 text-emerald-800" }
+      : caseRow.status === "closed" && closedOutcome === "refused"
+        ? { label: "Refused (Closed)", className: "bg-[var(--maple-100)] text-[var(--maple-700)]" }
+        : caseRow.status === "retainer_pending" && retainerSigned
+          ? {
+              label: retainerSatisfied ? "Retainer Signed" : "Awaiting Payment",
+              className: "bg-emerald-100 text-emerald-800",
+            }
+          : statusPill[caseRow.status];
 
   const nextTask = tasks[0];
 
@@ -922,6 +939,20 @@ export default async function CasePage({ params, searchParams }: Props) {
               >
                 {pill.label}
               </Badge>
+              {closedOutcome === "approved" && (
+                <div className="text-right text-xs">
+                  <span className="text-stone-500">Status expiry: </span>
+                  {client?.immigration_status_expiry ? (
+                    <span className="font-medium text-stone-700">
+                      {new Date(client.immigration_status_expiry as string).toLocaleDateString("en-CA", {
+                        month: "short", day: "numeric", year: "numeric",
+                      })}
+                    </span>
+                  ) : (
+                    <span className="text-stone-400">Not set</span>
+                  )}
+                </div>
+              )}
               {me && staffCan(me, "manage_appointments") && (
                 <NewAppointmentDialog
                   types={appointmentTypes}

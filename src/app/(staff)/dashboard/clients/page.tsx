@@ -129,45 +129,59 @@ export default async function ClientsPage({ searchParams }: Props) {
   ]);
 
   // ── JS joins ───────────────────────────────────────────────────
-  const casesByClient = new Map<
-    string,
-    {
-      total: number;
-      open: number;
-      latestStatus: string | null;
-      latestId: string | null;
-      latestServiceTypeId: string | null;
-      approvedServiceTypeId: string | null;
-      lastDecisionStatus: string | null; // "passport_requested" or "refused" from events
-    }
-  >();
+  type ClientCaseInfo = {
+    total: number;
+    open: number;
+    // Most recent open case (drives the active workflow)
+    latestOpenStatus: string | null;
+    latestOpenId: string | null;
+    latestOpenServiceTypeId: string | null;
+    // Most recent case overall (open or closed, by created_at)
+    mostRecentStatus: string | null;
+    mostRecentServiceTypeId: string | null;
+    mostRecentCreatedAt: string | null;
+    // Latest approved case's service type
+    approvedServiceTypeId: string | null;
+    lastDecisionStatus: string | null;
+  };
+  const casesByClient = new Map<string, ClientCaseInfo>();
   const caseClientMap = new Map<string, string>();
 
-  for (const c of casesRaw ?? []) {
+  // Sort cases by created_at so the last one processed is the most recent
+  const sortedCases = [...(casesRaw ?? [])].sort(
+    (a, b) => (a.submitted_at ?? a.id).localeCompare(b.submitted_at ?? b.id),
+  );
+
+  for (const c of sortedCases) {
     caseClientMap.set(c.id, c.client_id);
-    const prev = casesByClient.get(c.client_id) ?? {
-      total: 0, open: 0, latestStatus: null, latestId: null,
-      latestServiceTypeId: null, approvedServiceTypeId: null, lastDecisionStatus: null,
+    const prev: ClientCaseInfo = casesByClient.get(c.client_id) ?? {
+      total: 0, open: 0,
+      latestOpenStatus: null, latestOpenId: null, latestOpenServiceTypeId: null,
+      mostRecentStatus: null, mostRecentServiceTypeId: null, mostRecentCreatedAt: null,
+      approvedServiceTypeId: null, lastDecisionStatus: null,
     };
     prev.total++;
+
+    // Track open cases
     if (c.status !== "closed") {
       prev.open++;
-      prev.latestStatus = c.status;
-      prev.latestId = c.id;
-      prev.latestServiceTypeId = c.service_type_id;
+      prev.latestOpenStatus = c.status;
+      prev.latestOpenId = c.id;
+      prev.latestOpenServiceTypeId = c.service_type_id;
     }
-    // Track decision outcomes (persists even after case is closed)
+
+    // Always update most recent case (open or closed)
+    prev.mostRecentStatus = c.status;
+    prev.mostRecentServiceTypeId = c.service_type_id;
+
+    // Track decision outcomes
     if (c.status === "passport_requested") {
       prev.lastDecisionStatus = "passport_requested";
       prev.approvedServiceTypeId = c.service_type_id;
     } else if (c.status === "refused") {
       prev.lastDecisionStatus = "refused";
     }
-    // For closed cases that went through a decision (have decided_at),
-    // check the immigration status on the client to infer approval
-    if (c.status === "closed" && c.submitted_at && !prev.lastDecisionStatus) {
-      prev.approvedServiceTypeId = c.service_type_id;
-    }
+
     casesByClient.set(c.client_id, prev);
   }
 
@@ -203,8 +217,14 @@ export default async function ClientsPage({ searchParams }: Props) {
     }
   }
 
+  // Only count IRCC requests from OPEN cases (not resolved/closed ones)
+  const openCaseIds = new Set(
+    (casesRaw ?? []).filter((c) => c.status !== "closed").map((c) => c.id),
+  );
   const irccByClient = new Map<string, { due: string | null }>();
   for (const ev of eventsRaw ?? []) {
+    if (ev.event_type === "status_changed") continue; // handled separately
+    if (!openCaseIds.has(ev.case_id)) continue; // skip closed case events
     const clientId = caseClientMap.get(ev.case_id);
     if (!clientId) continue;
     const data = ev.event_data as { due_date?: string; overall_due_date?: string } | null;
@@ -257,9 +277,11 @@ export default async function ClientsPage({ searchParams }: Props) {
       source: c.source,
       total_cases: caseInfo?.total ?? 0,
       open_cases: caseInfo?.open ?? 0,
-      latest_case_status: caseInfo?.latestStatus ?? null,
-      latest_case_id: caseInfo?.latestId ?? null,
-      latest_case_service_type_id: caseInfo?.latestServiceTypeId ?? null,
+      // Prefer the open case status (active workflow), fall back to the
+      // most recent case (closed cases still show their last status)
+      latest_case_status: caseInfo?.latestOpenStatus ?? caseInfo?.mostRecentStatus ?? null,
+      latest_case_id: caseInfo?.latestOpenId ?? null,
+      latest_case_service_type_id: caseInfo?.latestOpenServiceTypeId ?? caseInfo?.mostRecentServiceTypeId ?? null,
       nearest_task_due: taskInfo?.due ?? null,
       nearest_task_title: taskInfo?.title ?? null,
       has_ircc_request: irccInfo !== undefined,
