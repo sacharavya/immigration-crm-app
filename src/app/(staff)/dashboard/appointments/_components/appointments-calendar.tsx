@@ -4,8 +4,34 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { AppointmentDetailDialog } from "./appointment-detail-dialog";
-import type { AppointmentRow } from "./types";
-import { STATUS_TONE } from "./types";
+import type { AppointmentRow, StaffOption } from "./types";
+
+// ---------------------------------------------------------------------------
+// Type-based color palette for calendar blocks.
+// Each appointment type gets a distinct color so you can tell them apart
+// at a glance. Falls back to a neutral tone for unknown types.
+// ---------------------------------------------------------------------------
+
+const TYPE_COLORS: string[] = [
+  "bg-[var(--navy-100)] text-[var(--navy-700)] border-[var(--navy-200)]",
+  "bg-emerald-50 text-emerald-800 border-emerald-200",
+  "bg-violet-50 text-violet-800 border-violet-200",
+  "bg-amber-50 text-amber-800 border-amber-200",
+  "bg-sky-50 text-sky-800 border-sky-200",
+  "bg-rose-50 text-rose-800 border-rose-200",
+  "bg-teal-50 text-teal-800 border-teal-200",
+  "bg-orange-50 text-orange-800 border-orange-200",
+];
+
+function typeColor(typeId: string | undefined): string {
+  if (!typeId) return "bg-stone-50 text-stone-700 border-stone-200";
+  // Stable hash from the type ID so the same type always gets the same color
+  let hash = 0;
+  for (let i = 0; i < typeId.length; i++) {
+    hash = ((hash << 5) - hash + typeId.charCodeAt(i)) | 0;
+  }
+  return TYPE_COLORS[Math.abs(hash) % TYPE_COLORS.length];
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -84,8 +110,10 @@ function dateInTz(iso: string): string {
 
 export function AppointmentsCalendar({
   appointments,
+  staffList = [],
 }: {
   appointments: AppointmentRow[];
+  staffList?: StaffOption[];
 }) {
   const today = todayStr();
   const [weekMon, setWeekMon] = useState(() => weekStart(today));
@@ -240,8 +268,7 @@ export function AppointmentsCalendar({
                     // Clamp to grid bounds
                     if (startH >= END_HOUR || endH <= START_HOUR) return null;
 
-                    const toneClass =
-                      STATUS_TONE[appt.status] ?? "bg-stone-50 text-stone-700 border-stone-200";
+                    const toneClass = typeColor(appt.appointment_type?.id);
                     const typeName =
                       appt.appointment_type?.name ?? "Appointment";
                     const clientName = appt.snapshot_client_name;
@@ -260,7 +287,7 @@ export function AppointmentsCalendar({
                         className="absolute inset-x-1 z-10"
                         style={{ top: `${top}px`, height: `${height}px` }}
                       >
-                        <AppointmentDetailDialog appointment={appt}>
+                        <AppointmentDetailDialog appointment={appt} staffList={staffList}>
                           <div
                             className={`h-full w-full cursor-pointer overflow-hidden rounded border px-1.5 py-1 text-left text-[11px] leading-tight transition-opacity hover:opacity-80 ${toneClass}`}
                           >

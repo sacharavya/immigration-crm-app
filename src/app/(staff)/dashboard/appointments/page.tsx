@@ -218,9 +218,9 @@ export default async function AppointmentsPage({
       />
 
       {view === "calendar" ? (
-        <AppointmentsCalendar appointments={appointments} />
+        <AppointmentsCalendar appointments={appointments} staffList={staffList} />
       ) : (
-        <AppointmentsList appointments={appointments} />
+        <AppointmentsList appointments={appointments} staffList={staffList} />
       )}
     </div>
   );

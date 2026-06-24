@@ -38,6 +38,7 @@ import { Label } from "@/components/ui/label";
 
 import {
   acceptAppointmentPayment,
+  assignAppointment,
   cancelAppointment,
   markCompleted,
   markNoShow,
@@ -47,7 +48,7 @@ import {
   updateAppointmentNotes,
 } from "../actions";
 
-import { STATUS_LABEL, STATUS_TONE, type AppointmentRow } from "./types";
+import { STATUS_LABEL, STATUS_TONE, type AppointmentRow, type StaffOption } from "./types";
 
 type Mode = "view" | "reschedule" | "cancel" | "notes" | "reject_payment";
 
@@ -88,11 +89,20 @@ function localInputToIso(local: string): string {
   return new Date(local).toISOString();
 }
 
-function formatPhone(e164: string | null): string | null {
-  if (!e164) return null;
-  const match = e164.match(/^\+1(\d{3})(\d{3})(\d{4})$/);
-  if (match) return `+1 (${match[1]}) ${match[2]}-${match[3]}`;
-  return e164;
+function formatPhone(raw: string | null): string | null {
+  if (!raw) return null;
+  // Strip everything except digits
+  const digits = raw.replace(/\D/g, "");
+  // 11 digits starting with 1 (North American)
+  if (digits.length === 11 && digits[0] === "1") {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  // 10 digits (North American without country code)
+  if (digits.length === 10) {
+    return `+1 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  // Anything else: return as-is
+  return raw;
 }
 
 function initials(name: string): string {
@@ -188,9 +198,11 @@ function parsePrepNotes(raw: string): PrepSection[] {
 export function AppointmentDetailDialog({
   appointment,
   children,
+  staffList = [],
 }: {
   appointment: AppointmentRow;
   children?: React.ReactNode;
+  staffList?: StaffOption[];
 }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("view");
@@ -240,7 +252,7 @@ export function AppointmentDetailDialog({
         {children ?? "View"}
       </DialogTrigger>
 
-      <DialogContent className="max-w-3xl p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-4xl p-0 gap-0 overflow-hidden" showCloseButton={false}>
         {/* ── Header ────────────────────────────────────────── */}
         <div className="flex items-start justify-between border-b border-stone-200 px-6 py-4">
           <div>
@@ -389,23 +401,31 @@ export function AppointmentDetailDialog({
                 ) : (
                   <span className="text-sm text-stone-400">Unassigned</span>
                 )}
+                {staffList.length > 0 && (
+                  <select
+                    value={appointment.assigned_staff?.id ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value || null;
+                      // Fire-and-forget: don't close dialog on assign
+                      startTransition(async () => {
+                        const r = await assignAppointment(appointment.id, val);
+                        if ("error" in r) setError(r.error);
+                      });
+                    }}
+                    disabled={pending}
+                    className="mt-2 h-8 w-full border border-stone-200 bg-white px-2 text-xs text-stone-700"
+                  >
+                    <option value="">Unassigned</option>
+                    {staffList.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.first_name} {s.last_name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </RailBlock>
 
-              {/* Reason */}
-              <RailBlock label="Reason" last>
-                <p className="text-sm text-stone-700 whitespace-pre-wrap">
-                  {appointment.reason || <span className="text-stone-400">Not provided</span>}
-                </p>
-              </RailBlock>
-
-              {/* Staff notes */}
-              {appointment.staff_notes && (
-                <RailBlock label="Staff notes" last>
-                  <p className="text-sm text-stone-600 whitespace-pre-wrap">{appointment.staff_notes}</p>
-                </RailBlock>
-              )}
-
-              {/* Cancellation reason */}
+              {/* Cancellation reason (stays on left, only when cancelled) */}
               {appointment.cancellation_reason && (
                 <RailBlock label="Cancellation reason" last>
                   <p className="text-sm text-stone-600">{appointment.cancellation_reason}</p>
@@ -413,18 +433,43 @@ export function AppointmentDetailDialog({
               )}
             </div>
 
-            {/* Right: prepare panel */}
-            {hasPrepContent && (
-              <div className="bg-stone-50/60 px-6 py-5">
-                <div className="flex items-center gap-2 text-sm font-medium text-stone-700">
-                  <ClipboardList className="h-4 w-4 text-stone-400" />
-                  What to prepare
+            {/* Right column: reason + staff notes + prepare panel */}
+            <div className="bg-stone-50/60 px-6 py-5 space-y-5">
+              {/* Reason */}
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-wider text-stone-400">
+                  Reason for appointment
                 </div>
-                <div className="mt-4 space-y-4">
-                  <PrepNotesDisplay notes={prepNotes!} />
-                </div>
+                <p className="mt-1.5 text-sm text-stone-700 whitespace-pre-wrap">
+                  {appointment.reason || <span className="text-stone-400">Not provided</span>}
+                </p>
               </div>
-            )}
+
+              {/* Staff notes */}
+              {appointment.staff_notes && (
+                <div>
+                  <div className="text-[11px] font-medium uppercase tracking-wider text-stone-400">
+                    Staff notes
+                  </div>
+                  <p className="mt-1.5 text-sm text-stone-600 whitespace-pre-wrap">
+                    {appointment.staff_notes}
+                  </p>
+                </div>
+              )}
+
+              {/* What to prepare */}
+              {hasPrepContent && (
+                <div className="border-t border-stone-200 pt-5">
+                  <div className="flex items-center gap-2 text-sm font-medium text-stone-700">
+                    <ClipboardList className="h-4 w-4 text-stone-400" />
+                    What to prepare
+                  </div>
+                  <div className="mt-4 space-y-4">
+                    <PrepNotesDisplay notes={prepNotes!} />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

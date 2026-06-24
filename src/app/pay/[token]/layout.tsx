@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 
+import { PublicFooter } from "@/components/public-footer";
+
 // Public case payment-request portal. Same chrome shape as /book-an-appointment and
 // /intake — branded header, firm-info footer, noindex meta so leaked
 // tokens don't get indexed.
@@ -21,7 +23,7 @@ export default function PayLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-dvh bg-stone-50 text-stone-900">
+    <div className="flex min-h-dvh flex-col bg-stone-50 text-stone-900">
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-6 py-4">
           <Image
@@ -34,24 +36,8 @@ export default function PayLayout({
           />
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-6 py-8">{children}</main>
-      <footer className="mt-12 border-t border-stone-200 bg-white px-6 py-6 text-sm text-stone-600">
-        <div className="mx-auto max-w-3xl space-y-1">
-          <p className="font-medium text-stone-700">
-            Big Bang Immigration Consulting Inc.
-          </p>
-          <p>211-2390 Eglinton Avenue East, Toronto, ON M1K 2P5</p>
-          <p>
-            Questions?{" "}
-            <a
-              className="text-[var(--navy)] underline-offset-2 hover:underline"
-              href="mailto:info@bigbangimmigration.com"
-            >
-              info@bigbangimmigration.com
-            </a>
-          </p>
-        </div>
-      </footer>
+      <main className="mx-auto max-w-3xl flex-1 px-6 py-8">{children}</main>
+      <PublicFooter />
     </div>
   );
 }

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 
 import { AppointmentDetailDialog } from "./appointment-detail-dialog";
-import { STATUS_LABEL, STATUS_TONE, type AppointmentRow } from "./types";
+import { STATUS_LABEL, STATUS_TONE, type AppointmentRow, type StaffOption } from "./types";
 
 function formatStarts(iso: string, timezone: string): string {
   return new Date(iso).toLocaleString("en-CA", {
@@ -49,8 +49,10 @@ function staffLabel(row: AppointmentRow): string {
 
 export function AppointmentsList({
   appointments,
+  staffList = [],
 }: {
   appointments: AppointmentRow[];
+  staffList?: StaffOption[];
 }) {
   if (appointments.length === 0) {
     return (
@@ -154,7 +156,7 @@ export function AppointmentsList({
                       }
                     />
                   )}
-                  <AppointmentDetailDialog appointment={row} />
+                  <AppointmentDetailDialog appointment={row} staffList={staffList} />
                 </div>
               </TableCell>
             </TableRow>

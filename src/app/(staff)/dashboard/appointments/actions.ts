@@ -530,6 +530,42 @@ export async function retryCalendarSync(id: string): Promise<MutateResult> {
 }
 
 // ---------------------------------------------------------------------------
+// assignAppointment — assign or reassign a staff member
+// ---------------------------------------------------------------------------
+
+export async function assignAppointment(
+  appointmentId: string,
+  staffId: string | null,
+): Promise<MutateResult> {
+  const auth = await requirePermission();
+  if (!auth.ok) return { error: auth.error };
+  if (!uuid.safeParse(appointmentId).success) return { error: "Invalid id" };
+  if (staffId !== null && !uuid.safeParse(staffId).success) {
+    return { error: "Invalid staff id" };
+  }
+
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .schema("crm")
+    .from("appointments")
+    .select("id, case_id, client_id")
+    .eq("id", appointmentId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!existing) return { error: "Appointment not found." };
+
+  const { error: updErr } = await supabase
+    .schema("crm")
+    .from("appointments")
+    .update({ assigned_staff_id: staffId })
+    .eq("id", appointmentId);
+  if (updErr) return { error: updErr.message };
+
+  revalidateLinked(existing.case_id, existing.client_id);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
 // getAvailableSlots — used by the new-appointment dialog
 // ---------------------------------------------------------------------------
 

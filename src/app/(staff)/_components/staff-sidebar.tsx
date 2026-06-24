@@ -53,7 +53,7 @@ export function StaffSidebar() {
   }
 
   return (
-    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-stone-200 bg-stone-50/80 backdrop-blur supports-[backdrop-filter]:bg-stone-50/60">
+    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-stone-200 bg-stone-50/80 backdrop-blur supports-[backdrop-filter]:bg-stone-50/60">
       <div className="flex h-24 items-center justify-center border-b border-stone-200 px-3">
         <Link
           href="/dashboard"
