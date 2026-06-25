@@ -66,6 +66,7 @@ export type TemplateDocument = {
   maxFileSizeMb: number | null;
   instructions: string | null;
   expectedQuantity: number;
+  allowsMultiple: boolean;
   displayOrder: number;
 };
 
@@ -257,6 +258,7 @@ export function VariantEditorShell({
       allowedFileTypes: d.allowedFileTypes,
       maxFileSizeMb: d.maxFileSizeMb,
       expectedQuantity: d.expectedQuantity,
+      allowsMultiple: d.allowsMultiple,
       instructions: d.instructions,
     })),
   }));

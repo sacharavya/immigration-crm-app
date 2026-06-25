@@ -30,6 +30,7 @@ const ALLOWED_FROM: Record<EventKind, ReadonlyArray<CaseStatus>> = {
   biometrics_requested: ["submitted_to_ircc"],
   biometrics_scheduled: ["submitted_to_ircc"],
   biometrics_completed: ["submitted_to_ircc"],
+  passport_requested: ["submitted_to_ircc"],
   additional_info_requested: ["submitted_to_ircc"],
   additional_info_submitted: ["submitted_to_ircc"],
   interview_scheduled: ["submitted_to_ircc"],
@@ -67,6 +68,11 @@ const EVENT_GROUPS: Array<{
         kind: "biometrics_completed",
         label: "Biometrics completed",
         description: "Fingerprints + photo given.",
+      },
+      {
+        kind: "passport_requested",
+        label: "Passport requested",
+        description: "IRCC issued a passport request (PPR) — final stage.",
       },
       {
         kind: "additional_info_requested",
@@ -130,14 +136,21 @@ function todayPlusYears(years: number): string {
 
 type CaseDocOption = { id: string; displayName: string };
 
+const DEFAULT_TRIGGER_CLASS =
+  "inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50";
+
 export function CaseEventDialog({
   caseId,
   currentStatus,
   caseDocuments = [],
+  triggerLabel = "Record event",
+  triggerClassName = DEFAULT_TRIGGER_CLASS,
 }: {
   caseId: string;
   currentStatus: CaseStatus;
   caseDocuments?: CaseDocOption[];
+  triggerLabel?: string;
+  triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<EventKind | null>(null);
@@ -147,7 +160,7 @@ export function CaseEventDialog({
   // Email notification state (shared across all event forms)
   const [notifyClient, setNotifyClient] = useState(false);
   const [clientNote, setClientNote] = useState("");
-  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [attachmentDocId, setAttachmentDocId] = useState("");
   const [attachMode, setAttachMode] = useState<"upload" | "existing">("upload");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -168,7 +181,7 @@ export function CaseEventDialog({
     setError(null);
     setNotifyClient(false);
     setClientNote("");
-    setAttachmentFile(null);
+    setAttachmentFiles([]);
     setAttachmentDocId("");
     setAttachMode("upload");
   }
@@ -181,9 +194,11 @@ export function CaseEventDialog({
     setError(null);
     startTransition(async () => {
       let attachmentFormData: FormData | undefined;
-      if (notifyClient && attachMode === "upload" && attachmentFile) {
+      if (notifyClient && attachMode === "upload" && attachmentFiles.length > 0) {
         attachmentFormData = new FormData();
-        attachmentFormData.append("file", attachmentFile);
+        for (const f of attachmentFiles) {
+          attachmentFormData.append("file", f);
+        }
       }
 
       const result = await recordCaseEvent(caseId, payload, {
@@ -199,17 +214,17 @@ export function CaseEventDialog({
         setError(result.error);
         return;
       }
+      if (result.emailWarning) {
+        alert(result.emailWarning);
+      }
       close();
     });
   }
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
-      <DialogTrigger
-        disabled={!hasAny}
-        className="inline-flex h-8 items-center rounded-md border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 shadow-sm transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        + Record event
+      <DialogTrigger disabled={!hasAny} className={triggerClassName}>
+        {triggerLabel}
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-lg">
@@ -292,17 +307,21 @@ export function CaseEventDialog({
                           <input
                             ref={fileRef}
                             type="file"
+                            multiple
                             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                             onChange={(e) =>
-                              setAttachmentFile(e.target.files?.[0] ?? null)
+                              setAttachmentFiles(Array.from(e.target.files ?? []))
                             }
                             className="block w-full text-sm text-stone-600 file:mr-2 file:rounded-md file:border file:border-stone-200 file:bg-white file:px-2 file:py-1 file:text-xs file:text-stone-600"
                           />
-                          {attachmentFile && (
-                            <p className="mt-1 text-xs text-stone-500">
-                              {attachmentFile.name} (
-                              {(attachmentFile.size / 1024).toFixed(0)} KB)
-                            </p>
+                          {attachmentFiles.length > 0 && (
+                            <ul className="mt-1 space-y-0.5 text-xs text-stone-500">
+                              {attachmentFiles.map((f, i) => (
+                                <li key={`${f.name}-${i}`}>
+                                  {f.name} ({(f.size / 1024).toFixed(0)} KB)
+                                </li>
+                              ))}
+                            </ul>
                           )}
                         </div>
                       )}
@@ -426,6 +445,14 @@ function EventForm({
       )}
       {kind === "biometrics_completed" && (
         <BiometricsCompletedForm
+          onCancel={onBack}
+          pending={pending}
+          error={error}
+          onSubmit={onSubmit}
+        />
+      )}
+      {kind === "passport_requested" && (
+        <PassportRequestedForm
           onCancel={onBack}
           pending={pending}
           error={error}
@@ -609,6 +636,36 @@ function BiometricsRequestedForm({ onCancel, pending, error, onSubmit }: FormPro
         onSubmit={() =>
           onSubmit({
             event_type: "biometrics_requested",
+            ...(notes.trim() ? { notes: notes.trim() } : {}),
+          })
+        }
+      />
+    </div>
+  );
+}
+
+function PassportRequestedForm({ onCancel, pending, error, onSubmit }: FormProps) {
+  const [notes, setNotes] = useState("");
+  return (
+    <div className="space-y-3">
+      <FieldLabel
+        label="Notes (optional)"
+        hint="e.g. PPR reference, submission instructions, deadline."
+      >
+        <textarea
+          rows={2}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          className="mt-1 w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/30"
+        />
+      </FieldLabel>
+      <Footer
+        onCancel={onCancel}
+        pending={pending}
+        error={error}
+        onSubmit={() =>
+          onSubmit({
+            event_type: "passport_requested",
             ...(notes.trim() ? { notes: notes.trim() } : {}),
           })
         }

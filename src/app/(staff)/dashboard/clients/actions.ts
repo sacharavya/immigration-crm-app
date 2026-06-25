@@ -147,10 +147,7 @@ export async function createClientStandalone(
 // updateImmigrationStatus
 // ---------------------------------------------------------------------------
 
-import {
-  immigrationStatusSchema,
-  type ImmigrationStatusInput,
-} from "@/lib/validators/client-immigration";
+import { immigrationStatusSchema } from "@/lib/validators/client-immigration";
 
 export async function updateImmigrationStatus(
   clientId: string,
@@ -166,14 +163,23 @@ export async function updateImmigrationStatus(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
+  // Outside Canada: expiry never applies, so clear it regardless of what the
+  // form last held. Keeps the row honest with deriveImmigrationDisplay().
+  const expiry =
+    parsed.data.immigration_in_canada === false
+      ? null
+      : parsed.data.immigration_status_expiry;
+
   const supabase = await createClient();
   const { error: updErr } = await supabase
     .schema("crm")
     .from("clients")
     .update({
+      immigration_in_canada: parsed.data.immigration_in_canada,
       immigration_status: parsed.data.immigration_status,
-      immigration_status_expiry: parsed.data.immigration_status_expiry,
+      immigration_status_expiry: expiry,
       immigration_status_note: parsed.data.immigration_status_note,
+      uci: parsed.data.uci,
     } as never)
     .eq("id", clientId)
     .is("deleted_at", null);
@@ -182,5 +188,9 @@ export async function updateImmigrationStatus(
 
   revalidatePath("/dashboard/clients");
   revalidatePath(`/dashboard/clients/${clientId}`);
+  // The case header surfaces this field too; refresh any case page for the
+  // client. revalidatePath can't target by client, so revalidate the layout
+  // segment that holds case detail pages.
+  revalidatePath("/dashboard/cases", "layout");
   return { ok: true };
 }

@@ -15,14 +15,14 @@ import {
 
 // Public client document upload. Mirrors the staff uploadDocument flow
 // (versioning, supersedes, OneDrive category-folder routing) but runs
-// against an unauthenticated request — auth is the case's
+// against an unauthenticated request: auth is the case's
 // client_portal_token + the case being in a pre-submission status.
 
 const TOKEN_RE = /^[0-9a-f-]{36}$/i;
 
 // Statuses where the portal stays active for the original checklist.
 // Once the case moves past documentation_review the original checklist
-// is closed — but FLOW-3d carves out an exception: a case in
+// is closed, but FLOW-3d carves out an exception: a case in
 // submitted_to_ircc with open additional-document requests reopens the
 // portal for those documents only (see loadCaseByPortalToken).
 const ACTIVE_STATUSES = [
@@ -67,7 +67,7 @@ export async function loadCaseByPortalToken(
     return { ...data, additional_docs_only: false };
   }
 
-  // Past Review — only open if there are pending additional-doc requests.
+  // Past Review: only open if there are pending additional-doc requests.
   if (data.status === "submitted_to_ircc") {
     const { count } = await supabase
       .schema("crm")
@@ -87,7 +87,7 @@ export type UploadAsClientResult =
   | { error: string };
 
 // ---------------------------------------------------------------------------
-// Filename rules — match the staff side (see actions.ts:composeFileName).
+// Filename rules: match the staff side (see actions.ts:composeFileName).
 //
 // v1   : <documentCode>_<sanitizedOriginal>            (clean, no version)
 // v>=2 : <documentCode>_<sanitizedOriginal>_v<N>       (suffix before ext)
@@ -146,7 +146,7 @@ async function resolvePortalUploadContext(
     return {
       ok: false,
       error:
-        "Documents folder is still being created — please try again in a few seconds.",
+        "Documents folder is still being created. Please try again in a few seconds.",
     };
   }
 
@@ -230,7 +230,7 @@ async function resolvePortalUploadContext(
 }
 
 /**
- * uploadFileAsClient — fresh upload from the client portal. v1, new
+ * uploadFileAsClient: fresh upload from the client portal. v1, new
  * file_group_key (DB default). Used for first uploads on a slot AND for
  * sibling files when expected_quantity > 1 (Inc 4 UI calls this
  * directly for siblings).
@@ -345,7 +345,7 @@ export async function uploadFileAsClient(
 }
 
 /**
- * reuploadFileAsClient — replaces a rejected file from the client
+ * reuploadFileAsClient: replaces a rejected file from the client
  * portal. Same invariants as the staff reuploadFile: rejected -> super-
  * seded BEFORE the new INSERT, captured atomically via UPDATE...RETURNING.
  *
@@ -541,7 +541,7 @@ export async function reuploadFileAsClient(
 }
 
 /**
- * uploadAsClient — backward-compatible wrapper. Dispatches to
+ * uploadAsClient: backward-compatible wrapper. Dispatches to
  * uploadFileAsClient (fresh slot) or reuploadFileAsClient (rejected
  * slot). Refuses replacement when the slot has a non-rejected live row.
  * Inc 4's UI will call uploadFileAsClient / reuploadFileAsClient

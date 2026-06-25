@@ -188,7 +188,8 @@ export async function createVariant(
           allowed_file_types,
           max_file_size_mb,
           instructions,
-          expected_quantity
+          expected_quantity,
+          allows_multiple
         `,
       )
       .eq("service_template_id", sourceTemplateId);
@@ -210,6 +211,7 @@ export async function createVariant(
             max_file_size_mb: d.max_file_size_mb,
             instructions: d.instructions,
             expected_quantity: d.expected_quantity,
+            allows_multiple: d.allows_multiple,
           })),
         );
       if (copyErr) {

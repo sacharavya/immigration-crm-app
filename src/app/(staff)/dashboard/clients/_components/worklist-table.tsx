@@ -111,7 +111,10 @@ export function WorklistTable({
       {/* Rows */}
       {rows.map((row) => {
         const ownerName = row.assigned_rcic ? staffById[row.assigned_rcic] : null;
-        const countdown = expiryCountdown(row.immigration_status_expiry, row.immigration_status);
+        // Effective status: the stored value, or one inferred from an approved
+        // case's service type so every decided row reads consistently.
+        const effStatus = row.immigration_status ?? row.immigration_status_inferred;
+        const countdown = expiryCountdown(row.immigration_status_expiry, effStatus);
         const phone = formatPhone(row.phone_primary);
         const decision =
           row.last_decision_status === "passport_requested"
@@ -166,9 +169,9 @@ export function WorklistTable({
 
             {/* Immigration status */}
             <div className="min-w-0">
-              {row.immigration_status ? (
+              {effStatus ? (
                 <div className="truncate text-xs text-stone-700">
-                  {IMMIGRATION_STATUS_LABELS[row.immigration_status]}
+                  {IMMIGRATION_STATUS_LABELS[effStatus]}
                   {row.immigration_status_detail && (
                     <span className="text-stone-400"> - {row.immigration_status_detail}</span>
                   )}
@@ -177,9 +180,8 @@ export function WorklistTable({
                   )}
                 </div>
               ) : row.immigration_status_detail ? (
-                // No immigration_status set on client, but a decided
-                // (approved/refused) case exists. Show the service type
-                // as the inferred status with the decision outcome.
+                // No status stored or inferable, but a decided (refused) case
+                // exists. Show the service type with the decision outcome.
                 <div className="truncate text-xs text-stone-600">
                   {row.immigration_status_detail}
                   {decision && (

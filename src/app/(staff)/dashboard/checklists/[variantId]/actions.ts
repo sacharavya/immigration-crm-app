@@ -246,7 +246,8 @@ export async function createNewVersion(
           allowed_file_types,
           max_file_size_mb,
           instructions,
-          expected_quantity
+          expected_quantity,
+          allows_multiple
         `,
       )
       .eq("service_template_id", activeNow.id);
@@ -268,6 +269,7 @@ export async function createNewVersion(
             max_file_size_mb: d.max_file_size_mb,
             instructions: d.instructions,
             expected_quantity: d.expected_quantity,
+            allows_multiple: d.allows_multiple,
           })),
         );
     }
@@ -300,6 +302,7 @@ const updateDocSchema = z.object({
     ),
   maxFileSizeMb: z.coerce.number().int().min(1).max(4).optional().nullable(),
   expectedQuantity: z.coerce.number().int().min(1).max(50).optional(),
+  allowsMultiple: z.boolean().optional(),
   instructions: z
     .string()
     .trim()
@@ -381,6 +384,7 @@ export async function updateTemplateDocument(
   if (v.allowedFileTypes !== undefined) updates.allowed_file_types = v.allowedFileTypes;
   if (v.maxFileSizeMb !== undefined) updates.max_file_size_mb = v.maxFileSizeMb;
   if (v.expectedQuantity !== undefined) updates.expected_quantity = v.expectedQuantity;
+  if (v.allowsMultiple !== undefined) updates.allows_multiple = v.allowsMultiple;
   if (v.instructions !== undefined) updates.instructions = v.instructions;
 
   if (Object.keys(updates).length === 0) return { ok: true };

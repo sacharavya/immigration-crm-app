@@ -9,6 +9,7 @@ import {
   type RawClientRow,
 } from "@/lib/clients/worklist";
 import { createClient } from "@/lib/supabase/server";
+import { immigrationStatusFromServiceType } from "@/lib/validators/client-immigration";
 
 import { WorklistShell } from "./_components/worklist-shell";
 
@@ -119,7 +120,7 @@ export default async function ClientsPage({ searchParams }: Props) {
     supabase
       .schema("ref")
       .from("service_types")
-      .select("id, name")
+      .select("id, name, code, category_code")
       .is("deactivated_at", null)
       .order("name"),
     supabase
@@ -219,6 +220,17 @@ export default async function ClientsPage({ searchParams }: Props) {
 
   // Build service type display: "Category - Service Type Name"
   const serviceNameById = new Map((serviceTypes ?? []).map((s) => [s.id, s.name]));
+  // Service type to immigration bucket, for inferring a client's status from
+  // their approved case when the client record itself has none stored.
+  const serviceMetaById = new Map(
+    (serviceTypes ?? []).map((s) => [
+      s.id,
+      {
+        code: (s as { code?: string | null }).code ?? null,
+        category_code: (s as { category_code?: string | null }).category_code ?? null,
+      },
+    ]),
+  );
   const countryNameByCode = new Map((countries ?? []).map((c) => [c.code, c.name]));
 
   const tasksByClient = new Map<string, { due: string; title: string }>();
@@ -308,6 +320,16 @@ export default async function ClientsPage({ searchParams }: Props) {
       immigration_status_detail: caseInfo?.decisionServiceTypeId
         ? serviceNameById.get(caseInfo.decisionServiceTypeId) ?? null
         : null,
+      // Approved decisions only: infer the status the approval granted from the
+      // service type's bucket, so a client with no stored status still reads
+      // consistently. Refusals grant no status, so leave them detail-only.
+      immigration_status_inferred:
+        caseInfo?.lastDecisionStatus === "passport_requested" &&
+        caseInfo.decisionServiceTypeId
+          ? immigrationStatusFromServiceType(
+              serviceMetaById.get(caseInfo.decisionServiceTypeId) ?? {},
+            )
+          : null,
       last_decision_status: caseInfo?.lastDecisionStatus ?? null,
     };
   });

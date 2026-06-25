@@ -29,7 +29,7 @@ ${customBlockHtml}<p style="margin:0 0 12px 0;">We&rsquo;ve set up a private upl
   )}</strong>. Click the button below to see exactly which documents we need and upload them directly &mdash; no email attachments needed.</p>
 ${buttonHtml("Open document upload page", args.uploadUrl)}
 <p style="margin:0 0 12px 0;color:#57534e;font-size:14px;">If a document is rejected (for example, a blurry photo), you&rsquo;ll see a note on the page explaining what to fix. Just upload a new version and we&rsquo;ll review it again.</p>
-<p style="margin:24px 0 0 0;">If you have any questions, reply to this email or contact our office at +1 416-386-5351.</p>`;
+<p style="margin:24px 0 0 0;">If you have any questions, email us at info@bigbangimmigration.com or contact our office at +1 416-386-5351.</p>`;
 
   const customBlockText = args.customMessage?.trim()
     ? `${args.customMessage.trim()}\n\n`
@@ -43,7 +43,7 @@ ${args.uploadUrl}
 
 If a document is rejected, you'll see a note on the page explaining what to fix. Just upload a new version.
 
-If you have any questions, reply to this email or contact our office at +1 416-386-5351.
+If you have any questions, email us at info@bigbangimmigration.com or contact our office at +1 416-386-5351.
 
 Big Bang Immigration Consulting Inc.
 211-2390 Eglinton Avenue East

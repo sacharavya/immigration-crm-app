@@ -43,7 +43,7 @@ export function appointmentConfirmationEmail(
 
   const manageHtml = args.managementUrl
     ? `<p style="margin:24px 0 0 0;color:#57534e;font-size:14px;">Need to make changes? <a href="${escapeHtml(args.managementUrl)}">Reschedule or cancel</a>.</p>`
-    : `<p style="margin:24px 0 0 0;color:#57534e;font-size:14px;">Need to make changes? Reply to this email or call us.</p>`;
+    : `<p style="margin:24px 0 0 0;color:#57534e;font-size:14px;">Need to make changes? Email us at info@bigbangimmigration.com or call us.</p>`;
 
   const bodyHtml = `
 <p style="margin:0 0 12px 0;">Hello ${escapeHtml(args.clientName)},</p>
@@ -75,7 +75,7 @@ ${manageHtml}`;
     "",
     args.managementUrl
       ? `Manage appointment: ${args.managementUrl}`
-      : `Need to make changes? Reply to this email or call us.`,
+      : `Need to make changes? Email us at info@bigbangimmigration.com or call us.`,
     "",
     "A calendar invite is attached.",
   ].join("\n");

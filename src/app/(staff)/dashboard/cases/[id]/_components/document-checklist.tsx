@@ -9,6 +9,7 @@ export type TemplateDoc = {
   display_order: number;
   instructions: string | null;
   expected_quantity: number;
+  allows_multiple?: boolean;
   group: { name: string; display_order: number } | null;
 };
 
@@ -25,6 +26,10 @@ export type FileRow = {
   rejection_reason: string | null;
   file_group_key: string;
   created_at: string;
+  // Optional: only the staff case page selects these. The client upload
+  // page omits them, so they stay optional to keep that call site valid.
+  reviewed_by?: string | null;
+  uploaded_by_client?: boolean;
 };
 
 // Legacy single-file shape kept for the additional-docs surface and
@@ -76,7 +81,7 @@ function groupDocs(docs: TemplateDoc[]): Group[] {
 // hitting an expected_quantity target because the quantity field is
 // deprecated (every slot accepts unlimited files by default; see the
 // drop of the "Add another" cap in document-row.tsx).
-function itemReceived(files: FileRow[] | undefined): boolean {
+export function itemReceived(files: FileRow[] | undefined): boolean {
   if (!files || files.length === 0) return false;
   return files.some(
     (f) => f.status === "uploaded" || f.status === "accepted",
@@ -141,9 +146,10 @@ export function DocumentChecklist({
                       is_required: d.is_required,
                       condition_label: d.condition_label,
                       instructions: d.instructions,
-                      expected_quantity: d.expected_quantity,
+                      allows_multiple: d.allows_multiple ?? false,
                     }}
                     files={liveByCode.get(d.document_code) ?? []}
+                    categoryLabel={g.name}
                     canEditRequired={canEditRequired}
                     canReview={canReview}
                     canUpload={canUpload}

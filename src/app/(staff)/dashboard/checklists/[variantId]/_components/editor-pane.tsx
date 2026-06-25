@@ -302,6 +302,7 @@ function GroupSection({
         allowedFileTypes: null,
         maxFileSizeMb: null,
         expectedQuantity: 1,
+        allowsMultiple: false,
         instructions: null,
       });
       setAdding(false);

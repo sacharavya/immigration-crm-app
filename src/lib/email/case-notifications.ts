@@ -5,14 +5,22 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { streamFileFromGraph } from "@/lib/graph/download";
 
-import { sendEmail, type EmailAttachment } from "./client";
+import {
+  sendEmail,
+  validateAttachments,
+  type EmailAttachment,
+} from "./client";
 import { logEmail } from "./log";
 import { getBaseUrl } from "./url";
 import { caseDecisionEmail } from "./templates/case-decision";
 import { caseEventNotificationEmail } from "./templates/case-event-notification";
 import { casePhaseAdvanceEmail } from "./templates/case-phase-advance";
 
-export type CaseEmailResult = { ok: true } | { ok: false; reason: string };
+// `warning` carries a non-fatal problem the caller should surface to staff —
+// e.g. the email sent but a "from case files" attachment couldn't be fetched.
+export type CaseEmailResult =
+  | { ok: true; warning?: string }
+  | { ok: false; reason: string };
 
 // ---------------------------------------------------------------------------
 // Load case + client for email context
@@ -132,14 +140,20 @@ export async function sendCaseDecisionEmail(
 
   const allAttachments = [...(opts?.attachments ?? [])];
 
-  // Download existing document if specified
+  // Download existing document if specified. A failed fetch must not silently
+  // send a fileless email — track it and warn the caller.
+  let warning: string | undefined;
   if (opts?.attachmentDocId) {
     const docAttachment = await downloadDocumentBuffer(
       supabase,
       opts.attachmentDocId,
     );
     if (docAttachment) allAttachments.push(docAttachment);
+    else warning = "A selected case file couldn't be fetched and was not attached.";
   }
+
+  const sizeError = validateAttachments(allAttachments);
+  if (sizeError) return { ok: false, reason: sizeError };
 
   const tpl = caseDecisionEmail({
     clientName: ctx.clientName,
@@ -161,7 +175,7 @@ export async function sendCaseDecisionEmail(
 
   if (!res.ok) {
     console.error("[case-notifications] decision email failed:", res.error);
-    return { ok: false, reason: "send_failed" };
+    return { ok: false, reason: res.error };
   }
 
   await logEmail({
@@ -174,7 +188,7 @@ export async function sendCaseDecisionEmail(
     body: tpl.text,
   });
 
-  return { ok: true };
+  return { ok: true, warning };
 }
 
 // ---------------------------------------------------------------------------
@@ -201,13 +215,18 @@ export async function sendCaseEventEmail(
   if (!ctx) return { ok: false, reason: "case_or_client_not_found" };
 
   const allAttachments = [...(opts?.attachments ?? [])];
+  let warning: string | undefined;
   if (opts?.attachmentDocId) {
     const docAttachment = await downloadDocumentBuffer(
       supabase,
       opts.attachmentDocId,
     );
     if (docAttachment) allAttachments.push(docAttachment);
+    else warning = "A selected case file couldn't be fetched and was not attached.";
   }
+
+  const sizeError = validateAttachments(allAttachments);
+  if (sizeError) return { ok: false, reason: sizeError };
 
   const tpl = caseEventNotificationEmail({
     clientName: ctx.clientName,
@@ -232,7 +251,7 @@ export async function sendCaseEventEmail(
 
   if (!res.ok) {
     console.error("[case-notifications] event email failed:", res.error);
-    return { ok: false, reason: "send_failed" };
+    return { ok: false, reason: res.error };
   }
 
   await logEmail({
@@ -245,7 +264,7 @@ export async function sendCaseEventEmail(
     body: tpl.text,
   });
 
-  return { ok: true };
+  return { ok: true, warning };
 }
 
 // ---------------------------------------------------------------------------
@@ -260,10 +279,29 @@ export async function sendCasePhaseAdvanceEmail(
   opts?: {
     staffNote?: string;
     staffId?: string;
+    attachments?: EmailAttachment[];
+    attachmentDocId?: string;
   },
 ): Promise<CaseEmailResult> {
   const ctx = await loadCaseEmailContext(supabase, caseId);
   if (!ctx) return { ok: false, reason: "case_or_client_not_found" };
+
+  // Previously this path dropped attachments entirely — files attached to a
+  // non-decision phase-advance email never reached the client. Now they flow
+  // through the same as the decision/event emails.
+  const allAttachments = [...(opts?.attachments ?? [])];
+  let warning: string | undefined;
+  if (opts?.attachmentDocId) {
+    const docAttachment = await downloadDocumentBuffer(
+      supabase,
+      opts.attachmentDocId,
+    );
+    if (docAttachment) allAttachments.push(docAttachment);
+    else warning = "A selected case file couldn't be fetched and was not attached.";
+  }
+
+  const sizeError = validateAttachments(allAttachments);
+  if (sizeError) return { ok: false, reason: sizeError };
 
   const tpl = casePhaseAdvanceEmail({
     clientName: ctx.clientName,
@@ -279,11 +317,12 @@ export async function sendCasePhaseAdvanceEmail(
     subject: tpl.subject,
     html: tpl.html,
     text: tpl.text,
+    attachments: allAttachments.length > 0 ? allAttachments : undefined,
   });
 
   if (!res.ok) {
     console.error("[case-notifications] phase advance email failed:", res.error);
-    return { ok: false, reason: "send_failed" };
+    return { ok: false, reason: res.error };
   }
 
   await logEmail({
@@ -296,5 +335,5 @@ export async function sendCasePhaseAdvanceEmail(
     body: tpl.text,
   });
 
-  return { ok: true };
+  return { ok: true, warning };
 }

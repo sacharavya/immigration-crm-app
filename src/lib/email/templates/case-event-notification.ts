@@ -10,6 +10,7 @@ type EventType =
   | "interview_completed"
   | "application_returned"
   | "additional_documents_requested"
+  | "passport_requested"
   | "appeal_filed"
   | "withdrawal_requested";
 
@@ -93,6 +94,13 @@ const EVENT_COPY: Record<
     actionRequired:
       "Please gather the requested documents and upload them as soon as possible. Your consultant will provide the list and any specific instructions.",
   },
+  passport_requested: {
+    title: "Passport request received from IRCC",
+    heading: "IRCC has issued a passport request on your case",
+    body: "Immigration, Refugees and Citizenship Canada (IRCC) has issued a passport request (PPR) for your application. This is typically a positive sign that your application is in the final stage. Please follow the instructions in the request to submit your passport.",
+    actionRequired:
+      "Please submit your passport as instructed as soon as possible. Your consultant will confirm the submission method and any deadlines.",
+  },
   appeal_filed: {
     title: "Appeal filed",
     heading: "An appeal has been filed for your case",
@@ -173,8 +181,8 @@ export function caseEventNotificationEmail(args: Args): {
     ${noteBlock}
     ${attachmentLine}
     <p style="margin:16px 0;font-size:14px;color:#6b7280;">
-      If you have any questions, please contact your consultant or reply
-      to this email.
+      If you have any questions, please contact your consultant or email
+      us at info@bigbangimmigration.com.
     </p>
   `;
 

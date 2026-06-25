@@ -38,16 +38,41 @@
   --muted: #EEF0F2;
   --muted-foreground: #5C636D;
   --border: #E3E5E9;
+  /* Slightly stronger divider for dashed ghost controls (e.g. "Add another"). */
+  --border-secondary: #D2D6DB;
   --input: #D2D6DB;
   --ring: #1D3358;
-  --primary: #1D3358;
+  --primary: #3266ad;
   --primary-foreground: #FFFFFF;
+  --primary-hover: #2a5693;
   --secondary: #EEF0F2;
   --secondary-foreground: #3A414B;
   --accent: #EEF2F9;
   --accent-foreground: #1D3358;
   --destructive: #C5362C;
   --destructive-foreground: #FFFFFF;
+  /* Safe stop: the darker maple used for destructive *text* on light
+     surfaces so it clears contrast against subtle fills. */
+  --destructive-text: #9F2920;
+  /* Light maple wash for destructive pills/marks, pairing with the safe-stop
+     text. Completes the warning/success subtle family below. */
+  --destructive-subtle: #F7DCD9;
+
+  /* ── Status families (warning / success) ──────────────────── */
+  /* Referenced by the case header, worklist, and any waiting / paid
+     state. Use the *-text variants for foreground on light fills. */
+  --warning: #B97D12;
+  --warning-subtle: #FAE9C6;
+  --warning-text: #8A5A12;
+  --success: #2E7D4F;
+  --success-subtle: #D6ECDF;
+  --success-text: #226A41;
+
+  /* Quietest text tier, below muted-foreground. Small fact labels. */
+  --subtle-foreground: #868D96;
+
+  /* Sunken page surface sitting behind white cards. */
+  --surface-sunken: #F6F7F9;
 
   /* ── Charts ───────────────────────────────────────────────── */
   --chart-1: #1D3358;

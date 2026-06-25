@@ -25,6 +25,33 @@ export type EmailAttachment = {
   content: Buffer | Uint8Array;
 };
 
+// Resend caps a single message (headers + body + all attachments, base64-
+// encoded) at ~40 MB. base64 inflates payloads ~33%, so we keep raw bytes
+// well under that: 10 MB per file, 20 MB across all attachments on one email.
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+export const MAX_ATTACHMENTS_TOTAL_BYTES = 20 * 1024 * 1024;
+
+// Returns a human-readable error string if the attachment set would be
+// rejected by Resend, or null when it is safe to send. Callers should treat a
+// non-null result as "don't send, tell the user" rather than throwing — email
+// is a best-effort side channel.
+export function validateAttachments(
+  attachments: EmailAttachment[],
+): string | null {
+  let total = 0;
+  for (const a of attachments) {
+    const size = a.content.byteLength;
+    if (size > MAX_ATTACHMENT_BYTES) {
+      return `"${a.filename}" is ${(size / 1024 / 1024).toFixed(1)} MB — over the 10 MB per-file limit for email attachments.`;
+    }
+    total += size;
+  }
+  if (total > MAX_ATTACHMENTS_TOTAL_BYTES) {
+    return `Attachments total ${(total / 1024 / 1024).toFixed(1)} MB — over the 20 MB limit for a single email. Send fewer or smaller files.`;
+  }
+  return null;
+}
+
 export type SendEmailArgs = {
   to: string | string[];
   subject: string;

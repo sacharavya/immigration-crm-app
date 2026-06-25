@@ -27,7 +27,7 @@ import {
 import { uploadFile as graphUploadFile } from "@/lib/graph/uploads";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
-import { SERVICE_TYPE_TO_IMMIGRATION_STATUS } from "@/lib/validators/client-immigration";
+import { immigrationStatusFromServiceType } from "@/lib/validators/client-immigration";
 import {
   ALLOWED_EXTENSIONS_HUMAN,
   ALLOWED_MIME_TYPES_SET,
@@ -1628,7 +1628,7 @@ export type RecordEventInput = z.infer<typeof recordEventSchema> & {
   statusExpiry?: string | null; // YYYY-MM-DD, for approved decisions
 };
 export type RecordEventResult =
-  | { ok: true }
+  | { ok: true; emailWarning?: string }
   | { error: string; gateBlocked?: boolean };
 
 export async function recordEvent(
@@ -1735,7 +1735,7 @@ export async function recordEvent(
         .eq("id", approvedCase.service_type_id)
         .maybeSingle();
       if (svcType) {
-        const immStatus = SERVICE_TYPE_TO_IMMIGRATION_STATUS[svcType.code];
+        const immStatus = immigrationStatusFromServiceType(svcType);
         if (immStatus && approvedCase.client_id) {
           await supabase
             .schema("crm")
@@ -1771,43 +1771,66 @@ export async function recordEvent(
       created_by: staff.id,
     });
 
-  // Email notification (fire-and-forget; failure does not roll back).
+  // Email notification. The case_event + status change are already
+  // committed, so a failed email never rolls those back — but unlike before
+  // we capture the result and surface it, so staff learn when a file (or the
+  // whole email) didn't reach the client instead of silently "succeeding".
+  let emailWarning: string | undefined;
   if (notifyClient) {
-    // Build file attachment from FormData upload if provided
+    // Build file attachments from the FormData upload. Supports multiple
+    // files (getAll) — every non-empty File is attached.
     const attachments: EmailAttachment[] = [];
     if (attachmentFormData) {
-      const file = attachmentFormData.get("file");
-      if (file instanceof File && file.size > 0) {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        attachments.push({ filename: file.name, content: buffer });
+      for (const entry of attachmentFormData.getAll("file")) {
+        if (entry instanceof File && entry.size > 0) {
+          const buffer = Buffer.from(await entry.arrayBuffer());
+          attachments.push({ filename: entry.name, content: buffer });
+        }
       }
     }
+    const attachmentList = attachments.length > 0 ? attachments : undefined;
 
     const isDecision =
       targetStatus === "passport_requested" || targetStatus === "refused";
 
-    if (isDecision) {
-      await sendCaseDecisionEmail(supabase, caseId, targetStatus === "passport_requested" ? "approved" : "refused", {
-        staffNote: clientNote ?? undefined,
-        attachments: attachments.length > 0 ? attachments : undefined,
-        staffId: staff.id,
-        attachmentDocId: attachmentDocId ?? undefined,
-      });
-    } else {
-      const fromPhase = phaseIndex(caseRow.status);
-      const toPhase = phaseIndex(targetStatus);
-      await sendCasePhaseAdvanceEmail(
-        supabase,
-        caseId,
-        fromPhase ? PHASE_LABELS[fromPhase] : caseRow.status,
-        toPhase ? PHASE_LABELS[toPhase] : targetStatus,
-        { staffNote: clientNote ?? undefined, staffId: staff.id },
-      );
+    const emailResult = isDecision
+      ? await sendCaseDecisionEmail(
+          supabase,
+          caseId,
+          targetStatus === "passport_requested" ? "approved" : "refused",
+          {
+            staffNote: clientNote ?? undefined,
+            attachments: attachmentList,
+            staffId: staff.id,
+            attachmentDocId: attachmentDocId ?? undefined,
+          },
+        )
+      : await (async () => {
+          const fromPhase = phaseIndex(caseRow.status);
+          const toPhase = phaseIndex(targetStatus);
+          return sendCasePhaseAdvanceEmail(
+            supabase,
+            caseId,
+            fromPhase ? PHASE_LABELS[fromPhase] : caseRow.status,
+            toPhase ? PHASE_LABELS[toPhase] : targetStatus,
+            {
+              staffNote: clientNote ?? undefined,
+              staffId: staff.id,
+              attachments: attachmentList,
+              attachmentDocId: attachmentDocId ?? undefined,
+            },
+          );
+        })();
+
+    if (!emailResult.ok) {
+      emailWarning = `Event recorded, but the client email failed to send: ${emailResult.reason}`;
+    } else if (emailResult.warning) {
+      emailWarning = emailResult.warning;
     }
   }
 
   revalidatePath(`/dashboard/cases/${caseId}`);
-  return { ok: true };
+  return { ok: true, emailWarning };
 }
 
 // ---------------------------------------------------------------------------
@@ -1915,6 +1938,11 @@ const recordCaseEventSchema = z.discriminatedUnion("event_type", [
     notes: z.string().max(500).optional(),
   }),
   z.object({
+    event_type: z.literal("passport_requested"),
+    occurred_at: z.string().datetime().optional(),
+    notes: z.string().max(500).optional(),
+  }),
+  z.object({
     event_type: z.literal("additional_info_requested"),
     what_ircc_asked_for: z.string().min(1).max(2000),
     due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -1979,7 +2007,7 @@ const recordCaseEventSchema = z.discriminatedUnion("event_type", [
 
 export type RecordCaseEventInput = z.infer<typeof recordCaseEventSchema>;
 export type RecordCaseEventResult =
-  | { ok: true; event_id: string }
+  | { ok: true; event_id: string; emailWarning?: string }
   | { error: string };
 
 // Which statuses each event type is allowed from. Defence-in-depth — the
@@ -1991,6 +2019,7 @@ const EVENT_ALLOWED_FROM: Record<
   biometrics_requested: ["submitted_to_ircc"],
   biometrics_scheduled: ["submitted_to_ircc"],
   biometrics_completed: ["submitted_to_ircc"],
+  passport_requested: ["submitted_to_ircc"],
   additional_info_requested: ["submitted_to_ircc"],
   additional_info_submitted: ["submitted_to_ircc"],
   interview_scheduled: ["submitted_to_ircc"],
@@ -2167,18 +2196,22 @@ export async function recordCaseEvent(
     }
   }
 
-  // Email notification (fire-and-forget).
+  // Email notification. Captured (not fire-and-forget) so a failed send or a
+  // file that couldn't be fetched is reported back to the dialog.
+  let emailWarning: string | undefined;
   if (emailOpts?.notifyClient) {
+    // Multiple uploaded files are supported via getAll("file").
     const attachments: EmailAttachment[] = [];
     if (emailOpts.attachmentFormData) {
-      const file = emailOpts.attachmentFormData.get("file");
-      if (file instanceof File && file.size > 0) {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        attachments.push({ filename: file.name, content: buffer });
+      for (const entry of emailOpts.attachmentFormData.getAll("file")) {
+        if (entry instanceof File && entry.size > 0) {
+          const buffer = Buffer.from(await entry.arrayBuffer());
+          attachments.push({ filename: entry.name, content: buffer });
+        }
       }
     }
 
-    await sendCaseEventEmail(supabase, caseId, data.event_type, {
+    const emailResult = await sendCaseEventEmail(supabase, caseId, data.event_type, {
       staffNote: emailOpts.clientNote ?? undefined,
       attachments: attachments.length > 0 ? attachments : undefined,
       staffId: me.id,
@@ -2201,10 +2234,16 @@ export async function recordCaseEvent(
             ? (data.overall_due_date as string)
             : undefined,
     });
+
+    if (!emailResult.ok) {
+      emailWarning = `Event recorded, but the client email failed to send: ${emailResult.reason}`;
+    } else if (emailResult.warning) {
+      emailWarning = emailResult.warning;
+    }
   }
 
   revalidatePath(`/dashboard/cases/${caseId}`);
-  return { ok: true, event_id: inserted.id };
+  return { ok: true, event_id: inserted.id, emailWarning };
 }
 
 function buildEventDescription(data: RecordCaseEventInput): string {
@@ -2217,6 +2256,8 @@ function buildEventDescription(data: RecordCaseEventInput): string {
       }`;
     case "biometrics_completed":
       return `Biometrics completed on ${data.completed_date}`;
+    case "passport_requested":
+      return "IRCC issued a passport request (PPR)";
     case "additional_info_requested":
       return `IRCC requested additional information: ${data.what_ircc_asked_for.slice(0, 140)}`;
     case "additional_info_submitted":
@@ -2268,6 +2309,8 @@ function buildEventData(
           : {}),
         ...(data.valid_until ? { valid_until: data.valid_until } : {}),
       };
+    case "passport_requested":
+      return data.notes ? { notes: data.notes } : {};
     case "additional_info_requested":
       return {
         what_ircc_asked_for: data.what_ircc_asked_for,

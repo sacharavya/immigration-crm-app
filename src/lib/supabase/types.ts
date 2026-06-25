@@ -2333,6 +2333,7 @@ export type Database = {
         | "withdrawal_requested"
         | "additional_documents_requested"
         | "document_viewed"
+        | "passport_requested"
       gender: "male" | "female" | "other" | "prefer_not_to_say"
       invoice_status: "draft" | "sent" | "partial" | "paid" | "void" | "overdue"
       marital_status:
@@ -2818,6 +2819,7 @@ export type Database = {
       template_documents: {
         Row: {
           allowed_file_types: string[] | null
+          allows_multiple: boolean
           condition_label: string | null
           display_order: number
           document_code: string
@@ -2832,6 +2834,7 @@ export type Database = {
         }
         Insert: {
           allowed_file_types?: string[] | null
+          allows_multiple?: boolean
           condition_label?: string | null
           display_order?: number
           document_code: string
@@ -2846,6 +2849,7 @@ export type Database = {
         }
         Update: {
           allowed_file_types?: string[] | null
+          allows_multiple?: boolean
           condition_label?: string | null
           display_order?: number
           document_code?: string
@@ -3099,6 +3103,7 @@ export const Constants = {
         "withdrawal_requested",
         "additional_documents_requested",
         "document_viewed",
+        "passport_requested",
       ],
       gender: ["male", "female", "other", "prefer_not_to_say"],
       invoice_status: ["draft", "sent", "partial", "paid", "void", "overdue"],

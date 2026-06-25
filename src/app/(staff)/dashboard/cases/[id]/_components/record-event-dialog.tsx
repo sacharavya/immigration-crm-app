@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Mail, Paperclip, Upload } from "lucide-react";
+import { Loader2, Mail, Paperclip } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -42,9 +42,14 @@ type Props = {
   retainerMinimumCad: number | null;
   collectedCad: number;
   triggerLabel?: string;
+  /** Overrides the trigger styling. Defaults to a token-based outline. */
+  triggerClassName?: string;
   /** Case documents available for attachment in emails. */
   caseDocuments?: CaseDocOption[];
 };
+
+const DEFAULT_TRIGGER_CLASS =
+  "inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50";
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -57,6 +62,7 @@ export function RecordEventDialog({
   retainerMinimumCad,
   collectedCad,
   triggerLabel = "+ Record event",
+  triggerClassName = DEFAULT_TRIGGER_CLASS,
   caseDocuments = [],
 }: Props) {
   const milestones = nextMilestones(currentStatus);
@@ -83,11 +89,13 @@ export function RecordEventDialog({
     emailOpts?: EmailOpts,
   ) {
     startTransition(async () => {
-      // Build FormData if there's a file attachment
+      // Build FormData carrying every selected file attachment.
       let attachmentFormData: FormData | undefined;
-      if (emailOpts?.notifyClient && emailOpts.attachmentFile) {
+      if (emailOpts?.notifyClient && emailOpts.attachmentFiles?.length) {
         attachmentFormData = new FormData();
-        attachmentFormData.append("file", emailOpts.attachmentFile);
+        for (const f of emailOpts.attachmentFiles) {
+          attachmentFormData.append("file", f);
+        }
       }
 
       const result = await recordEvent({
@@ -109,13 +117,16 @@ export function RecordEventDialog({
         alert(result.error);
         return;
       }
+      if (result.emailWarning) {
+        alert(result.emailWarning);
+      }
       close();
     });
   }
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
-      <DialogTrigger className="inline-flex h-8 items-center rounded-md border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 shadow-sm transition-colors hover:bg-stone-100">
+      <DialogTrigger className={triggerClassName}>
         {triggerLabel}
       </DialogTrigger>
 
@@ -183,7 +194,7 @@ function PickView({
 type EmailOpts = {
   notifyClient: boolean;
   clientNote?: string;
-  attachmentFile?: File;
+  attachmentFiles?: File[];
   attachmentDocId?: string;
   statusExpiry?: string; // YYYY-MM-DD, for approved decisions
 };
@@ -210,7 +221,7 @@ function ConfirmView({
   // Email notification state
   const [notifyClient, setNotifyClient] = useState(false);
   const [clientNote, setClientNote] = useState("");
-  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [attachmentDocId, setAttachmentDocId] = useState("");
   const [attachMode, setAttachMode] = useState<"upload" | "existing">("upload");
   const [statusExpiry, setStatusExpiry] = useState("");
@@ -229,7 +240,10 @@ function ConfirmView({
     onSubmit(occurred, note, {
       notifyClient,
       clientNote: clientNote.trim() || undefined,
-      attachmentFile: attachMode === "upload" ? attachmentFile ?? undefined : undefined,
+      attachmentFiles:
+        attachMode === "upload" && attachmentFiles.length > 0
+          ? attachmentFiles
+          : undefined,
       attachmentDocId: attachMode === "existing" && attachmentDocId ? attachmentDocId : undefined,
       statusExpiry: isApproved && statusExpiry ? statusExpiry : undefined,
     });
@@ -301,7 +315,7 @@ function ConfirmView({
             {milestone === "decision_refused"
               ? "Reason for refusal (optional)"
               : milestone === "decision_approved"
-                ? "Note / passport request reference (optional)"
+                ? "Note / approval reference (optional)"
                 : "Note (optional)"}
           </span>
           <textarea
@@ -325,7 +339,7 @@ function ConfirmView({
             </span>
             <p className="mt-0.5 text-[11px] text-stone-400">
               When does the approved permit or status expire? This updates the
-              client's immigration status automatically.
+              client&apos;s immigration status automatically.
             </p>
             <input
               type="date"
@@ -412,17 +426,21 @@ function ConfirmView({
                     <input
                       ref={fileRef}
                       type="file"
+                      multiple
                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                       onChange={(e) =>
-                        setAttachmentFile(e.target.files?.[0] ?? null)
+                        setAttachmentFiles(Array.from(e.target.files ?? []))
                       }
                       className="block w-full text-sm text-stone-600 file:mr-2 file:rounded-md file:border file:border-stone-200 file:bg-white file:px-2 file:py-1 file:text-xs file:text-stone-600"
                     />
-                    {attachmentFile && (
-                      <p className="mt-1 text-xs text-stone-500">
-                        {attachmentFile.name} (
-                        {(attachmentFile.size / 1024).toFixed(0)} KB)
-                      </p>
+                    {attachmentFiles.length > 0 && (
+                      <ul className="mt-1 space-y-0.5 text-xs text-stone-500">
+                        {attachmentFiles.map((f, i) => (
+                          <li key={`${f.name}-${i}`}>
+                            {f.name} ({(f.size / 1024).toFixed(0)} KB)
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
                 )}

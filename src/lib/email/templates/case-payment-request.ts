@@ -137,7 +137,7 @@ ${lineItemsHtml}
 
 ${buttonHtml("Upload payment proof", args.payUrl)}
 
-<p style="margin:24px 0 0 0;color:#57534e;font-size:14px;">Our team will verify the payment as soon as the proof comes in. Reply to this email if you have any questions.</p>`;
+<p style="margin:24px 0 0 0;color:#57534e;font-size:14px;">Our team will verify the payment as soon as the proof comes in. Email us at info@bigbangimmigration.com if you have any questions.</p>`;
 
   const customBlockText = args.customMessage?.trim()
     ? `${args.customMessage.trim()}\n\n`
@@ -169,7 +169,7 @@ How to pay:
   2. Include this reference in the message field: ${args.referenceCode}
   3. Upload a screenshot of the confirmation at: ${args.payUrl}
 
-Our team will verify the payment as soon as the proof comes in. Reply to this email if you have any questions.
+Our team will verify the payment as soon as the proof comes in. Email us at info@bigbangimmigration.com if you have any questions.
 
 Big Bang Immigration Consulting Inc.
 211-2390 Eglinton Avenue East

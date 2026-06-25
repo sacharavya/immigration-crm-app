@@ -203,6 +203,17 @@ export function computeActionChip(input: ChipInput): ChipOutput {
       };
     }
 
+    // Passport request (PPR) — IRCC asked for the passport, the final step
+    // before a decision. The client needs to submit it.
+    if (evt === "passport_requested") {
+      return {
+        text: "Passport requested by IRCC",
+        responsibility: "client",
+        urgency: "sensitive",
+        waiting_days: null,
+      };
+    }
+
     // Additional-documents request takes priority over the generic
     // "awaiting IRCC" default. Falls through once additional_info_submitted
     // has been recorded after the most recent request.

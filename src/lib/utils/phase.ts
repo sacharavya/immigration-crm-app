@@ -108,7 +108,7 @@ export const MILESTONE_LABEL: Record<Milestone, string> = {
   review_started: "Begin review",
   revision_requested: "Send back to Documents (request revisions)",
   submitted_to_ircc: "Submitted to IRCC",
-  decision_approved: "Decision: passport requested",
+  decision_approved: "Approved",
   decision_refused: "Decision: refused",
   resubmitted: "Resubmitted to IRCC",
   case_closed: "Close case",

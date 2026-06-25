@@ -1,24 +1,35 @@
 import Image from "next/image";
 
-import {
-  DocumentChecklist,
-  type FileRow,
-  type LatestDoc,
-  type TemplateDoc,
-} from "@/app/(staff)/dashboard/cases/[id]/_components/document-checklist";
+import { type LatestDoc } from "@/app/(staff)/dashboard/cases/[id]/_components/document-checklist";
 import { adminClient } from "@/lib/supabase/admin";
+import { fetchAllowsMultipleByCode } from "@/lib/files/template-docs";
 
 import { loadCaseByPortalToken } from "./actions";
+import { ClientChecklist } from "./_components/client-checklist";
+import {
+  type ClientFile,
+  type ClientFileState,
+  type ClientRequirement,
+} from "./_components/client-doc-row";
 import { ExpiredCard } from "./_components/expired-card";
 import {
   PortalAdditionalDocs,
   type PortalAdditionalDocsGroup,
 } from "./_components/portal-additional-docs";
 
-// Always re-render server-side. The portal reflects review-state
-// changes that may have just been written by staff; cached HTML would
-// stale-out the rejection banners and accept pills.
+// Always re-render server-side. The portal reflects review-state changes that
+// may have just been written by staff; cached HTML would stale-out the replace
+// prompts and done pills.
 export const dynamic = "force-dynamic";
+
+// Staff statuses projected to the client's plain states. 'requested' and
+// 'superseded' have no real file to show, so they drop out.
+const STATUS_TO_STATE: Record<string, ClientFileState> = {
+  accepted: "done",
+  uploaded: "received",
+  under_review: "received",
+  rejected: "replace",
+};
 
 type Props = {
   params: Promise<{ token: string }>;
@@ -33,9 +44,6 @@ export default async function ClientUploadPage({ params }: Props) {
 
   const supabase = adminClient();
 
-  // Fetch the case's required-doc set, the template, the client name,
-  // any uploaded files, and the additional-docs-requested events in
-  // parallel.
   const [
     { data: requiredRows },
     { data: templateRows },
@@ -60,8 +68,6 @@ export default async function ClientUploadPage({ params }: Props) {
           group_code,
           condition_label,
           display_order,
-          allowed_file_types,
-          max_file_size_mb,
           instructions,
           expected_quantity,
           group:checklist_groups(name, display_order)
@@ -79,10 +85,11 @@ export default async function ClientUploadPage({ params }: Props) {
       .schema("files")
       .from("documents")
       .select(
-        "id, document_code, required_document_id, status, file_name, mime_type, version_number, sharepoint_web_url, rejection_reason, file_group_key, created_at",
+        "id, document_code, required_document_id, status, file_name, version_number, sharepoint_web_url, rejection_reason, file_group_key, created_at, uploaded_by_client",
       )
       .eq("case_id", caseRow.id)
-      .is("deleted_at", null),
+      .is("deleted_at", null)
+      .order("created_at", { ascending: true }),
     supabase
       .schema("crm")
       .from("case_events")
@@ -97,39 +104,24 @@ export default async function ClientUploadPage({ params }: Props) {
       .filter((r) => r.requested_at_event_id === null && r.document_code)
       .map((r) => r.document_code as string),
   );
-  const templateDocs: TemplateDoc[] = (templateRows ?? []).map((d) => ({
-    document_code: d.document_code,
-    document_label: d.document_label,
-    group_code: d.group_code,
-    condition_label: d.condition_label,
-    display_order: d.display_order,
-    instructions: d.instructions,
-    expected_quantity: d.expected_quantity ?? 1,
-    is_required: requiredCodes.has(d.document_code),
-    group: d.group,
-  }));
 
-  // Live files grouped by document_code for the multi-file checklist.
-  // Mirrors the partial unique index uniq_document_live_per_group:
-  // status != 'superseded' AND deleted_at IS NULL.
-  const liveByCode = new Map<string, FileRow[]>();
-  // Legacy single-file projection retained for the additional-docs panel
-  // (which still consumes LatestDoc).
+  // Project files into the client's plain shape, keyed by document_code. Also
+  // build the legacy single-file projection the additional-docs panel needs.
+  const filesByCode = new Map<string, ClientFile[]>();
   const latestByRequiredDocId = new Map<string, LatestDoc>();
   for (const doc of uploadedDocs ?? []) {
-    if (doc.document_code && doc.status !== "superseded") {
-      const list = liveByCode.get(doc.document_code) ?? [];
+    const state = STATUS_TO_STATE[doc.status];
+    if (doc.document_code && state) {
+      const list = filesByCode.get(doc.document_code) ?? [];
       list.push({
         id: doc.id,
-        status: doc.status,
-        file_name: doc.file_name,
-        mime_type: doc.mime_type,
-        version_number: doc.version_number,
-        rejection_reason: doc.rejection_reason,
-        file_group_key: doc.file_group_key,
-        created_at: doc.created_at,
+        state,
+        fileName: doc.file_name,
+        reason: doc.rejection_reason,
+        fileGroupKey: doc.file_group_key,
+        addedByFirm: doc.uploaded_by_client === false,
       });
-      liveByCode.set(doc.document_code, list);
+      filesByCode.set(doc.document_code, list);
     }
     if (doc.required_document_id) {
       const ex = latestByRequiredDocId.get(doc.required_document_id);
@@ -145,11 +137,24 @@ export default async function ClientUploadPage({ params }: Props) {
       }
     }
   }
-  for (const list of liveByCode.values()) {
-    list.sort((a, b) => a.created_at.localeCompare(b.created_at));
-  }
 
-  // Build additional-docs groups (mirror of staff page).
+  // Tolerant read of allows_multiple (see fetchAllowsMultipleByCode): a missing
+  // column falls back to the legacy expected_quantity so the portal never breaks.
+  const allowsMultipleByCode = await fetchAllowsMultipleByCode(
+    supabase,
+    caseRow.service_template_id,
+  );
+  const requirements: ClientRequirement[] = (templateRows ?? []).map((d) => ({
+    code: d.document_code,
+    label: d.document_label,
+    acceptsMultiple:
+      allowsMultipleByCode[d.document_code] ?? (d.expected_quantity ?? 1) > 1,
+    required: requiredCodes.has(d.document_code),
+    instructions: d.instructions,
+    files: filesByCode.get(d.document_code) ?? [],
+  }));
+
+  // Additional-docs-requested groups (IRCC asks), unchanged in shape.
   const additionalDocsGroups: PortalAdditionalDocsGroup[] = (() => {
     const rowsByEvent = new Map<
       string,
@@ -176,7 +181,9 @@ export default async function ClientUploadPage({ params }: Props) {
       const rows = rowsByEvent.get(e.id);
       if (!rows) continue;
       const data =
-        e.event_data && typeof e.event_data === "object" && !Array.isArray(e.event_data)
+        e.event_data &&
+        typeof e.event_data === "object" &&
+        !Array.isArray(e.event_data)
           ? (e.event_data as Record<string, unknown>)
           : {};
       groups.push({
@@ -199,52 +206,46 @@ export default async function ClientUploadPage({ params }: Props) {
     client?.legal_name_full ||
     "there";
 
-  const requiredCount = templateDocs.filter((d) => d.is_required).length;
+  const requiredCount = requirements.filter((r) => r.required).length;
   const showOriginalChecklist = !caseRow.additional_docs_only;
 
   return (
-    <main className="min-h-dvh bg-stone-50">
-      <header className="border-b border-stone-200 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-5">
+    <main className="min-h-dvh bg-[var(--surface-sunken)]">
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex max-w-2xl items-center gap-4 px-5 py-5">
           <Image
             src="/logo.png"
             alt="Big Bang Immigration"
             width={400}
             height={200}
-            className="h-12 w-auto object-contain"
+            className="h-11 w-auto object-contain"
             priority
           />
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-              Your case · {caseRow.case_number}
-            </p>
-            <p className="text-sm font-medium text-stone-900">
-              Documents for {greetingName}
-            </p>
-          </div>
+          <p className="min-w-0 text-sm text-muted-foreground">
+            Your case, {caseRow.case_number}, documents for {greetingName}
+          </p>
         </div>
       </header>
 
-      <section className="mx-auto max-w-3xl space-y-5 px-6 py-8">
-        <div className="rounded-xl border border-stone-200 bg-white p-5 text-sm text-stone-700">
+      <section className="mx-auto max-w-2xl space-y-4 px-5 py-7">
+        <div className="rounded-xl border border-border bg-card p-5 text-sm text-foreground">
           <p>
             Hi {greetingName},{" "}
             {caseRow.additional_docs_only
-              ? "IRCC has requested additional documents for your application. Please upload them below."
-              : "please upload the documents below for your application."}
+              ? "we need a few more documents for your application. Please add them below."
+              : "please add the documents below so we can move your application forward."}
           </p>
           {showOriginalChecklist && (
-            <p className="mt-2">
-              Items marked with a red{" "}
-              <span className="font-semibold text-red-600">*</span> are
-              required ({requiredCount} required total). Optional items are
-              welcome but not blocking.
+            <p className="mt-2 text-muted-foreground">
+              {requiredCount === 0
+                ? "Nothing is required right now."
+                : `${requiredCount} ${
+                    requiredCount === 1 ? "document is" : "documents are"
+                  } required.`}{" "}
+              You can upload PDF, JPG, PNG, HEIC, DOC, or DOCX files, up to 4 MB
+              each.
             </p>
           )}
-          <p className="mt-2 text-stone-500">
-            Allowed file types: PDF, JPG, PNG, HEIC, DOC, DOCX. Max 4 MB
-            per file.
-          </p>
         </div>
 
         {additionalDocsGroups.length > 0 && (
@@ -252,20 +253,12 @@ export default async function ClientUploadPage({ params }: Props) {
         )}
 
         {showOriginalChecklist && (
-          <DocumentChecklist
-            caseId={caseRow.id}
-            templateDocs={templateDocs}
-            liveByCode={liveByCode}
-            canEditRequired={false}
-            canReview={false}
-            canUpload={true}
-            clientPortalToken={token}
-          />
+          <ClientChecklist token={token} requirements={requirements} />
         )}
 
-        <p className="text-center text-xs text-stone-500">
-          Need help? Reply to the email this link came from, or contact
-          our office at info@bigbangimmigration.com / +1 416-386-5351.
+        <p className="px-1 text-center text-xs text-muted-foreground">
+          Need help? Reply to the email this link came from, or call our office
+          at +1 416-386-5351.
         </p>
       </section>
     </main>

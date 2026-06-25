@@ -228,7 +228,7 @@ export function NewAppointmentDialog({
         className={cn(
           "inline-flex h-9 items-center gap-1 rounded-md px-3 text-sm font-medium shadow-sm transition-colors",
           triggerVariant === "primary"
-            ? "bg-[var(--navy)] text-white hover:bg-[var(--navy)]/90"
+            ? "bg-primary text-primary-foreground hover:bg-[var(--primary-hover)]"
             : "border border-stone-200 bg-white text-stone-700 hover:bg-stone-100",
         )}
       >

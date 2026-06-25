@@ -2,9 +2,7 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { ActionChip } from "@/components/cases/action-chip";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
@@ -16,8 +14,8 @@ import {
   sumPendingVerification,
   sumVerifiedPayments,
 } from "@/lib/payments/verified";
+import { formatUci } from "@/lib/clients/humanize";
 import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@/lib/supabase/types";
 
 import { getIntakeProgress } from "@/lib/intake/completeness";
 import { loadRetainerData } from "@/lib/pdf/render-retainer";
@@ -27,15 +25,16 @@ import {
   type StaffOption,
 } from "./_components/assignment-card";
 import { CaseTabs, VALID_TABS, type Tab } from "./_components/case-tabs";
-import { DeleteCaseTrigger } from "./_components/delete-case-trigger";
 import { IntakeBanner } from "./_components/intake-banner";
 import { RetainerTab } from "./_components/retainer-tab";
 import { ShareLinkDialog } from "./_components/share-link-dialog";
 import {
-  DocumentChecklist,
+  itemReceived,
   type FileRow,
   type LatestDoc,
 } from "./_components/document-checklist";
+import { ChecklistBoard } from "./_components/checklist-board";
+import { fetchAllowsMultipleByCode } from "@/lib/files/template-docs";
 import {
   AdditionalDocumentsSection,
   type AdditionalDocsGroup,
@@ -54,53 +53,67 @@ import {
   PaymentsTab,
   type PaymentRow as PaymentTabRow,
 } from "./_components/payments-tab";
-import { PhasePipeline } from "./_components/phase-pipeline";
 import { NotifyForPaymentTrigger } from "./_components/notify-for-payment-trigger";
 import { RecordPaymentTrigger } from "./_components/record-payment-trigger";
 import {
-  TimelineActions,
   TimelineList,
   type TimelineEvent,
 } from "./_components/timeline-panel";
-
-type CaseStatus = Database["crm"]["Enums"]["case_status"];
-
-const statusPill: Record<CaseStatus, { label: string; className: string }> = {
-  retainer_pending: {
-    label: "Retainer Pending",
-    className: "bg-gray-200 text-gray-700",
-  },
-  documentation_in_progress: {
-    label: "Documentation",
-    className: "bg-blue-100 text-blue-800",
-  },
-  documentation_review: {
-    label: "In Review",
-    className: "bg-blue-100 text-blue-800",
-  },
-  submitted_to_ircc: {
-    label: "Submitted",
-    className: "bg-amber-100 text-amber-800",
-  },
-  passport_requested: {
-    label: "Approved",
-    className: "bg-green-100 text-green-800",
-  },
-  refused: {
-    label: "Refused",
-    className: "bg-red-100 text-red-800",
-  },
-  closed: {
-    label: "Closed",
-    className: "bg-gray-200 text-gray-700",
-  },
-};
+import { AssignedFact } from "./_components/assigned-fact";
+import { AtRiskBanner } from "./_components/at-risk-banner";
+import { CaseOverflowMenu } from "./_components/case-overflow-menu";
+import { CasePhaseTracker } from "./_components/case-phase-tracker";
+import { ImmigrationStatusFact } from "./_components/immigration-status-fact";
+import {
+  RelatedPeopleRow,
+  type RelatedParty,
+} from "./_components/related-people-row";
+import { SubStatusRow } from "./_components/sub-status-row";
+import { deriveSubmissionRisk } from "@/lib/cases/submission-risk";
+import {
+  IMMIGRATION_STATUS_LABELS,
+  type ImmigrationStatusType,
+} from "@/lib/validators/client-immigration";
 
 const cadFormatter = new Intl.NumberFormat("en-CA", {
   style: "currency",
   currency: "CAD",
 });
 const formatCad = (n: number) => cadFormatter.format(n);
+
+// Pretty-print a North American number, mirroring the clients worklist. Falls
+// back to the raw string for anything that isn't a clean 10/11-digit number.
+function formatPhone(phone: string | null): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return phone;
+}
+
+// One cell of the key-facts strip: a small subtle label over its value. The
+// strip is a hairline grid (gap-px on a border-coloured background) so each
+// fact is separated by a divider that fills the width.
+function Fact({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-card px-4 py-3">
+      <div className="text-[11px] font-medium uppercase tracking-wider text-[var(--subtle-foreground)]">
+        {label}
+      </div>
+      <div className="mt-1">{children}</div>
+    </div>
+  );
+}
 
 // Always re-render server-side. Without this, navigating between
 // /dashboard/cases and /dashboard/cases/[id] can serve a cached copy
@@ -338,7 +351,7 @@ export default async function CasePage({ params, searchParams }: Props) {
       .schema("files")
       .from("documents")
       .select(
-        "id, document_code, required_document_id, status, file_name, mime_type, version_number, sharepoint_web_url, rejection_reason, reviewed_at, reviewed_by, file_group_key, created_at",
+        "id, document_code, required_document_id, status, file_name, mime_type, version_number, sharepoint_web_url, rejection_reason, reviewed_at, reviewed_by, uploaded_by_client, file_group_key, created_at",
       )
       .eq("case_id", id)
       .is("deleted_at", null),
@@ -517,9 +530,17 @@ export default async function CasePage({ params, searchParams }: Props) {
       .filter((r) => r.requested_at_event_id === null && r.document_code)
       .map((r) => r.document_code as string),
   );
+  // allows_multiple is read tolerantly (separate query) so a missing column
+  // can never blank the checklist; fall back to the legacy expected_quantity.
+  const allowsMultipleByCode = await fetchAllowsMultipleByCode(
+    supabase,
+    caseRow.service_template_id,
+  );
   const templateDocs = (templateDocsRes.data ?? []).map((d) => ({
     ...d,
     is_required: requiredDocCodes.has(d.document_code),
+    allows_multiple:
+      allowsMultipleByCode[d.document_code] ?? (d.expected_quantity ?? 1) > 1,
   }));
   const uploadedDocs = uploadedDocsRes.data ?? [];
   const payments = paymentsRes.data ?? [];
@@ -700,11 +721,13 @@ export default async function CasePage({ params, searchParams }: Props) {
   // deleted_at IS NULL. Multi-file slots (expected_quantity > 1) have
   // multiple entries; single-file slots have 0 or 1.
   const liveByCode = new Map<string, FileRow[]>();
+  // Full version history per document_code, INCLUDING superseded rows, so the
+  // checklist can show prior (rejected/replaced) versions. Keyed the same way
+  // as liveByCode and sorted by version ascending.
+  const historyByCode = new Map<string, FileRow[]>();
   for (const doc of uploadedDocs) {
     if (!doc.document_code) continue;
-    if (doc.status === "superseded") continue;
-    const list = liveByCode.get(doc.document_code) ?? [];
-    list.push({
+    const row: FileRow = {
       id: doc.id,
       status: doc.status,
       file_name: doc.file_name,
@@ -713,13 +736,35 @@ export default async function CasePage({ params, searchParams }: Props) {
       rejection_reason: doc.rejection_reason,
       file_group_key: doc.file_group_key,
       created_at: doc.created_at,
-    });
+      reviewed_by: doc.reviewed_by,
+      uploaded_by_client: doc.uploaded_by_client ?? false,
+    };
+    const hist = historyByCode.get(doc.document_code) ?? [];
+    hist.push(row);
+    historyByCode.set(doc.document_code, hist);
+    if (doc.status === "superseded") continue;
+    const list = liveByCode.get(doc.document_code) ?? [];
+    list.push(row);
     liveByCode.set(doc.document_code, list);
   }
   // Sort each slot's files by created_at so the sub-list renders in
   // upload order (oldest first).
   for (const list of liveByCode.values()) {
     list.sort((a, b) => a.created_at.localeCompare(b.created_at));
+  }
+  // History sorts by version so "v1, v2, v3" reads top to bottom.
+  for (const list of historyByCode.values()) {
+    list.sort((a, b) => a.version_number - b.version_number);
+  }
+
+  // Reviewer display names for rejected-version notes. reviewed_by holds a
+  // staff id; resolve from the already-loaded staff list (no extra query).
+  const reviewerNameById: Record<string, string> = {};
+  for (const s of allStaff) {
+    reviewerNameById[s.id] = [s.first_name, s.last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
   }
 
   // FLOW-3d: build additional-document groups.
@@ -851,16 +896,8 @@ export default async function CasePage({ params, searchParams }: Props) {
   const retainerSatisfied =
     retainerMin === null ? collected > 0 : collected >= retainerMin;
 
-  // Override the Phase 1 pill once the retainer is signed: the case
-  // status is still 'retainer_pending' (it won't advance until the
-  // retainer minimum payment arrives — see crm.can_advance_phase),
-  // but "Retainer Pending" is misleading at that point. Surface what's
-  // actually pending instead.
-  const retainerSigned =
-    retainerRow?.status === "signed" || retainerRow?.status === "uploaded";
-
-  // For closed cases, determine if there was an approval or refusal
-  // so we show the actual outcome instead of just "Closed".
+  // For closed cases, determine if there was an approval or refusal so the
+  // sub-status shows the actual outcome instead of just "Closed".
   let closedOutcome: "approved" | "refused" | null = null;
   if (caseRow.status === "closed") {
     const events = eventsRes.data ?? [];
@@ -871,44 +908,152 @@ export default async function CasePage({ params, searchParams }: Props) {
     }
   }
 
-  const pill =
-    caseRow.status === "closed" && closedOutcome === "approved"
-      ? { label: "Approved (Closed)", className: "bg-emerald-100 text-emerald-800" }
-      : caseRow.status === "closed" && closedOutcome === "refused"
-        ? { label: "Refused (Closed)", className: "bg-[var(--maple-100)] text-[var(--maple-700)]" }
-        : caseRow.status === "retainer_pending" && retainerSigned
-          ? {
-              label: retainerSatisfied ? "Retainer Signed" : "Awaiting Payment",
-              className: "bg-emerald-100 text-emerald-800",
-            }
-          : statusPill[caseRow.status];
+  // Immigration status lives on the client. Read it from the full client row
+  // (selected with "*") so a not-yet-applied migration column degrades to
+  // null instead of erroring the whole client query.
+  const fullClient = fullClientRes.data as Record<string, unknown> | null;
+  const immigrationStatus =
+    (fullClient?.immigration_status as ImmigrationStatusType | null) ?? null;
+  const immigrationExpiry =
+    (fullClient?.immigration_status_expiry as string | null) ?? null;
+  const immigrationNote =
+    (fullClient?.immigration_status_note as string | null) ?? null;
+  const immigrationInCanada =
+    (fullClient?.immigration_in_canada as boolean | null) ?? null;
+  const canEditClient = me ? staffCan(me, "edit_clients") : false;
+  const clientPhone = (fullClient?.phone_primary as string | null) ?? null;
+
+  // Documents fact: required documents only, received over required. Optional
+  // documents the case may never need are excluded so the count reflects what
+  // is actually outstanding. "Received" uses the same itemReceived derivation
+  // as the DocumentChecklist card lower on the page.
+  const requiredTemplateDocs = templateDocs.filter((d) => d.is_required);
+  const docsTotal = requiredTemplateDocs.length;
+  const docsReceived = requiredTemplateDocs.filter((d) =>
+    itemReceived(liveByCode.get(d.document_code)),
+  ).length;
+
+  // Payment status line beneath the amount.
+  const paymentStatusLine = paidInFull
+    ? "Paid in full"
+    : retainerSatisfied
+      ? "Retainer satisfied"
+      : `${paymentPct}% paid`;
+
+  // Government identifiers. The UCI is per-person, so it is sourced from the
+  // client and reused across the person's cases; the legacy case column is a
+  // fallback during the transition. The IRCC application number is per-
+  // application and stays on the case. UCI shows always, the application
+  // number only once assigned.
+  const uci =
+    (fullClient?.uci as string | null) ??
+    (caseRow.ircc_uci as string | null) ??
+    null;
+  const irccApplicationNumber =
+    (caseRow.ircc_application_number as string | null) ?? null;
+  const identifiersLine = `UCI ${formatUci(uci) ?? "not recorded"}, ${
+    irccApplicationNumber
+      ? `IRCC ${irccApplicationNumber}`
+      : "IRCC application not yet submitted"
+  }`;
+
+  // Derived at-risk submission signal. When present, the banner carries the
+  // sub-status + action, so the standalone sub-status row is suppressed and
+  // the waiting state appears exactly once.
+  const risk = deriveSubmissionRisk({
+    inCanada: immigrationInCanada,
+    status: immigrationStatus,
+    expiry: immigrationExpiry,
+    caseStatus: caseRow.status,
+  });
+  let riskHeadline: string | null = null;
+  let riskReason: string | null = null;
+  if (risk) {
+    riskHeadline = `File before ${format(
+      new Date(risk.fileBefore + "T00:00:00"),
+      "MMM d",
+    )} to maintain status`;
+    const permitLabel = immigrationStatus
+      ? IMMIGRATION_STATUS_LABELS[immigrationStatus]
+      : "Permit";
+    const expiryPhrase = risk.overdue
+      ? `expired ${Math.abs(risk.daysUntilExpiry)} days ago`
+      : risk.daysUntilExpiry === 0
+        ? "expires today"
+        : `expires in ${risk.daysUntilExpiry} days`;
+    const blocker =
+      chip && chip.waiting_days != null
+        ? `, and ${chip.text.split(" · ")[0].toLowerCase()} for ${
+            chip.waiting_days
+          } day${chip.waiting_days === 1 ? "" : "s"}`
+        : "";
+    riskReason = `${permitLabel} ${expiryPhrase}${blocker}`;
+  }
+
+  // Related parties (principal applicant, sponsor, co-applicants, dependents).
+  // Rendered only when present, so solo cases stay minimal.
+  const participantsRes = (await supabase
+    .schema("crm")
+    .from("case_participants")
+    .select(
+      "id, role, client_id, client:clients(legal_name_full, given_names, family_name)",
+    )
+    .eq("case_id", id)
+    .order("added_at", { ascending: true })) as unknown as {
+    data:
+      | Array<{
+          id: string;
+          role: RelatedParty["role"];
+          client_id: string;
+          client: {
+            legal_name_full: string | null;
+            given_names: string | null;
+            family_name: string | null;
+          } | null;
+        }>
+      | null;
+  };
+  const relatedParties: RelatedParty[] = (participantsRes.data ?? []).map(
+    (p) => {
+      const joined = [p.client?.given_names, p.client?.family_name]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      return {
+        id: p.id,
+        clientId: p.client_id,
+        role: p.role,
+        name: p.client?.legal_name_full || joined || "Unnamed person",
+      };
+    },
+  );
 
   const nextTask = tasks[0];
 
   return (
-    <div className="min-h-dvh bg-white">
-      <header className="border-b border-stone-200 bg-white">
-        <div className="flex items-center px-6 py-4 text-sm">
-          <Link href="/dashboard" className="text-stone-500 hover:text-stone-800">
+    <div className="min-h-dvh bg-[var(--surface-sunken)]">
+      <header className="border-b border-border bg-card">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 px-6 py-4 text-sm text-muted-foreground">
+          <Link href="/dashboard/cases" className="hover:text-foreground">
             Cases
           </Link>
-          <span className="mx-2 text-stone-400">›</span>
-          <span className="font-medium text-stone-800">
+          <span aria-hidden className="text-[var(--subtle-foreground)]">/</span>
+          <span className="font-medium text-foreground">
             {caseRow.case_number}
           </span>
-        </div>
+        </nav>
       </header>
 
       <main className="space-y-4 px-6 py-6">
         {folderPending && (
           <div
             role="alert"
-            className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            className="rounded-lg border border-l-4 border-[var(--warning-subtle)] border-l-[var(--warning)] bg-[var(--warning-subtle)] px-4 py-3 text-sm text-[var(--warning-text)]"
           >
-            <strong>OneDrive folder is pending.</strong> The case was created,
-            but the folder couldn&apos;t be provisioned automatically. Use the
-            &ldquo;Retry folder creation&rdquo; button in the OneDrive card on
-            the right to try again.
+            <strong className="font-semibold">OneDrive folder is pending.</strong>{" "}
+            The case was created, but the folder couldn&apos;t be provisioned
+            automatically. Use the &ldquo;Retry folder creation&rdquo; button in
+            the OneDrive card on the right to try again.
           </div>
         )}
 
@@ -921,38 +1066,48 @@ export default async function CasePage({ params, searchParams }: Props) {
         )}
 
         {/* Header card */}
-        <Card>
-          <CardContent className="flex items-start justify-between gap-6 p-6">
-            <div>
-              <h1 className="text-2xl font-bold text-[var(--navy)]">
-                {client?.legal_name_full ?? "—"}
+        <div className="rounded-lg border border-border bg-card p-5">
+          {/* Top row: name + meta, primary action + overflow */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="truncate text-xl font-semibold text-foreground">
+                {client?.legal_name_full ?? "Unnamed client"}
               </h1>
-              <p className="mt-1 text-sm text-stone-600">
-                {service?.name ?? "—"} · {caseRow.case_number} · opened{" "}
-                {format(new Date(caseRow.opened_at), "MMM d, yyyy")}
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {service?.name ?? "Service not set"}, {caseRow.case_number},
+                opened {format(new Date(caseRow.opened_at), "MMM d, yyyy")}
+              </p>
+              {(client?.email || clientPhone) && (
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
+                  {client?.email && (
+                    <a
+                      href={`mailto:${client.email}`}
+                      className="hover:text-foreground"
+                    >
+                      {client.email}
+                    </a>
+                  )}
+                  {client?.email && clientPhone && (
+                    <span aria-hidden className="text-[var(--subtle-foreground)]">
+                      ·
+                    </span>
+                  )}
+                  {clientPhone && (
+                    <a
+                      href={`tel:${clientPhone}`}
+                      className="hover:text-foreground"
+                    >
+                      {formatPhone(clientPhone)}
+                    </a>
+                  )}
+                </p>
+              )}
+              {/* Government identifiers: UCI always, IRCC number once assigned. */}
+              <p className="mt-1 font-mono text-xs text-muted-foreground">
+                {identifiersLine}
               </p>
             </div>
-            <div className="flex flex-col items-end gap-2">
-              {chip && <ActionChip chip={chip} />}
-              <Badge
-                className={`${pill.className} shrink-0 rounded-full px-3 py-1 font-medium`}
-              >
-                {pill.label}
-              </Badge>
-              {closedOutcome === "approved" && (
-                <div className="text-right text-xs">
-                  <span className="text-stone-500">Status expiry: </span>
-                  {client?.immigration_status_expiry ? (
-                    <span className="font-medium text-stone-700">
-                      {new Date(client.immigration_status_expiry as string).toLocaleDateString("en-CA", {
-                        month: "short", day: "numeric", year: "numeric",
-                      })}
-                    </span>
-                  ) : (
-                    <span className="text-stone-400">Not set</span>
-                  )}
-                </div>
-              )}
+            <div className="flex shrink-0 items-center gap-2">
               {me && staffCan(me, "manage_appointments") && (
                 <NewAppointmentDialog
                   types={appointmentTypes}
@@ -968,28 +1123,111 @@ export default async function CasePage({ params, searchParams }: Props) {
                     case_number: caseRow.case_number,
                   }}
                   triggerLabel="Schedule meeting"
-                  triggerVariant="outline"
+                  triggerVariant="primary"
                 />
               )}
-              {me && canEditCase && staffCan(me, "delete_cases") && (
-                <DeleteCaseTrigger
-                  caseId={caseRow.id}
-                  caseNumber={caseRow.case_number}
-                />
-              )}
+              <CaseOverflowMenu
+                caseId={caseRow.id}
+                caseNumber={caseRow.case_number}
+                assignedId={caseRow.assigned_rcic}
+                staffOptions={assignableStaff}
+                canDelete={Boolean(me && staffCan(me, "delete_cases"))}
+              />
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        <PhasePipeline status={caseRow.status}>
-          <TimelineActions
-            caseId={caseRow.id}
-            currentStatus={caseRow.status}
-            quotedFeeCad={quoted}
-            retainerMinimumCad={retainerMin}
-            collectedCad={collected}
-          />
-        </PhasePipeline>
+          {/* When at risk of missing a status deadline, the banner carries the
+              sub-status + action. Otherwise the plain sub-status row shows.
+              Either way the waiting state appears exactly once. */}
+          {risk && riskHeadline && riskReason ? (
+            <div className="mt-4">
+              <AtRiskBanner
+                headline={riskHeadline}
+                reason={riskReason}
+                overdue={risk.overdue}
+              >
+                <SubStatusRow
+                  caseId={caseRow.id}
+                  chip={chip}
+                  status={caseRow.status}
+                  clientEmail={client?.email ?? null}
+                  closedOutcome={closedOutcome}
+                />
+              </AtRiskBanner>
+            </div>
+          ) : (
+            <div className="mt-4">
+              <SubStatusRow
+                caseId={caseRow.id}
+                chip={chip}
+                status={caseRow.status}
+                clientEmail={client?.email ?? null}
+                closedOutcome={closedOutcome}
+              />
+            </div>
+          )}
+
+          {/* Key facts strip */}
+          <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border lg:grid-cols-4">
+            <Fact label="Assigned">
+              <AssignedFact
+                caseId={caseRow.id}
+                assignedId={caseRow.assigned_rcic}
+                options={assignableStaff}
+                canEdit={canEditCase}
+              />
+            </Fact>
+            <Fact label="Immigration status">
+              <ImmigrationStatusFact
+                clientId={caseRow.client_id}
+                canEdit={canEditClient}
+                inCanada={immigrationInCanada}
+                status={immigrationStatus}
+                expiry={immigrationExpiry}
+                note={immigrationNote}
+                uci={uci}
+              />
+            </Fact>
+            <Fact label="Payment">
+              <div className="text-sm font-medium text-foreground">
+                {formatCad(collected)} / {formatCad(quoted)}
+              </div>
+              <div
+                className={`mt-0.5 flex items-center gap-1.5 text-xs ${
+                  paidInFull
+                    ? "text-[var(--success-text)]"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {paidInFull && (
+                  <span
+                    aria-hidden
+                    className="h-1.5 w-1.5 rounded-full bg-[var(--success)]"
+                  />
+                )}
+                {paymentStatusLine}
+              </div>
+            </Fact>
+            <Fact label="Documents">
+              <div className="text-sm font-medium text-foreground">
+                {docsTotal === 0
+                  ? "None required yet"
+                  : `${docsReceived} of ${docsTotal} required collected`}
+              </div>
+            </Fact>
+          </div>
+
+          {/* Related parties, only when the case has linked people. */}
+          <RelatedPeopleRow parties={relatedParties} />
+        </div>
+
+        <CasePhaseTracker
+          status={caseRow.status}
+          caseId={caseRow.id}
+          quotedFeeCad={quoted}
+          retainerMinimumCad={retainerMin}
+          collectedCad={collected}
+        />
 
         <CaseTabs
           caseId={caseRow.id}
@@ -1083,13 +1321,17 @@ export default async function CasePage({ params, searchParams }: Props) {
           )
         ) : tab === "documents" ? (
           <div className="space-y-4">
-            <DocumentChecklist
+            <ChecklistBoard
               caseId={caseRow.id}
               templateDocs={templateDocs}
-              liveByCode={liveByCode}
+              liveByCode={Object.fromEntries(liveByCode)}
+              historyByCode={Object.fromEntries(historyByCode)}
+              reviewerNameById={reviewerNameById}
               canEditRequired={me ? staffCan(me, "review_documents") : false}
               canReview={me ? staffCan(me, "review_documents") : false}
               canUpload={me ? staffCan(me, "upload_documents") : false}
+              caseShareToken={caseRow.client_portal_token ?? null}
+              clientEmail={client?.email ?? null}
               shareButtonSlot={
                 me && staffCan(me, "upload_documents") ? (
                   <ShareLinkDialog

@@ -2,8 +2,10 @@
 
 import {
   Check,
+  ChevronDown,
   Eye,
   Loader2,
+  Pencil,
   Plus,
   Upload as UploadIcon,
   X,
@@ -20,6 +22,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  deriveRequirementState,
+  fileStatus,
+  parseDocumentFileName,
+  type FileDisplayStatus,
+  type RequirementState,
+} from "@/lib/files/document-display";
 import { cn } from "@/lib/utils/index";
 import {
   ALLOWED_EXTENSIONS_HUMAN,
@@ -44,6 +53,7 @@ import {
 } from "../actions";
 
 import type { FileRow } from "./document-checklist";
+import { ShareLinkDialog } from "./share-link-dialog";
 
 const ACCEPT = [
   ".pdf",
@@ -64,93 +74,97 @@ export type DocumentRowProps = {
     is_required: boolean;
     condition_label: string | null;
     instructions: string | null;
-    expected_quantity: number;
+    allows_multiple?: boolean;
   };
-  // All live (non-superseded, non-deleted) files for the slot, sorted
-  // by created_at ascending. Single-file slots have 0 or 1 entries.
+  // Live (non-superseded, non-deleted) files for the slot, oldest first.
   files: FileRow[];
+  // All files incl. superseded, sorted by version, for the history affordance.
+  history?: FileRow[];
+  reviewerNameById?: Record<string, string>;
+  // Small category label shown on every row so the category is never lost.
+  categoryLabel?: string;
   canEditRequired: boolean;
   canReview: boolean;
   canUpload: boolean;
-  // When set, the row is rendered inside the public client portal at
-  // /upload/[token]. Upload + reupload clicks hit the portal actions
-  // (token-validated, no auth) instead of the staff actions.
+  // Portal mode (client upload page): upload/reupload hit the token actions.
   clientPortalToken?: string;
+  // For the staff "Ask client to re-upload" affordance.
+  caseShareToken?: string | null;
+  clientEmail?: string | null;
 };
 
-// ============================================================================
-// Status helpers (shared between single + multi-file branches)
-// ============================================================================
+// ---------------------------------------------------------------------------
+// Shared bits
+// ---------------------------------------------------------------------------
 
-type FileStatus = "uploaded" | "accepted" | "rejected" | "unknown";
-
-function fileStatus(file: FileRow): FileStatus {
-  if (file.status === "uploaded") return "uploaded";
-  if (file.status === "accepted") return "accepted";
-  if (file.status === "rejected") return "rejected";
-  return "unknown";
+function validateFile(file: File): string | null {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return `File exceeds the 4MB limit (${formatBytesMb(file.size)} MB). Compress or split before uploading.`;
+  }
+  if (!ALLOWED_MIME_TYPES_SET.has(file.type)) {
+    return `File type ${file.type || "unknown"} is not allowed. Use ${ALLOWED_EXTENSIONS_HUMAN}.`;
+  }
+  return null;
 }
 
-function StatusIcon({ status }: { status: FileStatus | "missing" }) {
-  if (status === "accepted") {
-    return (
-      <span
-        aria-label="Accepted"
-        title="Accepted"
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-200 text-green-800"
-      >
-        <Check className="h-3.5 w-3.5" strokeWidth={3} />
-      </span>
-    );
-  }
-  if (status === "rejected") {
-    return (
-      <span
-        aria-label="Rejected"
-        title="Rejected — reupload required"
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-200 text-red-800"
-      >
-        <X className="h-3.5 w-3.5" strokeWidth={3} />
-      </span>
-    );
-  }
-  if (status === "uploaded") {
-    return (
-      <span
-        aria-label="Awaiting review"
-        title="Awaiting review"
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-800"
-      >
-        <Check className="h-3.5 w-3.5" strokeWidth={3} />
-      </span>
-    );
-  }
+const STATE_TEXT: Record<RequirementState, string> = {
+  not_uploaded: "Not uploaded",
+  awaiting_review: "Awaiting your review",
+  needs_new_file: "Needs a new file",
+  collected: "Collected",
+};
+
+// Requirement-level status mark: a small dot whose colour + adjacent text
+// convey state (never colour alone).
+function StatusMark({ state }: { state: RequirementState }) {
+  const cls =
+    state === "collected"
+      ? "bg-[var(--success-subtle)] text-[var(--success-text)]"
+      : state === "awaiting_review"
+        ? "bg-[var(--warning-subtle)] text-[var(--warning-text)]"
+        : state === "needs_new_file"
+          ? "bg-[var(--destructive-subtle)] text-[var(--destructive-text)]"
+          : "bg-[var(--muted)] text-[var(--subtle-foreground)]";
   return (
     <span
-      aria-label="Missing"
-      className="h-6 w-6 shrink-0 rounded-full border-2 border-dashed border-stone-300"
-    />
+      aria-label={STATE_TEXT[state]}
+      title={STATE_TEXT[state]}
+      className={cn(
+        "flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+        cls,
+      )}
+    >
+      {state === "collected" ? (
+        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+      ) : state === "needs_new_file" ? (
+        <X className="h-3.5 w-3.5" strokeWidth={3} />
+      ) : state === "awaiting_review" ? (
+        <span className="h-2 w-2 rounded-full bg-current" />
+      ) : (
+        <span className="h-2.5 w-2.5 rounded-full border-2 border-current" />
+      )}
+    </span>
   );
 }
 
-function StatusPill({ status }: { status: FileStatus }) {
-  if (status === "accepted") {
+function StatusPill({ status }: { status: FileDisplayStatus }) {
+  if (status === "approved") {
     return (
-      <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-green-800">
+      <span className="rounded-full bg-[var(--success-subtle)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--success-text)]">
         Approved
       </span>
     );
   }
   if (status === "rejected") {
     return (
-      <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-800">
-        Action needed
+      <span className="rounded-full bg-[var(--destructive-subtle)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--destructive-text)]">
+        Needs a new file
       </span>
     );
   }
-  if (status === "uploaded") {
+  if (status === "awaiting_review") {
     return (
-      <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-800">
+      <span className="rounded-full bg-[var(--warning-subtle)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--warning-text)]">
         Awaiting review
       </span>
     );
@@ -158,48 +172,13 @@ function StatusPill({ status }: { status: FileStatus }) {
   return null;
 }
 
-// Derived item-level status for the multi-file slot summary.
-function deriveItemSummary(files: FileRow[], expected: number): {
-  approvedCount: number;
-  pendingCount: number;
-  rejectedCount: number;
-  liveCount: number;
-  capacityReached: boolean;
-  itemStatus: "approved" | "awaiting_review" | "action_needed" | "missing";
-} {
-  let approvedCount = 0;
-  let pendingCount = 0;
-  let rejectedCount = 0;
-  for (const f of files) {
-    if (f.status === "accepted") approvedCount++;
-    else if (f.status === "uploaded") pendingCount++;
-    else if (f.status === "rejected") rejectedCount++;
-  }
-  const liveCount = files.length;
-  const capacityReached = liveCount >= expected;
-  let itemStatus: "approved" | "awaiting_review" | "action_needed" | "missing";
-  if (rejectedCount > 0) {
-    itemStatus = "action_needed";
-  } else if (pendingCount > 0) {
-    itemStatus = "awaiting_review";
-  } else if (capacityReached && approvedCount === liveCount && liveCount > 0) {
-    itemStatus = "approved";
-  } else {
-    itemStatus = "missing";
-  }
-  return {
-    approvedCount,
-    pendingCount,
-    rejectedCount,
-    liveCount,
-    capacityReached,
-    itemStatus,
-  };
+function VersionBadge({ version }: { version: number }) {
+  return (
+    <span className="rounded border border-[var(--border)] bg-[var(--muted)] px-1 py-0.5 font-mono text-[10px] text-[var(--muted-foreground)]">
+      v{version}
+    </span>
+  );
 }
-
-// ============================================================================
-// Reject dialog — shared between single and multi-file branches
-// ============================================================================
 
 function RejectDialog({
   open,
@@ -230,13 +209,12 @@ function RejectDialog({
         <DialogHeader>
           <DialogTitle>Reject document</DialogTitle>
           <DialogDescription>
-            Tell the document officer what needs to change. The reason is
-            shown on the case page until a replacement is uploaded.
+            Tell the client what needs to change. The reason shows on the case
+            until a replacement is uploaded.
           </DialogDescription>
         </DialogHeader>
-
         <label className="block text-sm">
-          <span className="block text-xs font-medium text-stone-600">
+          <span className="block text-xs font-medium text-[var(--muted-foreground)]">
             Reason
           </span>
           <textarea
@@ -246,33 +224,30 @@ function RejectDialog({
             maxLength={500}
             disabled={pending}
             placeholder="e.g. Passport photo page is blurry; need a clearer scan."
-            className="mt-1 w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/30 disabled:opacity-60"
+            className="mt-1 w-full rounded-md border border-[var(--border)] bg-white px-3 py-2 text-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/30 disabled:opacity-60"
           />
         </label>
-
         {error && (
           <p
             role="alert"
-            className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            className="rounded-md border border-[var(--destructive-subtle)] bg-[var(--destructive-subtle)] px-3 py-2 text-sm text-[var(--destructive-text)]"
           >
             {error}
           </p>
         )}
-
         <DialogFooter>
           <Button variant="outline" onClick={onCancel} disabled={pending}>
             Cancel
           </Button>
           <Button
-            variant="default"
             onClick={onConfirm}
             disabled={pending || !reason.trim()}
-            className="bg-red-700 text-white hover:bg-red-800"
+            className="bg-[var(--destructive)] text-[var(--destructive-foreground)] hover:bg-[var(--destructive)]/90"
           >
             {pending ? (
               <>
                 <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                Rejecting…
+                Rejecting
               </>
             ) : (
               "Reject"
@@ -284,725 +259,49 @@ function RejectDialog({
   );
 }
 
-// ============================================================================
-// Validator shared between the legacy and per-file file inputs
-// ============================================================================
+// ---------------------------------------------------------------------------
+// FileUnit - one live file: chip + status + view + review/replace actions.
+// Reused by single requirements (no index) and multi lines (with a label).
+// ---------------------------------------------------------------------------
 
-function validateFile(file: File): string | null {
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return `File exceeds the 4MB limit (${formatBytesMb(file.size)} MB). Compress or split before uploading.`;
-  }
-  if (!ALLOWED_MIME_TYPES_SET.has(file.type)) {
-    return `File type ${file.type || "unknown"} is not allowed. Use ${ALLOWED_EXTENSIONS_HUMAN}.`;
-  }
-  return null;
-}
-
-// ============================================================================
-// Main row
-// ============================================================================
-
-export function DocumentRow(props: DocumentRowProps) {
-  const { files } = props;
-  // Multi-file UI kicks in the moment a slot has more than one live
-  // file. expected_quantity USED to also trigger this; it no longer
-  // does — every slot accepts an unlimited number of files now.
-  // Slots with 0 or 1 files render the compact single-file UI plus a
-  // small "+ Add another file" affordance so staff/clients can grow
-  // the slot without staff having to set quantity ahead of time.
-  const isMulti = files.length > 1;
-  return isMulti ? <MultiFileRow {...props} /> : <SingleFileRow {...props} />;
-}
-
-// ============================================================================
-// SingleFileRow — preserves the legacy single-file UI verbatim, with one
-// change: the OneDrive ExternalLink is replaced by an in-app View button
-// that opens FileViewerDialog. OneDrive URLs no longer reach the browser.
-// ============================================================================
-
-function SingleFileRow({
-  caseId,
-  templateDoc,
-  files,
-  canEditRequired,
-  canReview,
-  canUpload,
-  clientPortalToken,
-}: DocumentRowProps) {
-  const live = files[0] ?? null;
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  // "Add another file" affordance — appears once the slot has its
-  // first live file. Goes to uploadFile (fresh group key, version 1)
-  // instead of the dispatcher so it never gets routed to a re-upload.
-  // After it lands, files.length becomes 2 and the slot re-renders
-  // as MultiFileRow (handled by DocumentRow's isMulti ternary).
-  const addInputRef = useRef<HTMLInputElement>(null);
-  const [addPending, startAddTransition] = useTransition();
-  const [addError, setAddError] = useState<string | null>(null);
-
-  // Required-flag toggle (case-level override).
-  const [isRequired, setIsRequired] = useState(templateDoc.is_required);
-  const [requiredPending, startRequiredTransition] = useTransition();
-  const [requiredError, setRequiredError] = useState<string | null>(null);
-
-  // Review state.
-  const [reviewPending, startReviewTransition] = useTransition();
-  const [reviewError, setReviewError] = useState<string | null>(null);
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-
-  // Viewer state.
-  const [viewerOpen, setViewerOpen] = useState(false);
-
-  function handleToggleRequired(next: boolean) {
-    setRequiredError(null);
-    setIsRequired(next);
-    startRequiredTransition(async () => {
-      const result = await setCaseDocumentRequired({
-        caseId,
-        documentCode: templateDoc.document_code,
-        isRequired: next,
-      });
-      if ("error" in result) {
-        setIsRequired(!next);
-        setRequiredError(result.error);
-      }
-    });
-  }
-
-  function handleAccept() {
-    if (!live) return;
-    setReviewError(null);
-    startReviewTransition(async () => {
-      const result = await reviewDocument({
-        documentId: live.id,
-        decision: "accept",
-      });
-      if ("error" in result) setReviewError(result.error);
-    });
-  }
-
-  function handleReject() {
-    if (!live || !rejectReason.trim()) {
-      setReviewError("Provide a reason.");
-      return;
-    }
-    setReviewError(null);
-    startReviewTransition(async () => {
-      const result = await reviewDocument({
-        documentId: live.id,
-        decision: "reject",
-        reason: rejectReason.trim(),
-      });
-      if ("error" in result) {
-        setReviewError(result.error);
-        return;
-      }
-      setRejectOpen(false);
-      setRejectReason("");
-    });
-  }
-
-  const status: FileStatus | "missing" = live ? fileStatus(live) : "missing";
-  const hasUpload = status !== "missing";
-  const isAccepted = status === "accepted";
-  const isRejected = status === "rejected";
-  const isAwaitingReview = status === "uploaded";
-  const isConditional = templateDoc.condition_label !== null;
-
-  function trigger() {
-    setError(null);
-    inputRef.current?.click();
-  }
-
-  function handleChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    const validation = validateFile(file);
-    if (validation) {
-      setError(validation);
-      return;
-    }
-    const fd = new FormData();
-    fd.append("file", file);
-    startTransition(async () => {
-      // Dispatcher wrappers (uploadDocument / uploadAsClient) auto-
-      // route to uploadFile for fresh slots and reuploadFile for
-      // rejected slots.
-      const result = clientPortalToken
-        ? await uploadAsClient(clientPortalToken, templateDoc.document_code, fd)
-        : await uploadDocument(caseId, templateDoc.document_code, fd);
-      if ("error" in result) setError(result.error);
-    });
-  }
-
-  function triggerAddSibling() {
-    setAddError(null);
-    addInputRef.current?.click();
-  }
-
-  function handleAddSiblingChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    const validation = validateFile(file);
-    if (validation) {
-      setAddError(validation);
-      return;
-    }
-    const fd = new FormData();
-    fd.append("file", file);
-    startAddTransition(async () => {
-      // Always uploadFile (fresh group, version 1) for siblings —
-      // never reuploadFile. The dispatcher would refuse to add a
-      // sibling when the slot already has a non-rejected live row.
-      const result = clientPortalToken
-        ? await uploadFileAsClient(
-            clientPortalToken,
-            templateDoc.document_code,
-            fd,
-          )
-        : await uploadFile(caseId, templateDoc.document_code, fd);
-      if ("error" in result) setAddError(result.error);
-    });
-  }
-
-  return (
-    <li
-      className={cn(
-        "relative flex flex-col gap-2 py-3",
-        pending && "opacity-60",
-      )}
-    >
-      <input
-        ref={inputRef}
-        type="file"
-        hidden
-        accept={ACCEPT}
-        onChange={handleChange}
-      />
-      <input
-        ref={addInputRef}
-        type="file"
-        hidden
-        accept={ACCEPT}
-        onChange={handleAddSiblingChange}
-      />
-
-      <div className="flex items-center gap-3">
-        <StatusIcon status={status} />
-
-        <div className="flex-1 min-w-0">
-          <div
-            className={cn(
-              "flex flex-wrap items-center gap-2 text-sm",
-              isConditional && !hasUpload
-                ? "text-stone-500"
-                : "font-medium text-stone-900",
-            )}
-          >
-            <span>{templateDoc.document_label}</span>
-            {isRequired ? (
-              <span
-                aria-label="Required"
-                title="Required to advance phase"
-                className="text-red-600"
-              >
-                *
-              </span>
-            ) : (
-              <span
-                aria-label="Optional"
-                className="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-stone-500"
-              >
-                Optional
-              </span>
-            )}
-            {isAwaitingReview && <StatusPill status="uploaded" />}
-            {isRejected && <StatusPill status="rejected" />}
-            {canEditRequired && (
-              <label
-                className="ml-2 inline-flex items-center gap-1 text-[11px] font-normal text-stone-500"
-                title="Toggle whether this document is required for this case"
-              >
-                <input
-                  type="checkbox"
-                  checked={isRequired}
-                  onChange={(e) => handleToggleRequired(e.target.checked)}
-                  disabled={requiredPending}
-                  className="h-3 w-3 cursor-pointer"
-                />
-                <span>Required</span>
-              </label>
-            )}
-          </div>
-          {requiredError && (
-            <p className="mt-1 text-xs text-destructive">{requiredError}</p>
-          )}
-          {templateDoc.condition_label && (
-            <div className="mt-0.5 text-xs text-stone-500">
-              {templateDoc.condition_label}
-            </div>
-          )}
-          {templateDoc.instructions && (
-            <div className="mt-0.5 text-xs text-stone-500">
-              {templateDoc.instructions}
-            </div>
-          )}
-          {error && (
-            <p role="alert" className="mt-1 text-xs text-destructive">
-              {error}
-            </p>
-          )}
-          {addError && (
-            <p role="alert" className="mt-1 text-xs text-destructive">
-              {addError}
-            </p>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1">
-          {hasUpload && live?.file_name && (
-            <span
-              className="max-w-[160px] truncate text-xs text-stone-500"
-              title={live.file_name}
-            >
-              {live.file_name}
-            </span>
-          )}
-          {hasUpload && live && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setViewerOpen(true)}
-              title="View file"
-              aria-label="View file"
-            >
-              <Eye className="h-3.5 w-3.5" />
-            </Button>
-          )}
-
-          {/* Reviewer controls — only on the latest upload that's still
-              awaiting review. Once accepted/rejected, controls hide. */}
-          {canReview && isAwaitingReview && (
-            <>
-              <Button
-                size="sm"
-                variant="default"
-                onClick={handleAccept}
-                disabled={reviewPending}
-                title="Accept this document"
-              >
-                {reviewPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <>
-                    <Check className="mr-1 h-3.5 w-3.5" />
-                    Approve
-                  </>
-                )}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setRejectOpen(true)}
-                disabled={reviewPending}
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-              >
-                <X className="mr-1 h-3.5 w-3.5" />
-                Reject
-              </Button>
-            </>
-          )}
-
-          {canUpload && (
-            <Button
-              variant={hasUpload ? "ghost" : "outline"}
-              size="sm"
-              onClick={trigger}
-              disabled={pending || isAccepted || isAwaitingReview}
-              title={
-                isAccepted
-                  ? "Already approved"
-                  : isAwaitingReview
-                    ? "Awaiting review — wait for the reviewer to act before replacing"
-                    : isRejected
-                      ? "Re-upload to replace the rejected version"
-                      : "Upload"
-              }
-            >
-              {pending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : hasUpload ? (
-                <UploadIcon className="h-3.5 w-3.5" />
-              ) : (
-                <>
-                  <UploadIcon className="mr-1 h-3.5 w-3.5" />
-                  Upload
-                </>
-              )}
-            </Button>
-          )}
-
-          {/* "+ Add another file" — only appears once the slot already
-              has a non-rejected file. Rejected files use the Upload
-              button above (re-upload replaces the rejected version).
-              Adding a sibling here transitions the slot to the
-              MultiFileRow renderer on next render. */}
-          {canUpload && hasUpload && !isRejected && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={triggerAddSibling}
-              disabled={addPending}
-              title="Add another file to this slot"
-            >
-              {addPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <>
-                  <Plus className="mr-1 h-3.5 w-3.5" />
-                  Add another
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {isRejected && live?.rejection_reason && (
-        <div className="ml-9 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
-          <span className="font-semibold">Reviewer note:</span>{" "}
-          {live.rejection_reason}
-          {canUpload && (
-            <span className="ml-2 text-red-800">
-              Re-upload using the button above to replace this version.
-            </span>
-          )}
-        </div>
-      )}
-
-      {reviewError && (
-        <p role="alert" className="ml-9 text-xs text-destructive">
-          {reviewError}
-        </p>
-      )}
-
-      {live && (
-        <FileViewerDialog
-          fileId={live.id}
-          fileName={live.file_name ?? `file-${live.id.slice(0, 8)}`}
-          mimeType={live.mime_type}
-          versionNumber={live.version_number}
-          open={viewerOpen}
-          onOpenChange={setViewerOpen}
-          reviewSlot={
-            canReview && isAwaitingReview ? (
-              <>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    handleAccept();
-                    setViewerOpen(false);
-                  }}
-                  disabled={reviewPending}
-                >
-                  <Check className="mr-1 h-3.5 w-3.5" />
-                  Approve
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setViewerOpen(false);
-                    setRejectOpen(true);
-                  }}
-                  disabled={reviewPending}
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <X className="mr-1 h-3.5 w-3.5" />
-                  Reject
-                </Button>
-              </>
-            ) : undefined
-          }
-        />
-      )}
-
-      <RejectDialog
-        open={rejectOpen}
-        pending={reviewPending}
-        reason={rejectReason}
-        error={reviewError}
-        onReasonChange={setRejectReason}
-        onCancel={() => {
-          setRejectOpen(false);
-          setRejectReason("");
-          setReviewError(null);
-        }}
-        onConfirm={handleReject}
-      />
-    </li>
-  );
-}
-
-// ============================================================================
-// MultiFileRow — summary line + indented sub-list of file rows. Each file
-// row has its own Approve / Reject / View / Re-upload controls bound to
-// the file's id and file_group_key.
-// ============================================================================
-
-function MultiFileRow({
-  caseId,
-  templateDoc,
-  files,
-  canEditRequired,
-  canReview,
-  canUpload,
-  clientPortalToken,
-}: DocumentRowProps) {
-  const addInputRef = useRef<HTMLInputElement>(null);
-  const [addPending, startAddTransition] = useTransition();
-  const [addError, setAddError] = useState<string | null>(null);
-
-  const [isRequired, setIsRequired] = useState(templateDoc.is_required);
-  const [requiredPending, startRequiredTransition] = useTransition();
-  const [requiredError, setRequiredError] = useState<string | null>(null);
-
-  function handleToggleRequired(next: boolean) {
-    setRequiredError(null);
-    setIsRequired(next);
-    startRequiredTransition(async () => {
-      const result = await setCaseDocumentRequired({
-        caseId,
-        documentCode: templateDoc.document_code,
-        isRequired: next,
-      });
-      if ("error" in result) {
-        setIsRequired(!next);
-        setRequiredError(result.error);
-      }
-    });
-  }
-
-  function triggerAdd() {
-    setAddError(null);
-    addInputRef.current?.click();
-  }
-
-  function handleAddChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    const validation = validateFile(file);
-    if (validation) {
-      setAddError(validation);
-      return;
-    }
-    const fd = new FormData();
-    fd.append("file", file);
-    startAddTransition(async () => {
-      // Sibling additions go straight to the new uploadFile /
-      // uploadFileAsClient action (fresh group key, version 1).
-      const result = clientPortalToken
-        ? await uploadFileAsClient(
-            clientPortalToken,
-            templateDoc.document_code,
-            fd,
-          )
-        : await uploadFile(caseId, templateDoc.document_code, fd);
-      if ("error" in result) setAddError(result.error);
-    });
-  }
-
-  const summary = deriveItemSummary(files, templateDoc.expected_quantity);
-  const isConditional = templateDoc.condition_label !== null;
-  // No more upper bound on file count. Staff/clients can keep adding
-  // siblings — useful for multi-page passports, multi-month bank
-  // statements, etc. The slot turns "received" the moment any one
-  // file lands in uploaded|accepted.
-  const canAddMore = canUpload;
-  const sortedFiles = [...files].sort((a, b) =>
-    a.created_at.localeCompare(b.created_at),
-  );
-
-  return (
-    <li className="relative flex flex-col gap-2 py-3">
-      <input
-        ref={addInputRef}
-        type="file"
-        hidden
-        accept={ACCEPT}
-        onChange={handleAddChange}
-      />
-
-      <div className="flex items-center gap-3">
-        <StatusIcon
-          status={
-            summary.itemStatus === "approved"
-              ? "accepted"
-              : summary.itemStatus === "action_needed"
-                ? "rejected"
-                : summary.itemStatus === "awaiting_review"
-                  ? "uploaded"
-                  : "missing"
-          }
-        />
-
-        <div className="flex-1 min-w-0">
-          <div
-            className={cn(
-              "flex flex-wrap items-center gap-2 text-sm",
-              isConditional && summary.liveCount === 0
-                ? "text-stone-500"
-                : "font-medium text-stone-900",
-            )}
-          >
-            <span>{templateDoc.document_label}</span>
-            {isRequired ? (
-              <span
-                aria-label="Required"
-                title="Required to advance phase"
-                className="text-red-600"
-              >
-                *
-              </span>
-            ) : (
-              <span
-                aria-label="Optional"
-                className="rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-stone-500"
-              >
-                Optional
-              </span>
-            )}
-            {summary.approvedCount > 0 && (
-              <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-800">
-                {summary.approvedCount} approved
-              </span>
-            )}
-            {summary.pendingCount > 0 && (
-              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-800">
-                {summary.pendingCount} awaiting review
-              </span>
-            )}
-            {summary.rejectedCount > 0 && (
-              <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-800">
-                {summary.rejectedCount} action needed
-              </span>
-            )}
-            {canEditRequired && (
-              <label className="ml-2 inline-flex items-center gap-1 text-[11px] font-normal text-stone-500">
-                <input
-                  type="checkbox"
-                  checked={isRequired}
-                  onChange={(e) => handleToggleRequired(e.target.checked)}
-                  disabled={requiredPending}
-                  className="h-3 w-3 cursor-pointer"
-                />
-                <span>Required</span>
-              </label>
-            )}
-          </div>
-          {requiredError && (
-            <p className="mt-1 text-xs text-destructive">{requiredError}</p>
-          )}
-          {templateDoc.condition_label && (
-            <div className="mt-0.5 text-xs text-stone-500">
-              {templateDoc.condition_label}
-            </div>
-          )}
-          {templateDoc.instructions && (
-            <div className="mt-0.5 text-xs text-stone-500">
-              {templateDoc.instructions}
-            </div>
-          )}
-          {addError && (
-            <p role="alert" className="mt-1 text-xs text-destructive">
-              {addError}
-            </p>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1">
-          {canAddMore && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={triggerAdd}
-              disabled={addPending}
-              title="Add another file to this slot"
-            >
-              {addPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <>
-                  <Plus className="mr-1 h-3.5 w-3.5" />
-                  Add another file
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {sortedFiles.length > 0 && (
-        <ul className="ml-9 mt-1 space-y-1 border-l-2 border-stone-100 pl-3">
-          {sortedFiles.map((f, idx) => (
-            <FileLine
-              key={f.id}
-              file={f}
-              indexLabel={`#${idx + 1}`}
-              canReview={canReview}
-              canUpload={canUpload}
-              clientPortalToken={clientPortalToken}
-            />
-          ))}
-        </ul>
-      )}
-    </li>
-  );
-}
-
-// ============================================================================
-// FileLine — one row in the multi-file sub-list. Carries its own review
-// + viewer + reupload state since each file is an independent unit.
-// ============================================================================
-
-function FileLine({
+function FileUnit({
   file,
-  indexLabel,
+  documentCode,
+  label,
+  replaceLabel,
   canReview,
   canUpload,
   clientPortalToken,
 }: {
   file: FileRow;
-  indexLabel: string;
+  documentCode: string;
+  label?: string;
+  replaceLabel: string;
   canReview: boolean;
   canUpload: boolean;
   clientPortalToken?: string;
 }) {
-  const reuploadRef = useRef<HTMLInputElement>(null);
-  const [reuploadPending, startReuploadTransition] = useTransition();
-  const [reuploadError, setReuploadError] = useState<string | null>(null);
-
-  const [reviewPending, startReviewTransition] = useTransition();
+  const replaceRef = useRef<HTMLInputElement>(null);
+  const [replacePending, startReplace] = useTransition();
+  const [replaceError, setReplaceError] = useState<string | null>(null);
+  const [reviewPending, startReview] = useTransition();
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-
   const [viewerOpen, setViewerOpen] = useState(false);
 
-  const status = fileStatus(file);
-  const isAwaiting = status === "uploaded";
+  const status = fileStatus(file.status);
+  const isAwaiting = status === "awaiting_review";
   const isRejected = status === "rejected";
+  const parsed = parseDocumentFileName(
+    file.file_name,
+    documentCode,
+    file.version_number,
+  );
 
   function handleAccept() {
     setReviewError(null);
-    startReviewTransition(async () => {
+    startReview(async () => {
       const result = await reviewDocument({
         documentId: file.id,
         decision: "accept",
@@ -1017,7 +316,7 @@ function FileLine({
       return;
     }
     setReviewError(null);
-    startReviewTransition(async () => {
+    startReview(async () => {
       const result = await reviewDocument({
         documentId: file.id,
         decision: "reject",
@@ -1032,71 +331,64 @@ function FileLine({
     });
   }
 
-  function triggerReupload() {
-    setReuploadError(null);
-    reuploadRef.current?.click();
+  function triggerReplace() {
+    setReplaceError(null);
+    replaceRef.current?.click();
   }
 
-  function handleReuploadChange(e: ChangeEvent<HTMLInputElement>) {
+  function handleReplace(e: ChangeEvent<HTMLInputElement>) {
     const upload = e.target.files?.[0];
     e.target.value = "";
     if (!upload) return;
     const validation = validateFile(upload);
     if (validation) {
-      setReuploadError(validation);
+      setReplaceError(validation);
       return;
     }
     const fd = new FormData();
     fd.append("file", upload);
-    startReuploadTransition(async () => {
+    startReplace(async () => {
       const result = clientPortalToken
-        ? await reuploadFileAsClient(
-            clientPortalToken,
-            file.file_group_key,
-            fd,
-          )
+        ? await reuploadFileAsClient(clientPortalToken, file.file_group_key, fd)
         : await reuploadFile(file.file_group_key, fd);
-      if ("error" in result) setReuploadError(result.error);
+      if ("error" in result) setReplaceError(result.error);
     });
   }
 
   return (
-    <li
-      className={cn(
-        "flex flex-col gap-1 py-1",
-        (reuploadPending || reviewPending) && "opacity-60",
-      )}
-    >
+    <div className={cn(replacePending || reviewPending ? "opacity-60" : "")}>
       <input
-        ref={reuploadRef}
+        ref={replaceRef}
         type="file"
         hidden
         accept={ACCEPT}
-        onChange={handleReuploadChange}
+        onChange={handleReplace}
       />
-
       <div className="flex items-center gap-2 text-xs">
-        <span className="font-mono text-[10px] text-stone-400">
-          {indexLabel}
-        </span>
-        <span
-          className="min-w-0 max-w-[220px] truncate text-stone-700"
-          title={file.file_name ?? undefined}
-        >
-          {file.file_name ?? "file"}
-        </span>
-        {file.version_number > 1 && (
-          <span className="rounded bg-stone-100 px-1 py-0.5 font-mono text-[10px] text-stone-600">
-            v{file.version_number}
+        {label && (
+          <span className="shrink-0 font-medium text-[var(--foreground)]">
+            {label}
           </span>
         )}
+        <span
+          className="min-w-0 max-w-[220px] truncate font-mono text-[var(--muted-foreground)]"
+          title={parsed.originalName}
+        >
+          {parsed.originalName}
+        </span>
+        <VersionBadge version={parsed.version} />
         <StatusPill status={status} />
+        {file.uploaded_by_client === false && (
+          <span className="rounded bg-[var(--muted)] px-1 py-0.5 text-[10px] text-[var(--navy-700)]">
+            Added by the firm
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-1">
           <Button
             size="sm"
             variant="ghost"
             onClick={() => setViewerOpen(true)}
-            aria-label="View"
+            aria-label={`View ${parsed.originalName}`}
             title="View"
           >
             <Eye className="h-3.5 w-3.5" />
@@ -1107,7 +399,8 @@ function FileLine({
                 size="sm"
                 onClick={handleAccept}
                 disabled={reviewPending}
-                title="Accept this file"
+                className="bg-[var(--navy)] text-white hover:bg-[var(--navy-800)]"
+                aria-label="Approve this file"
               >
                 {reviewPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1120,10 +413,11 @@ function FileLine({
               </Button>
               <Button
                 size="sm"
-                variant="outline"
+                variant="ghost"
                 onClick={() => setRejectOpen(true)}
                 disabled={reviewPending}
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                className="text-[var(--destructive-text)] hover:bg-[var(--destructive-subtle)] hover:text-[var(--destructive-text)]"
+                aria-label="Reject this file"
               >
                 <X className="mr-1 h-3.5 w-3.5" />
                 Reject
@@ -1133,17 +427,17 @@ function FileLine({
           {canUpload && isRejected && (
             <Button
               size="sm"
-              variant="outline"
-              onClick={triggerReupload}
-              disabled={reuploadPending}
-              title="Replace this rejected file"
+              onClick={triggerReplace}
+              disabled={replacePending}
+              className="bg-[var(--navy)] text-white hover:bg-[var(--navy-800)]"
+              aria-label={replaceLabel}
             >
-              {reuploadPending ? (
+              {replacePending ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <>
                   <UploadIcon className="mr-1 h-3.5 w-3.5" />
-                  Re-upload
+                  {replaceLabel}
                 </>
               )}
             </Button>
@@ -1152,26 +446,26 @@ function FileLine({
       </div>
 
       {isRejected && file.rejection_reason && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] text-red-900">
-          <span className="font-semibold">Reviewer note:</span>{" "}
-          {file.rejection_reason}
-        </div>
+        <p className="mt-1 text-[11px]">
+          <span className="text-[var(--destructive-text)]">
+            {file.rejection_reason}
+          </span>
+        </p>
       )}
-
-      {reuploadError && (
-        <p role="alert" className="text-[11px] text-destructive">
-          {reuploadError}
+      {replaceError && (
+        <p role="alert" className="mt-1 text-[11px] text-[var(--destructive-text)]">
+          {replaceError}
         </p>
       )}
       {reviewError && (
-        <p role="alert" className="text-[11px] text-destructive">
+        <p role="alert" className="mt-1 text-[11px] text-[var(--destructive-text)]">
           {reviewError}
         </p>
       )}
 
       <FileViewerDialog
         fileId={file.id}
-        fileName={file.file_name ?? `file-${file.id.slice(0, 8)}`}
+        fileName={parsed.originalName}
         mimeType={file.mime_type}
         versionNumber={file.version_number}
         open={viewerOpen}
@@ -1186,19 +480,20 @@ function FileLine({
                   setViewerOpen(false);
                 }}
                 disabled={reviewPending}
+                className="bg-[var(--navy)] text-white hover:bg-[var(--navy-800)]"
               >
                 <Check className="mr-1 h-3.5 w-3.5" />
                 Approve
               </Button>
               <Button
                 size="sm"
-                variant="outline"
+                variant="ghost"
                 onClick={() => {
                   setViewerOpen(false);
                   setRejectOpen(true);
                 }}
                 disabled={reviewPending}
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                className="text-[var(--destructive-text)] hover:bg-[var(--destructive-subtle)] hover:text-[var(--destructive-text)]"
               >
                 <X className="mr-1 h-3.5 w-3.5" />
                 Reject
@@ -1221,6 +516,429 @@ function FileLine({
         }}
         onConfirm={handleReject}
       />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Version history - lists every version (incl. superseded) for the slot.
+// ---------------------------------------------------------------------------
+
+function VersionHistory({
+  history,
+  documentCode,
+  reviewerNameById,
+}: {
+  history: FileRow[];
+  documentCode: string;
+  reviewerNameById?: Record<string, string>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [viewerId, setViewerId] = useState<string | null>(null);
+
+  return (
+    <div className="ml-9 mt-1">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="inline-flex items-center gap-1 text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+      >
+        <ChevronDown
+          className={cn("h-3 w-3 transition-transform", open && "rotate-180")}
+        />
+        Version history ({history.length})
+      </button>
+      {open && (
+        <ul className="mt-1 space-y-1 border-l-2 border-[var(--border)] pl-3">
+          {history.map((h) => {
+            const parsed = parseDocumentFileName(
+              h.file_name,
+              documentCode,
+              h.version_number,
+            );
+            const status = fileStatus(h.status);
+            const reviewer = h.reviewed_by
+              ? reviewerNameById?.[h.reviewed_by]
+              : undefined;
+            return (
+              <li key={h.id} className="flex flex-col gap-0.5 text-[11px]">
+                <div className="flex items-center gap-2">
+                  <VersionBadge version={parsed.version} />
+                  <span
+                    className="min-w-0 max-w-[200px] truncate font-mono text-[var(--muted-foreground)]"
+                    title={parsed.originalName}
+                  >
+                    {parsed.originalName}
+                  </span>
+                  {h.status === "superseded" ? (
+                    <span className="text-[var(--subtle-foreground)]">
+                      Replaced
+                    </span>
+                  ) : (
+                    <StatusPill status={status} />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setViewerId(h.id)}
+                    aria-label={`View version ${parsed.version}`}
+                    className="ml-auto inline-flex items-center gap-1 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                  >
+                    <Eye className="h-3 w-3" />
+                    View
+                  </button>
+                </div>
+                {h.rejection_reason && (
+                  <p className="pl-1">
+                    <span className="text-[var(--destructive-text)]">
+                      {h.rejection_reason}
+                    </span>
+                    {reviewer && (
+                      <span className="text-[var(--muted-foreground)]">
+                        {" "}
+                        by {reviewer}
+                      </span>
+                    )}
+                  </p>
+                )}
+                {viewerId === h.id && (
+                  <FileViewerDialog
+                    fileId={h.id}
+                    fileName={parsed.originalName}
+                    mimeType={h.mime_type}
+                    versionNumber={h.version_number}
+                    open={viewerId === h.id}
+                    onOpenChange={(o) => setViewerId(o ? h.id : null)}
+                  />
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Required edit affordance - a small pencil that reveals a labelled toggle,
+// keeping the status line a clean display of state.
+// ---------------------------------------------------------------------------
+
+function RequiredEdit({
+  caseId,
+  documentCode,
+  isRequired,
+}: {
+  caseId: string;
+  documentCode: string;
+  isRequired: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(isRequired);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function toggle(next: boolean) {
+    setError(null);
+    setValue(next);
+    startTransition(async () => {
+      const result = await setCaseDocumentRequired({
+        caseId,
+        documentCode,
+        isRequired: next,
+      });
+      if ("error" in result) {
+        setValue(!next);
+        setError(result.error);
+      }
+    });
+  }
+
+  return (
+    <span className="relative inline-flex items-center">
+      <button
+        type="button"
+        onClick={() => setEditing((v) => !v)}
+        aria-label="Edit whether this document is required"
+        title="Edit requirement"
+        className="rounded p-1 text-[var(--subtle-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+      >
+        <Pencil className="h-3 w-3" />
+      </button>
+      {editing && (
+        <span className="absolute left-0 top-6 z-10 w-max rounded-md border border-[var(--border)] bg-white p-2 shadow">
+          <label className="flex items-center gap-2 text-xs text-[var(--foreground)]">
+            <input
+              type="checkbox"
+              checked={value}
+              onChange={(e) => toggle(e.target.checked)}
+              disabled={pending}
+              className="h-3.5 w-3.5 accent-[var(--navy)]"
+            />
+            Required for this case
+          </label>
+          {error && (
+            <span className="mt-1 block text-[11px] text-[var(--destructive-text)]">
+              {error}
+            </span>
+          )}
+        </span>
+      )}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main row
+// ---------------------------------------------------------------------------
+
+export function DocumentRow({
+  caseId,
+  templateDoc,
+  files,
+  history = [],
+  reviewerNameById,
+  categoryLabel,
+  canEditRequired,
+  canReview,
+  canUpload,
+  clientPortalToken,
+  caseShareToken,
+  clientEmail,
+}: DocumentRowProps) {
+  const allowsMultiple = templateDoc.allows_multiple ?? false;
+  const state = deriveRequirementState(files);
+
+  // Requirement-level upload (no files yet, or single-file fresh upload).
+  const uploadRef = useRef<HTMLInputElement>(null);
+  const [uploadPending, startUpload] = useTransition();
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Add another (multi sibling, always a fresh group / version 1).
+  const addRef = useRef<HTMLInputElement>(null);
+  const [addPending, startAdd] = useTransition();
+  const [addError, setAddError] = useState<string | null>(null);
+
+  function triggerUpload() {
+    setUploadError(null);
+    uploadRef.current?.click();
+  }
+  function handleUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const validation = validateFile(file);
+    if (validation) {
+      setUploadError(validation);
+      return;
+    }
+    const fd = new FormData();
+    fd.append("file", file);
+    startUpload(async () => {
+      const result = clientPortalToken
+        ? await uploadAsClient(clientPortalToken, templateDoc.document_code, fd)
+        : await uploadDocument(caseId, templateDoc.document_code, fd);
+      if ("error" in result) setUploadError(result.error);
+    });
+  }
+
+  function triggerAdd() {
+    setAddError(null);
+    addRef.current?.click();
+  }
+  function handleAdd(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const validation = validateFile(file);
+    if (validation) {
+      setAddError(validation);
+      return;
+    }
+    const fd = new FormData();
+    fd.append("file", file);
+    startAdd(async () => {
+      const result = clientPortalToken
+        ? await uploadFileAsClient(
+            clientPortalToken,
+            templateDoc.document_code,
+            fd,
+          )
+        : await uploadFile(caseId, templateDoc.document_code, fd);
+      if ("error" in result) setAddError(result.error);
+    });
+  }
+
+  const label = templateDoc.document_label;
+  const noun = label || "file";
+  const hasHistory = history.length > files.length;
+  const isStaff = !clientPortalToken;
+
+  return (
+    <li className="flex flex-col gap-2 py-3">
+      <input
+        ref={uploadRef}
+        type="file"
+        hidden
+        accept={ACCEPT}
+        onChange={handleUpload}
+      />
+      <input
+        ref={addRef}
+        type="file"
+        hidden
+        accept={ACCEPT}
+        onChange={handleAdd}
+      />
+
+      {/* Header: status mark, name, category, required/optional, edit. */}
+      <div className="flex items-start gap-3">
+        <StatusMark state={state} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-medium text-[var(--foreground)]">
+              {label}
+            </span>
+            {categoryLabel && (
+              <span className="text-[11px] uppercase tracking-wide text-[var(--subtle-foreground)]">
+                {categoryLabel}
+              </span>
+            )}
+            {templateDoc.is_required ? (
+              <span className="rounded-full bg-[var(--navy-100)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--navy-700)]">
+                Required
+              </span>
+            ) : (
+              <span className="rounded-full bg-[var(--muted)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted-foreground)]">
+                Optional
+              </span>
+            )}
+            {canEditRequired && (
+              <RequiredEdit
+                caseId={caseId}
+                documentCode={templateDoc.document_code}
+                isRequired={templateDoc.is_required}
+              />
+            )}
+          </div>
+          {templateDoc.condition_label && (
+            <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+              {templateDoc.condition_label}
+            </p>
+          )}
+          {templateDoc.instructions && (
+            <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+              {templateDoc.instructions}
+            </p>
+          )}
+        </div>
+
+        {/* Requirement-level actions on the right. */}
+        <div className="flex shrink-0 items-center gap-2">
+          {state === "not_uploaded" && canUpload && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={triggerUpload}
+              disabled={uploadPending}
+              aria-label={`Upload ${label}`}
+            >
+              {uploadPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <>
+                  <UploadIcon className="mr-1 h-3.5 w-3.5" />
+                  Upload
+                </>
+              )}
+            </Button>
+          )}
+          {state === "needs_new_file" && isStaff && canUpload && (
+            <ShareLinkDialog
+              caseId={caseId}
+              initialToken={caseShareToken ?? null}
+              clientEmail={clientEmail ?? null}
+              triggerLabel="Ask client to re-upload"
+              triggerVariant="outline"
+            />
+          )}
+        </div>
+      </div>
+
+      {uploadError && (
+        <p role="alert" className="ml-9 text-xs text-[var(--destructive-text)]">
+          {uploadError}
+        </p>
+      )}
+
+      {/* File body. */}
+      {files.length > 0 &&
+        (allowsMultiple ? (
+          <div className="ml-9 rounded-md border border-[var(--border)] bg-[var(--muted)]/40">
+            <ul className="divide-y divide-[var(--border)]">
+              {files.map((f, idx) => (
+                <li key={f.id} className="px-3 py-2">
+                  <FileUnit
+                    file={f}
+                    documentCode={templateDoc.document_code}
+                    label={`${noun} ${idx + 1}`}
+                    replaceLabel="Replace"
+                    canReview={canReview}
+                    canUpload={canUpload}
+                    clientPortalToken={clientPortalToken}
+                  />
+                </li>
+              ))}
+            </ul>
+            {canUpload && (
+              <div className="border-t border-[var(--border)] p-2">
+                <button
+                  type="button"
+                  onClick={triggerAdd}
+                  disabled={addPending}
+                  className="inline-flex items-center gap-1 rounded-md border border-dashed border-[var(--border-secondary)] px-2.5 py-1 text-xs text-[var(--subtle-foreground)] hover:bg-[var(--muted)] disabled:opacity-60"
+                >
+                  {addPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="h-3.5 w-3.5" />
+                      Add another {noun}
+                    </>
+                  )}
+                </button>
+                {addError && (
+                  <p
+                    role="alert"
+                    className="mt-1 text-[11px] text-[var(--destructive-text)]"
+                  >
+                    {addError}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="ml-9">
+            <FileUnit
+              file={files[0]}
+              documentCode={templateDoc.document_code}
+              replaceLabel="Upload replacement"
+              canReview={canReview}
+              canUpload={canUpload}
+              clientPortalToken={clientPortalToken}
+            />
+          </div>
+        ))}
+
+      {hasHistory && (
+        <VersionHistory
+          history={history}
+          documentCode={templateDoc.document_code}
+          reviewerNameById={reviewerNameById}
+        />
+      )}
     </li>
   );
 }

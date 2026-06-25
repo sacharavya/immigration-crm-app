@@ -69,6 +69,10 @@ export type RawClientRow = {
   missing_required_docs: number;
   // Derived from approved case service type
   immigration_status_detail: string | null; // e.g. "Work Permit - SOWP"
+  // Immigration status inferred from the approved case's service type when the
+  // client record has none stored. Display-only fallback so the worklist reads
+  // consistently; approved decisions only (a refusal grants no status).
+  immigration_status_inferred: ImmigrationStatusType | null;
   // Decision outcome from events (persists after case is closed)
   last_decision_status: string | null; // "passport_requested" or "refused"
 };

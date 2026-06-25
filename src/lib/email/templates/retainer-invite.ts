@@ -31,7 +31,7 @@ export function retainerInviteEmail(args: Args): {
   const bodyHtml = `${greeting}
 ${buttonHtml("Sign retainer agreement", args.signingUrl)}
 <p style="margin:0 0 12px 0;color:#57534e;font-size:14px;">This link expires on <strong>${escapeHtml(expiry)}</strong>.</p>
-<p style="margin:24px 0 0 0;">If you have any questions, simply reply to this email or contact Shasi at +1 416-386-5351.</p>`;
+<p style="margin:24px 0 0 0;">If you have any questions, email us at info@bigbangimmigration.com or contact Shasi at +1 416-386-5351.</p>`;
 
   const text = `Hello ${args.clientName},
 
@@ -41,7 +41,7 @@ Sign here: ${args.signingUrl}
 
 This link expires on ${expiry}.
 
-If you have any questions, reply to this email or contact Shasi at +1 416-386-5351.
+If you have any questions, email us at info@bigbangimmigration.com or contact Shasi at +1 416-386-5351.
 
 Big Bang Immigration Consulting Inc.
 211-2390 Eglinton Avenue East

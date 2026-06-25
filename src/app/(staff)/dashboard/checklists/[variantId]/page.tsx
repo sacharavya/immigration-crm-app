@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllowsMultipleByDocId } from "@/lib/files/template-docs";
 
 import {
   VariantEditorShell,
@@ -106,6 +107,12 @@ export default async function VariantEditorPage({ params, searchParams }: Props)
 
   const allTemplates = templates ?? [];
   const allDocs = docs ?? [];
+  // Tolerant read so a missing column never blanks the editor (see
+  // fetchAllowsMultipleByDocId). Defaults to single (false) when absent.
+  const allowsMultipleById = await fetchAllowsMultipleByDocId(
+    supabase,
+    allDocs.map((d) => d.id),
+  );
 
   // Pick the selected version. Order of preference:
   //   1. ?v=<id> if it matches a real template.
@@ -158,6 +165,7 @@ export default async function VariantEditorPage({ params, searchParams }: Props)
           maxFileSizeMb: d.max_file_size_mb,
           instructions: d.instructions,
           expectedQuantity: d.expected_quantity,
+          allowsMultiple: allowsMultipleById[d.id] ?? false,
           displayOrder: d.display_order,
         }))
     : [];

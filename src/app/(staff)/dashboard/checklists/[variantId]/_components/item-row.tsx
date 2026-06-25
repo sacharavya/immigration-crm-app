@@ -19,6 +19,7 @@ export type ItemDraft = {
   allowedFileTypes: string[] | null;
   maxFileSizeMb: number | null;
   expectedQuantity: number;
+  allowsMultiple: boolean;
   instructions: string | null;
 };
 
@@ -71,6 +72,7 @@ export function ItemRow({
       arraysEqual(draft.allowedFileTypes, item.allowedFileTypes) &&
       draft.maxFileSizeMb === item.maxFileSizeMb &&
       draft.expectedQuantity === item.expectedQuantity &&
+      draft.allowsMultiple === item.allowsMultiple &&
       draft.instructions === item.instructions
     ) {
       return;
@@ -95,6 +97,7 @@ export function ItemRow({
               | null) ?? null,
           maxFileSizeMb: draft.maxFileSizeMb,
           expectedQuantity: draft.expectedQuantity,
+          allowsMultiple: draft.allowsMultiple,
           instructions: draft.instructions,
         });
         if ("error" in result) {
@@ -241,14 +244,21 @@ export function ItemRow({
         </label>
 
         {/*
-          The per-template "expected quantity" field used to gate
-          whether a slot could accept multiple files. That gate is
-          gone — every slot now accepts unlimited files via the "Add
-          another" affordance in the case checklist. The column is
-          still on ref.template_documents (default 1, kept for
-          backwards compat) but it no longer affects behavior, so
-          we don't expose it here.
+          Multiple-files flag. Off (default) means a single file is expected
+          for this document; on lets the case checklist accept several files
+          for the one slot and show the "Add another" affordance. This
+          replaces the old, now-ignored expected_quantity gate.
         */}
+        <label className="flex items-center gap-1.5 text-stone-600">
+          <input
+            type="checkbox"
+            checked={draft.allowsMultiple}
+            onChange={(e) => setField("allowsMultiple", e.target.checked)}
+            disabled={readonly}
+            className="h-3.5 w-3.5 cursor-pointer accent-[var(--navy)] disabled:cursor-not-allowed"
+          />
+          Multiple files
+        </label>
       </div>
 
       <textarea

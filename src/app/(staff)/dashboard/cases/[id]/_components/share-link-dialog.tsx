@@ -31,6 +31,11 @@ type Props = {
   caseId: string;
   initialToken: string | null;
   clientEmail: string | null;
+  // Optional custom trigger. Defaults to the "Share with client" outline
+  // button. The document row reuses this dialog as "Ask client to re-upload".
+  triggerLabel?: string;
+  triggerVariant?: "outline" | "ghost";
+  triggerClassName?: string;
 };
 
 // Reuses the cross-browser clipboard helper pattern. execCommand
@@ -71,7 +76,14 @@ function buildPortalUrl(token: string): string {
   return `${origin}/upload/${token}`;
 }
 
-export function ShareLinkDialog({ caseId, initialToken, clientEmail }: Props) {
+export function ShareLinkDialog({
+  caseId,
+  initialToken,
+  clientEmail,
+  triggerLabel = "Share with client",
+  triggerVariant = "outline",
+  triggerClassName,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState<string | null>(initialToken);
   const [error, setError] = useState<string | null>(null);
@@ -163,13 +175,14 @@ export function ShareLinkDialog({ caseId, initialToken, clientEmail }: Props) {
   return (
     <>
       <Button
-        variant="outline"
+        variant={triggerVariant}
         size="sm"
         onClick={() => setOpen(true)}
         title="Share an upload link with the client"
+        className={triggerClassName}
       >
         <LinkIcon className="mr-1 h-3.5 w-3.5" />
-        Share with client
+        {triggerLabel}
       </Button>
 
       <Dialog open={open} onOpenChange={(o) => (pending ? null : setOpen(o))}>

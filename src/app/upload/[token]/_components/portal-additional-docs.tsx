@@ -1,15 +1,16 @@
 "use client";
 
 import { format } from "date-fns";
-import { ExternalLink, Loader2, Upload } from "lucide-react";
+import { Check, CircleAlert, CircleDashed, Clock, Loader2, Upload } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils/index";
 
 import { uploadAsClientAdditional } from "../actions";
 
 export type PortalAdditionalDocLatest = {
+  id: string;
   status: string;
   file_name: string | null;
   sharepoint_web_url: string | null;
@@ -32,6 +33,9 @@ export type PortalAdditionalDocsGroup = {
   rows: PortalAdditionalDocRow[];
 };
 
+const ACCEPT =
+  ".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx,application/pdf,image/jpeg,image/png,image/heic,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
 export function PortalAdditionalDocs({
   token,
   groups,
@@ -42,30 +46,29 @@ export function PortalAdditionalDocs({
   if (groups.length === 0) return null;
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-        <p className="font-semibold">IRCC has requested additional documents</p>
-        <p className="mt-1 text-amber-800">
-          Please upload the documents below as soon as possible. Once you
-          upload, our team reviews each one and lets you know if anything
-          needs adjusting.
+      <div className="rounded-xl border border-l-4 border-[var(--warning-subtle)] border-l-[var(--warning)] bg-[var(--warning-subtle)] p-4 text-sm text-[var(--warning-text)]">
+        <p className="font-semibold">We need a few more documents</p>
+        <p className="mt-1">
+          Please add the documents below. We will review each one and let you
+          know if anything needs a new file.
         </p>
       </div>
       {groups.map((g) => (
         <section
           key={g.eventId}
-          className="overflow-hidden rounded-xl border border-amber-200 bg-white"
+          className="overflow-hidden rounded-xl border border-border bg-card"
         >
-          <header className="border-b border-amber-100 bg-amber-50/40 px-4 py-3">
-            <h3 className="text-sm font-semibold text-stone-900">
+          <header className="border-b border-border px-4 py-3">
+            <h3 className="text-sm font-semibold text-foreground">
               Requested {format(new Date(g.requestedAt), "MMM d, yyyy")}
             </h3>
             {g.overallDueDate && (
-              <p className="mt-0.5 text-xs text-amber-800">
-                Due {format(new Date(g.overallDueDate), "MMM d, yyyy")}
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Please send by {format(new Date(g.overallDueDate), "MMM d, yyyy")}
               </p>
             )}
           </header>
-          <ul className="divide-y divide-stone-100">
+          <ul className="divide-y divide-border">
             {g.rows.map((r) => (
               <PortalRow key={r.id} token={token} row={r} />
             ))}
@@ -83,9 +86,15 @@ function PortalRow({
   token: string;
   row: PortalAdditionalDocRow;
 }) {
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  const status = row.latest?.status ?? null;
+  const isRejected = status === "rejected";
+  const isAccepted = status === "accepted";
+  const canView = row.latest && status !== null;
 
   function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -95,103 +104,126 @@ function PortalRow({
     setError(null);
     startTransition(async () => {
       const r = await uploadAsClientAdditional(token, row.id, fd);
-      if ("error" in r) setError(r.error);
       if (inputRef.current) inputRef.current.value = "";
+      if ("error" in r) {
+        setError(r.error);
+        return;
+      }
+      router.refresh();
     });
   }
 
   return (
-    <li className="flex flex-wrap items-start gap-3 px-4 py-3">
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium text-stone-900">
-          {row.customLabel}
-        </div>
-        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-stone-500">
-          <StatusPill status={row.latest?.status ?? null} />
-          {row.dueDate && (
-            <span>Due {format(new Date(row.dueDate), "MMM d, yyyy")}</span>
-          )}
-          {row.latest?.sharepoint_web_url && row.latest.status !== "rejected" && (
-            <a
-              href={row.latest.sharepoint_web_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-stone-600 hover:text-stone-900"
-            >
-              <ExternalLink className="h-3 w-3" />
-              v{row.latest.version_number}
-            </a>
-          )}
-        </div>
-        {row.latest?.status === "rejected" && row.latest.rejection_reason && (
-          <p className="mt-1 rounded-md bg-red-50 px-2 py-1 text-xs text-red-900">
-            <strong>Reviewer note:</strong> {row.latest.rejection_reason}.
-            Please upload a corrected version below.
-          </p>
+    <li className="px-4 py-4">
+      <div className="text-sm font-medium text-foreground">
+        {row.customLabel}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <StatusPill status={status} />
+        {row.dueDate && (
+          <span className="text-xs text-muted-foreground">
+            Please send by {format(new Date(row.dueDate), "MMM d, yyyy")}
+          </span>
+        )}
+        {canView && row.latest && (
+          <a
+            href={`/api/files/${row.latest.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-9 items-center rounded-md px-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
+          >
+            {isRejected ? "View what you sent" : "View"}
+          </a>
         )}
       </div>
-      <div className="flex shrink-0 flex-col items-end gap-1">
-        {row.latest?.status !== "accepted" && (
-          <>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => inputRef.current?.click()}
-              disabled={pending}
-            >
-              {pending ? (
-                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Upload className="mr-1 h-3.5 w-3.5" />
-              )}
-              Upload
-            </Button>
-            <input
-              ref={inputRef}
-              type="file"
-              className="hidden"
-              onChange={onPick}
-            />
-          </>
-        )}
-        {error && (
-          <p className="text-[11px] text-destructive" role="alert">
-            {error}
-          </p>
-        )}
-      </div>
+
+      {isRejected && row.latest?.rejection_reason && (
+        <p className="mt-2 text-sm text-[var(--destructive-text)]">
+          {row.latest.rejection_reason}
+        </p>
+      )}
+
+      {!isAccepted && (
+        <div className="mt-3">
+          <button
+            type="button"
+            aria-label={`${isRejected ? "Replace" : "Upload"} ${row.customLabel}`}
+            onClick={() => inputRef.current?.click()}
+            disabled={pending}
+            className={cn(
+              "inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-[var(--primary-hover)] disabled:opacity-60",
+            )}
+          >
+            {pending ? (
+              <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload aria-hidden className="h-4 w-4" />
+            )}
+            {isRejected ? "Replace file" : "Upload"}
+          </button>
+          <input
+            ref={inputRef}
+            type="file"
+            accept={ACCEPT}
+            className="hidden"
+            onChange={onPick}
+          />
+        </div>
+      )}
+
+      {error && (
+        <p role="alert" className="mt-2 text-xs text-[var(--destructive-text)]">
+          {error}
+        </p>
+      )}
     </li>
   );
 }
 
 function StatusPill({ status }: { status: string | null }) {
-  if (!status) {
-    return (
-      <Badge className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-600">
-        Awaiting upload
-      </Badge>
-    );
-  }
-  if (status === "uploaded" || status === "under_review") {
-    return (
-      <Badge className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-800">
-        Received · awaiting review
-      </Badge>
-    );
-  }
-  if (status === "accepted") {
-    return (
-      <Badge className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-800">
-        Accepted
-      </Badge>
-    );
-  }
-  if (status === "rejected") {
-    return (
-      <Badge className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-800">
-        Needs another upload
-      </Badge>
-    );
-  }
-  return null;
+  const map: Record<
+    string,
+    { label: string; cls: string; Icon: typeof Check }
+  > = {
+    empty: {
+      label: "Not uploaded",
+      cls: "bg-muted text-[var(--subtle-foreground)]",
+      Icon: CircleDashed,
+    },
+    received: {
+      label: "Received",
+      cls: "bg-[var(--warning-subtle)] text-[var(--warning-text)]",
+      Icon: Clock,
+    },
+    done: {
+      label: "Done",
+      cls: "bg-[var(--success-subtle)] text-[var(--success-text)]",
+      Icon: Check,
+    },
+    replace: {
+      label: "Needs a new file",
+      cls: "bg-[var(--maple-50)] text-[var(--destructive-text)]",
+      Icon: CircleAlert,
+    },
+  };
+  const key =
+    status === null
+      ? "empty"
+      : status === "accepted"
+        ? "done"
+        : status === "rejected"
+          ? "replace"
+          : "received";
+  const { label, cls, Icon } = map[key];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+        cls,
+      )}
+    >
+      <Icon aria-hidden className="h-3.5 w-3.5" />
+      {label}
+    </span>
+  );
 }
