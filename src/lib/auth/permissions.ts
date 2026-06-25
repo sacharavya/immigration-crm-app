@@ -260,3 +260,30 @@ export function staffCan(
   }
   return ROLE_PERMISSIONS[staff.role].has(permission);
 }
+
+/**
+ * Strip a raw permission_overrides object down to only the keys that are
+ * actually overridable. Role-only permissions, unknown keys, and the
+ * non-overridable delete_* permissions are all dropped before the JSONB is
+ * persisted to crm.staff.permission_overrides.
+ *
+ * Server-side guard for the override-escalation path: crm.staff_can() honors
+ * an override only for the keys in PERMISSION_OVERRIDABLE, so a stray override
+ * for e.g. record_payments would be ignored at read time anyway — but
+ * filtering at the write boundary keeps the stored JSONB clean as
+ * defense-in-depth. staffCan() already ignores non-overridable keys on read.
+ */
+export function sanitizeOverrides(
+  raw: Record<string, boolean>,
+): Record<string, boolean> {
+  const clean: Record<string, boolean> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (
+      typeof value === "boolean" &&
+      PERMISSION_OVERRIDABLE.has(key as Permission)
+    ) {
+      clean[key] = value;
+    }
+  }
+  return clean;
+}

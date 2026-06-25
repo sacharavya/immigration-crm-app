@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { renderRetainerHtml } from "@/components/retainer/retainer-document";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
+import { adminClient } from "@/lib/supabase/admin";
 import {
   loadRetainerData,
   RetainerRenderError,
@@ -109,10 +110,7 @@ async function retainerIdFromToken(token: string): Promise<string | null> {
     console.error("[retainer-document] service role env missing");
     return null;
   }
-  const { createClient } = await import("@supabase/supabase-js");
-  const supabase = createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const supabase = adminClient();
   const { data } = await supabase
     .schema("crm")
     .from("retainer_agreements")

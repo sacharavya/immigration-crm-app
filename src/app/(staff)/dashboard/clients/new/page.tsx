@@ -24,8 +24,8 @@ export default async function NewClientPage() {
     .order("name");
 
   return (
-    <div className="min-h-dvh bg-stone-50">
-      <header className="border-b border-stone-200 bg-stone-50">
+    <div className="min-h-dvh bg-white">
+      <header className="border-b border-stone-200 bg-white">
         <div className="flex items-center px-6 py-4 text-sm">
           <Link
             href="/dashboard/clients"

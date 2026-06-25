@@ -375,7 +375,7 @@ export default async function DashboardPage() {
     <main className="space-y-8 px-6 py-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--navy)]">
+          <h1 className="text-2xl font-bold tracking-tight text-stone-800">
             Welcome back, {me.first_name}
           </h1>
           <p className="text-sm text-stone-500">
@@ -449,7 +449,7 @@ export default async function DashboardPage() {
                 </div>
                 <Link
                   href="/dashboard/cases?view=board"
-                  className="text-xs font-medium text-[var(--navy)] hover:underline"
+                  className="text-xs font-medium text-stone-600 hover:text-stone-900 hover:underline"
                 >
                   Open board →
                 </Link>
@@ -461,10 +461,10 @@ export default async function DashboardPage() {
                     <Link
                       key={phase}
                       href="/dashboard/cases?view=board"
-                      className="group rounded-xl border border-stone-200 bg-white p-3 transition-all hover:-translate-y-0.5 hover:border-[var(--navy)]/30 hover:shadow-md"
+                      className="group rounded-xl border border-stone-200 bg-white p-3 transition-all hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--navy)] text-[10px] font-semibold text-white">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-stone-200 text-[10px] font-semibold text-stone-600">
                           {phase}
                         </span>
                         <span className="text-xs font-medium text-stone-600">
@@ -506,7 +506,7 @@ export default async function DashboardPage() {
                 </div>
                 <Link
                   href="/dashboard/cases"
-                  className="text-xs font-medium text-[var(--navy)] hover:underline"
+                  className="text-xs font-medium text-stone-600 hover:text-stone-900 hover:underline"
                 >
                   View all →
                 </Link>
@@ -583,7 +583,7 @@ function MyTasksPanel({ tasks }: { tasks: MyTask[] }) {
       <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
         <header className="flex items-center justify-between border-b border-stone-100 bg-stone-50/40 px-4 py-3">
           <div className="flex items-center gap-2">
-            <CheckSquare className="h-4 w-4 text-[var(--navy)]" />
+            <CheckSquare className="h-4 w-4 text-stone-500" />
             <h2 className="text-sm font-semibold tracking-tight text-stone-700">
               My tasks
             </h2>
@@ -657,7 +657,7 @@ function MyTasksPanel({ tasks }: { tasks: MyTask[] }) {
         <footer className="border-t border-stone-100 bg-stone-50/40 px-4 py-2.5 text-right">
           <Link
             href="/dashboard/tasks"
-            className="text-xs font-medium text-[var(--navy)] hover:underline"
+            className="text-xs font-medium text-stone-600 hover:text-stone-900 hover:underline"
           >
             All tasks →
           </Link>
@@ -690,7 +690,7 @@ function KpiCard({
           {icon}
         </span>
       </div>
-      <div className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-[var(--navy)]">
+      <div className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-stone-800">
         {value}
       </div>
       {hint && <p className="mt-1 line-clamp-2 text-[11px] text-stone-500">{hint}</p>}
@@ -704,7 +704,7 @@ function KpiCard({
     return (
       <Link
         href={href}
-        className={`${className} hover:-translate-y-0.5 hover:border-[var(--navy)]/30 hover:shadow-md`}
+        className={`${className} hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md`}
       >
         {inner}
       </Link>

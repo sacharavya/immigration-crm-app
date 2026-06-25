@@ -146,8 +146,8 @@ export default async function NewCasePage({ searchParams }: Props) {
   }
 
   return (
-    <div className="min-h-dvh bg-stone-50">
-      <header className="border-b border-stone-200 bg-stone-50">
+    <div className="min-h-dvh bg-white">
+      <header className="border-b border-stone-200 bg-white">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3 text-sm text-stone-500">
             <Link href="/dashboard" className="hover:text-stone-800">

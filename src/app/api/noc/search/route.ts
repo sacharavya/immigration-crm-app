@@ -1,17 +1,10 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+
+import { adminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("Service role not configured");
-  return createServiceClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 // ---------------------------------------------------------------------------
 // Groq keyword extraction
@@ -176,7 +169,10 @@ export async function POST(req: NextRequest) {
 
   const { title: titleQuery, duties } = await extractKeywords(rawTitle, rawDuties);
 
-  const supabase = adminClient();
+  // The shared adminClient is typed against the generated `Database`, but
+  // this route reaches objects outside those types (the `search_noc` RPC
+  // and `ref.sowp_list_version`), so use an untyped view as before.
+  const supabase = adminClient() as unknown as SupabaseClient;
 
   // Fetch search results and SOWP version in parallel
   const [searchRes, versionRes] = await Promise.all([

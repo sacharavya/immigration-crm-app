@@ -1,4 +1,3 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
 import Image from "next/image";
 
 import {
@@ -9,7 +8,7 @@ import {
   loadRetainerData,
   RetainerRenderError,
 } from "@/lib/pdf/render-retainer";
-import type { Database } from "@/lib/supabase/types";
+import { adminClient } from "@/lib/supabase/admin";
 
 import { SigningForm } from "./_components/signing-form";
 
@@ -152,16 +151,12 @@ async function validateToken(
 ): Promise<{ retainerId: string } | null> {
   if (!/^[0-9a-f-]{36}$/i.test(token)) return null;
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error("[signing] service-role env missing");
     return null;
   }
 
-  const supabase = createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const supabase = adminClient();
 
   const { data } = await supabase
     .schema("crm")

@@ -1,11 +1,10 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 import {
   renderRetainerPdf,
   RetainerRenderError,
 } from "@/lib/pdf/render-retainer";
-import type { Database } from "@/lib/supabase/types";
+import { adminClient } from "@/lib/supabase/admin";
 
 // Public download endpoint for the signing confirmation page. The
 // signing page's submit action preserves signing_token after flipping
@@ -30,15 +29,11 @@ export async function GET(_req: Request, { params }: Props) {
     return new NextResponse("Invalid link", { status: 404 });
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return new NextResponse("Service not configured", { status: 500 });
   }
 
-  const supabase = createServiceClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const supabase = adminClient();
 
   const { data } = await supabase
     .schema("crm")

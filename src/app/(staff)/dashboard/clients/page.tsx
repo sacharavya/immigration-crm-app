@@ -66,14 +66,15 @@ export default async function ClientsPage({ searchParams }: Props) {
       .schema("crm")
       .from("clients")
       .select(
-        "id, client_number, legal_name_full, email, phone_primary, country_of_citizenship, assigned_rcic, created_at, source",
+        "id, client_number, legal_name_full, email, phone_primary, country_of_citizenship, country_of_residence, assigned_rcic, immigration_status, immigration_status_expiry, created_at, source",
       )
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(500) as unknown as Promise<{ data: Array<{
         id: string; client_number: string; legal_name_full: string;
         email: string | null; phone_primary: string | null;
-        country_of_citizenship: string | null; assigned_rcic: string | null;
+        country_of_citizenship: string | null; country_of_residence: string | null;
+        assigned_rcic: string | null;
         immigration_status: string | null; immigration_status_expiry: string | null;
         created_at: string; source: string | null;
       }> | null }>,
@@ -140,8 +141,8 @@ export default async function ClientsPage({ searchParams }: Props) {
     mostRecentStatus: string | null;
     mostRecentServiceTypeId: string | null;
     mostRecentCreatedAt: string | null;
-    // Latest approved case's service type
-    approvedServiceTypeId: string | null;
+    // Latest decided (approved or refused) case's service type
+    decisionServiceTypeId: string | null;
     lastDecisionStatus: string | null;
   };
   const casesByClient = new Map<string, ClientCaseInfo>();
@@ -158,7 +159,7 @@ export default async function ClientsPage({ searchParams }: Props) {
       total: 0, open: 0,
       latestOpenStatus: null, latestOpenId: null, latestOpenServiceTypeId: null,
       mostRecentStatus: null, mostRecentServiceTypeId: null, mostRecentCreatedAt: null,
-      approvedServiceTypeId: null, lastDecisionStatus: null,
+      decisionServiceTypeId: null, lastDecisionStatus: null,
     };
     prev.total++;
 
@@ -177,9 +178,10 @@ export default async function ClientsPage({ searchParams }: Props) {
     // Track decision outcomes
     if (c.status === "passport_requested") {
       prev.lastDecisionStatus = "passport_requested";
-      prev.approvedServiceTypeId = c.service_type_id;
+      prev.decisionServiceTypeId = c.service_type_id;
     } else if (c.status === "refused") {
       prev.lastDecisionStatus = "refused";
+      prev.decisionServiceTypeId = c.service_type_id;
     }
 
     casesByClient.set(c.client_id, prev);
@@ -187,7 +189,7 @@ export default async function ClientsPage({ searchParams }: Props) {
 
   // Check case events for decision milestones (catches cases that
   // already moved to closed after the decision was recorded).
-  // Also look up the case's service_type_id for approved cases so
+  // Also look up the case's service_type_id for decided cases so
   // immigration_status_detail can show the service type name.
   const caseServiceTypeMap = new Map(
     (casesRaw ?? []).map((c) => [c.id, c.service_type_id]),
@@ -202,18 +204,22 @@ export default async function ClientsPage({ searchParams }: Props) {
     if (!info) continue;
     if (data.milestone === "decision_approved") {
       info.lastDecisionStatus = "passport_requested";
-      // Set the approved service type so the worklist can show it
-      if (!info.approvedServiceTypeId) {
-        info.approvedServiceTypeId = caseServiceTypeMap.get(ev.case_id) ?? null;
+      // Set the decided service type so the worklist can show it
+      if (!info.decisionServiceTypeId) {
+        info.decisionServiceTypeId = caseServiceTypeMap.get(ev.case_id) ?? null;
       }
     }
     if (data.milestone === "decision_refused" && !info.lastDecisionStatus) {
       info.lastDecisionStatus = "refused";
+      if (!info.decisionServiceTypeId) {
+        info.decisionServiceTypeId = caseServiceTypeMap.get(ev.case_id) ?? null;
+      }
     }
   }
 
   // Build service type display: "Category - Service Type Name"
   const serviceNameById = new Map((serviceTypes ?? []).map((s) => [s.id, s.name]));
+  const countryNameByCode = new Map((countries ?? []).map((c) => [c.code, c.name]));
 
   const tasksByClient = new Map<string, { due: string; title: string }>();
   for (const t of tasksRaw ?? []) {
@@ -279,6 +285,9 @@ export default async function ClientsPage({ searchParams }: Props) {
       email: c.email,
       phone_primary: c.phone_primary,
       country_of_citizenship: c.country_of_citizenship,
+      country_of_residence: c.country_of_residence
+        ? countryNameByCode.get(c.country_of_residence) ?? c.country_of_residence
+        : null,
       assigned_rcic: c.assigned_rcic,
       immigration_status: c.immigration_status as RawClientRow["immigration_status"],
       immigration_status_expiry: c.immigration_status_expiry,
@@ -296,8 +305,8 @@ export default async function ClientsPage({ searchParams }: Props) {
       has_ircc_request: irccInfo !== undefined,
       ircc_request_due: irccInfo?.due ?? null,
       missing_required_docs: missingDocsByClient.get(c.id) ?? 0,
-      immigration_status_detail: caseInfo?.approvedServiceTypeId
-        ? serviceNameById.get(caseInfo.approvedServiceTypeId) ?? null
+      immigration_status_detail: caseInfo?.decisionServiceTypeId
+        ? serviceNameById.get(caseInfo.decisionServiceTypeId) ?? null
         : null,
       last_decision_status: caseInfo?.lastDecisionStatus ?? null,
     };
@@ -350,7 +359,6 @@ export default async function ClientsPage({ searchParams }: Props) {
   const staffById = Object.fromEntries(
     (staffList ?? []).map((s) => [s.id, `${s.first_name} ${s.last_name}`.trim()]),
   );
-  const countryNameByCode = new Map((countries ?? []).map((c) => [c.code, c.name]));
   const distinctCitizenships = Array.from(new Set((clients ?? []).map((c) => c.country_of_citizenship).filter(Boolean)))
     .map((code) => ({ code: code!, name: countryNameByCode.get(code!) ?? code! }))
     .sort((a, b) => a.name.localeCompare(b.name));

@@ -1,11 +1,9 @@
 import { format } from "date-fns";
 
 import { IntakeShell } from "@/app/(staff)/dashboard/clients/[id]/intake/_components/intake-shell";
-import {
-  adminClient,
-  verifyIntakeToken,
-} from "@/lib/auth/intake-portal";
+import { verifyIntakeToken } from "@/lib/auth/intake-portal";
 import { getIntakeProgress } from "@/lib/intake/completeness";
+import { adminClient } from "@/lib/supabase/admin";
 
 import { IntakeSubmitBar } from "./_components/intake-submit-bar";
 import { InvalidLinkCard } from "./_components/invalid-link-card";

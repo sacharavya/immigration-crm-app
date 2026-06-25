@@ -3,11 +3,11 @@
 import { cookies } from "next/headers";
 
 import {
-  adminClient,
   INTAKE_PORTAL_COOKIE,
   INTAKE_PORTAL_COOKIE_PATH,
   verifyIntakeToken,
 } from "@/lib/auth/intake-portal";
+import { adminClient } from "@/lib/supabase/admin";
 
 // Single submit action for the public intake portal. The form is
 // already saved field-by-field (the section components autosave via

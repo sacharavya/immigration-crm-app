@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
-import {
-  adminClient,
-  getCasePortalActor,
-} from "@/lib/auth/upload-portal";
+import { getCasePortalActor } from "@/lib/auth/upload-portal";
 import { streamFileFromGraph } from "@/lib/graph/download";
+import { adminClient } from "@/lib/supabase/admin";
 
 // Secure in-app file viewer. Streams document bytes from Microsoft
 // Graph after authorizing against our own database. OneDrive URLs

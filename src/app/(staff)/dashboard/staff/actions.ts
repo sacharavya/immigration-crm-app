@@ -1,15 +1,15 @@
 "use server";
 
-import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { staffCan, type Role } from "@/lib/auth/permissions";
+import { sanitizeOverrides, staffCan, type Role } from "@/lib/auth/permissions";
 import { sendEmail } from "@/lib/email/client";
 import { passwordResetEmail } from "@/lib/email/templates/password-reset";
 import { staffInviteEmail } from "@/lib/email/templates/staff-invite";
 import { getBaseUrl } from "@/lib/email/url";
+import { adminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
   addStaffSchema,
@@ -24,19 +24,6 @@ type Actor = {
   role: Role;
   permission_overrides: Record<string, boolean>;
 };
-
-function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Service role not configured: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
-    );
-  }
-  return createServiceClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 function generateTempPassword(): string {
   const charset =
@@ -271,7 +258,7 @@ export async function updateStaff(
       cicc_license_no: parsed.data.cicc_license_no ?? null,
       is_active: parsed.data.is_active,
       can_be_assigned_cases: parsed.data.can_be_assigned_cases,
-      permission_overrides: parsed.data.permission_overrides,
+      permission_overrides: sanitizeOverrides(parsed.data.permission_overrides),
       is_rcic: parsed.data.is_rcic,
       rcic_membership_number: parsed.data.is_rcic
         ? parsed.data.rcic_membership_number || null

@@ -47,6 +47,7 @@ export type RawClientRow = {
   email: string | null;
   phone_primary: string | null;
   country_of_citizenship: string | null;
+  country_of_residence: string | null; // resolved country name, e.g. "Canada"
   assigned_rcic: string | null;
   immigration_status: ImmigrationStatusType | null;
   immigration_status_expiry: string | null;

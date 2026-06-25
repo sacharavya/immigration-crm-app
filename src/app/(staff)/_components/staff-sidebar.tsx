@@ -53,7 +53,7 @@ export function StaffSidebar() {
   }
 
   return (
-    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-stone-200 bg-stone-50/80 backdrop-blur supports-[backdrop-filter]:bg-stone-50/60">
+    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-stone-200 bg-white">
       <div className="flex h-24 items-center justify-center border-b border-stone-200 px-3">
         <Link
           href="/dashboard"
@@ -138,7 +138,7 @@ export function StaffSidebar() {
           <span
             aria-hidden
             title={`${staff.first_name} ${staff.last_name}`}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--navy)] to-[var(--navy-light)] text-sm font-semibold text-[var(--gold)] shadow-md ring-2 ring-white"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stone-200 text-sm font-semibold text-stone-600 ring-2 ring-white"
           >
             {initials}
           </span>
@@ -182,7 +182,7 @@ function NavItem({
       className={cn(
         "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
         active
-          ? "bg-stone-200/70 font-medium text-[var(--navy)]"
+          ? "bg-stone-200/70 font-medium text-stone-900"
           : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
       )}
     >
@@ -212,7 +212,7 @@ function CasesSection({ pathname }: { pathname: string }) {
           className={cn(
             "flex flex-1 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
             sectionActive
-              ? "bg-stone-200/70 font-medium text-[var(--navy)]"
+              ? "bg-stone-200/70 font-medium text-stone-900"
               : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
           )}
         >
@@ -276,7 +276,7 @@ function AppointmentsSection({ pathname }: { pathname: string }) {
           className={cn(
             "flex flex-1 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
             sectionActive
-              ? "bg-stone-200/70 font-medium text-[var(--navy)]"
+              ? "bg-stone-200/70 font-medium text-stone-900"
               : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
           )}
         >
@@ -343,7 +343,7 @@ function SubNavItem({
       className={cn(
         "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors",
         active
-          ? "bg-stone-200/70 font-medium text-[var(--navy)]"
+          ? "bg-stone-200/70 font-medium text-stone-900"
           : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
       )}
     >
