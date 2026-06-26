@@ -33,23 +33,45 @@ export async function login(
     return { formError: "Invalid email or password." };
   }
 
-  // Forced-reset short-circuit. The (staff) layout also redirects on
-  // password_reset_required_at, but doing it here avoids a flash of
-  // /dashboard before the layout's redirect kicks in.
+  // Route by identity. An auth user is either staff or a referral agent (never
+  // both — enforced in the DB). Check staff first so the dual-identity edge
+  // case resolves to the higher-privilege home defensively.
+  //
+  // The forced-reset short-circuit also runs here (not just in the route-group
+  // layouts) to avoid a flash of the destination before the layout redirect.
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
   if (user) {
-    const { data: row } = await supabase
+    const { data: staffRow } = await supabase
       .schema("crm")
       .from("staff")
       .select("password_reset_required_at")
       .eq("auth_user_id", user.id)
       .is("deleted_at", null)
       .maybeSingle();
-    if (row?.password_reset_required_at) {
-      redirect("/reset-password");
+    if (staffRow) {
+      if (staffRow.password_reset_required_at) redirect("/reset-password");
+      redirect("/dashboard");
     }
+
+    const { data: agentRow } = await supabase
+      .schema("crm")
+      .from("referral_agents")
+      .select("password_reset_required_at, is_active")
+      .eq("auth_user_id", user.id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (agentRow && agentRow.is_active) {
+      if (agentRow.password_reset_required_at) redirect("/reset-password");
+      redirect("/portal");
+    }
+
+    // Authenticated but belongs to neither table (or a deactivated agent):
+    // sign out so they don't bounce between /login and a guarded layout.
+    await supabase.auth.signOut();
+    return { formError: "This account is not active. Contact your administrator." };
   }
 
   redirect("/dashboard");

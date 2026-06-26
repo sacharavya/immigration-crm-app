@@ -62,12 +62,13 @@ export default async function ClientsPage({ searchParams }: Props) {
     { data: staffList },
     { data: serviceTypes },
     { data: countries },
+    { data: agentList },
   ] = await Promise.all([
     supabase
       .schema("crm")
       .from("clients")
       .select(
-        "id, client_number, legal_name_full, email, phone_primary, country_of_citizenship, country_of_residence, assigned_rcic, immigration_status, immigration_status_expiry, created_at, source",
+        "id, client_number, legal_name_full, email, phone_primary, country_of_citizenship, country_of_residence, assigned_rcic, immigration_status, immigration_status_expiry, created_at, source, created_by_agent",
       )
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
@@ -77,7 +78,7 @@ export default async function ClientsPage({ searchParams }: Props) {
         country_of_citizenship: string | null; country_of_residence: string | null;
         assigned_rcic: string | null;
         immigration_status: string | null; immigration_status_expiry: string | null;
-        created_at: string; source: string | null;
+        created_at: string; source: string | null; created_by_agent: string | null;
       }> | null }>,
     supabase
       .schema("crm")
@@ -128,7 +129,16 @@ export default async function ClientsPage({ searchParams }: Props) {
       .from("countries")
       .select("code, name")
       .order("name"),
+    supabase
+      .schema("crm")
+      .from("referral_agents")
+      .select("id, name"),
   ]);
+
+  // Referral agent attribution: map agent id → display name for the worklist.
+  const agentById = Object.fromEntries(
+    (agentList ?? []).map((a) => [a.id, a.name]),
+  );
 
   // ── JS joins ───────────────────────────────────────────────────
   type ClientCaseInfo = {
@@ -305,6 +315,7 @@ export default async function ClientsPage({ searchParams }: Props) {
       immigration_status_expiry: c.immigration_status_expiry,
       created_at: c.created_at,
       source: c.source,
+      created_by_agent: c.created_by_agent,
       total_cases: caseInfo?.total ?? 0,
       open_cases: caseInfo?.open ?? 0,
       // Prefer the open case status (active workflow), fall back to the
@@ -411,6 +422,7 @@ export default async function ClientsPage({ searchParams }: Props) {
         counts={counts}
         params={params}
         staffById={staffById}
+        agentById={agentById}
         ownerOptions={(staffList ?? []).map((s) => ({ id: s.id, name: `${s.first_name} ${s.last_name}`.trim() }))}
         serviceTypeOptions={(serviceTypes ?? []).map((s) => ({ id: s.id, name: s.name }))}
         citizenshipOptions={distinctCitizenships}

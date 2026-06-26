@@ -68,7 +68,13 @@ export type Permission =
   // super_user + admin + rcic + reception have it (mirrors crm.staff_can in
   // 20260531000004_paid_consult_tables.sql). document_officer + readonly do
   // not.
-  | "review_payments";
+  | "review_payments"
+  // AGENT-1: referral agent / partner directory. Mirrors crm.staff_can() in
+  // 20260625000007_referral_agents.sql. view_agents: super_user + admin + rcic
+  // + reception. manage_agents: super_user + admin only (rcic/reception can see
+  // referral sources but not edit the directory).
+  | "view_agents"
+  | "manage_agents";
 
 export type StaffWithOverrides = {
   id: string;
@@ -121,6 +127,8 @@ const ALL_PERMISSIONS: ReadonlyArray<Permission> = [
   "manage_appointments",
   "manage_settings",
   "review_payments",
+  "view_agents",
+  "manage_agents",
 ];
 
 const ADMIN_DENIED: ReadonlySet<Permission> = new Set([
@@ -160,6 +168,7 @@ const RCIC_PERMS: ReadonlyArray<Permission> = [
   "manage_own_signature",
   "manage_appointments",
   "review_payments",
+  "view_agents",
 ];
 
 const DOCUMENT_OFFICER_PERMS: ReadonlyArray<Permission> = [

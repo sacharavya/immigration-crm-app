@@ -3,11 +3,15 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 
+import { Input } from "@/components/ui/input";
+
 import type {
   AppointmentStatus,
   AppointmentTypeOption,
   StaffOption,
 } from "./types";
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const STATUS_OPTIONS: Array<{
   value: AppointmentStatus | "all";
@@ -81,24 +85,30 @@ export function AppointmentFilters({
       </div>
 
       <FilterField label="From">
-        <input
+        <Input
           type="date"
           value={isoToDateInput(fromDate)}
-          onChange={(e) =>
-            update("from", new Date(`${e.target.value}T00:00:00Z`).toISOString())
-          }
-          className="h-9 rounded-md border border-stone-200 bg-white px-2 text-sm"
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "") return update("from", null);
+            if (!ISO_DATE.test(v)) return;
+            update("from", new Date(`${v}T00:00:00Z`).toISOString());
+          }}
+          className="h-9"
         />
       </FilterField>
 
       <FilterField label="To">
-        <input
+        <Input
           type="date"
           value={isoToDateInput(toDate)}
-          onChange={(e) =>
-            update("to", new Date(`${e.target.value}T23:59:59Z`).toISOString())
-          }
-          className="h-9 rounded-md border border-stone-200 bg-white px-2 text-sm"
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "") return update("to", null);
+            if (!ISO_DATE.test(v)) return;
+            update("to", new Date(`${v}T23:59:59Z`).toISOString());
+          }}
+          className="h-9"
         />
       </FilterField>
 

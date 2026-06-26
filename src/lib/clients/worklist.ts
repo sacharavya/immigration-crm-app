@@ -53,6 +53,9 @@ export type RawClientRow = {
   immigration_status_expiry: string | null;
   created_at: string;
   source: string | null;
+  // Referral attribution: set when the client was registered by an external
+  // agent rather than internal staff. Null for staff-created clients.
+  created_by_agent: string | null;
   // Derived from cases join
   total_cases: number;
   open_cases: number;

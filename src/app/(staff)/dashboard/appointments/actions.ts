@@ -434,13 +434,17 @@ export async function markNoShow(id: string): Promise<MutateResult> {
 }
 
 // ---------------------------------------------------------------------------
-// updateAppointmentNotes (reason + staff_notes)
+// updateAppointmentNotes (staff_notes only)
+//
+// Staff notes are internal. The client-provided reason is intentionally NOT
+// editable here: it is the client's own words, and changing it would re-sync
+// the calendar event and email the client an updated invite. Editing staff
+// notes never touches the calendar and never notifies the client.
 // ---------------------------------------------------------------------------
 
 const notesSchema = z.object({
   id: uuid,
-  reason: z.string().min(1).max(2000).optional(),
-  staff_notes: z.string().max(2000).nullable().optional(),
+  staff_notes: z.string().max(2000).nullable(),
 });
 
 export async function updateAppointmentNotes(
@@ -453,35 +457,26 @@ export async function updateAppointmentNotes(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
-  const { id, reason, staff_notes } = parsed.data;
+  const { id, staff_notes } = parsed.data;
 
   const supabase = await createClient();
   const { data: existing } = await supabase
     .schema("crm")
     .from("appointments")
-    .select("id, reason, case_id, client_id")
+    .select("id, case_id, client_id")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
   if (!existing) return { error: "Appointment not found." };
 
-  const patch: { reason?: string; staff_notes?: string | null } = {};
-  if (reason !== undefined) patch.reason = reason;
-  if (staff_notes !== undefined) patch.staff_notes = staff_notes;
-  if (Object.keys(patch).length === 0) return { ok: true };
-
   const { error } = await supabase
     .schema("crm")
     .from("appointments")
-    .update(patch)
+    .update({ staff_notes })
     .eq("id", id);
   if (error) return { error: error.message };
 
-  // If the reason changed, re-sync the calendar event body.
-  if (reason !== undefined && reason !== existing.reason) {
-    await syncAppointmentUpdate(adminClient(), id);
-  }
-
+  // No calendar re-sync and no client email: staff notes are internal only.
   revalidateLinked(existing.case_id, existing.client_id);
   return { ok: true };
 }

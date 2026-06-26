@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 
+import { Input } from "@/components/ui/input";
+
 import type { PublicSlot } from "../../../_components/types";
 import { publicCancel, publicReschedule } from "../actions";
 
@@ -285,13 +287,13 @@ function ReschedulePane({
         <label className="block text-xs font-semibold uppercase tracking-wider text-stone-500">
           Date
         </label>
-        <input
+        <Input
           type="date"
           value={date}
           min={minDate}
           max={maxDate}
           onChange={(e) => setDate(e.target.value)}
-          className="mt-1 h-10 rounded-md border border-stone-200 bg-white px-3 text-sm"
+          className="mt-1 h-10"
         />
       </div>
 

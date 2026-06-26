@@ -20,10 +20,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getIntakeProgress } from "@/lib/intake/completeness";
 import { loadRetainerData } from "@/lib/pdf/render-retainer";
 
+import { CaseTeamPanel } from "./_components/case-team-panel";
 import {
-  AssignmentCard,
+  type CaseTeam,
   type StaffOption,
-} from "./_components/assignment-card";
+  type TeamMember,
+} from "./_components/team";
 import { CaseTabs, VALID_TABS, type Tab } from "./_components/case-tabs";
 import { IntakeBanner } from "./_components/intake-banner";
 import { RetainerTab } from "./_components/retainer-tab";
@@ -308,6 +310,7 @@ export default async function CasePage({ params, searchParams }: Props) {
     tasksRes,
     staffRes,
     eventsRes,
+    teamRes,
   ] = await Promise.all([
     supabase
       .schema("crm")
@@ -375,7 +378,7 @@ export default async function CasePage({ params, searchParams }: Props) {
     supabase
       .schema("crm")
       .from("staff")
-      .select("id, first_name, last_name, role")
+      .select("id, first_name, last_name, role, is_rcic, rcic_membership_number")
       .is("deleted_at", null)
       .eq("is_active", true)
       .order("last_name", { ascending: true }),
@@ -395,6 +398,11 @@ export default async function CasePage({ params, searchParams }: Props) {
       .eq("case_id", id)
       .order("occurred_at", { ascending: false })
       .limit(50),
+    supabase
+      .schema("crm")
+      .from("case_assignments")
+      .select("staff_id, role")
+      .eq("case_id", id),
   ]);
 
   const client = clientRes.data;
@@ -707,10 +715,49 @@ export default async function CasePage({ params, searchParams }: Props) {
     };
   });
 
-  // Role-based gating is intentionally off for now — assignment is open
-  // to any active staff member. We'll narrow this down later once the
-  // role/permission story for assignments is settled.
-  const assignableStaff: StaffOption[] = allStaff.map((s) => ({
+  // Compose the case team from crm.case_assignments. The header Assigned fact
+  // and the rail Case team panel both render from this single object, so they
+  // cannot disagree. The RCIC of record falls back to cases.assigned_rcic (kept
+  // in sync by a DB trigger) so a case always shows its RCIC.
+  const teamRows = teamRes.data ?? [];
+  const staffById = new Map(allStaff.map((s) => [s.id, s]));
+
+  function toTeamMember(staffId: string | null): TeamMember | null {
+    if (!staffId) return null;
+    const s = staffById.get(staffId);
+    if (!s) return null;
+    return {
+      id: s.id,
+      first_name: s.first_name,
+      last_name: s.last_name,
+      role: s.role ?? null,
+      is_rcic: s.is_rcic ?? false,
+      rcic_membership_number: s.rcic_membership_number ?? null,
+    };
+  }
+
+  const rcicRow = teamRows.find((r) => r.role === "rcic_of_record") ?? null;
+  const teamRcic =
+    toTeamMember(rcicRow?.staff_id ?? null) ?? toTeamMember(caseRow.assigned_rcic);
+
+  const teamWorkers = teamRows
+    .filter((r) => r.role === "case_worker")
+    .map((r) => toTeamMember(r.staff_id))
+    .filter((m): m is TeamMember => m !== null);
+
+  const team: CaseTeam = {
+    rcic: teamRcic,
+    workers: teamWorkers,
+    rcicInvalid: Boolean(teamRcic && !teamRcic.is_rcic),
+  };
+
+  // The RCIC picker is limited to licensed consultants; worker pickers offer
+  // any active staff member.
+  const rcicOptions: StaffOption[] = allStaff
+    .filter((s) => s.is_rcic)
+    .map((s) => ({ id: s.id, first_name: s.first_name, last_name: s.last_name }));
+
+  const workerOptions: StaffOption[] = allStaff.map((s) => ({
     id: s.id,
     first_name: s.first_name,
     last_name: s.last_name,
@@ -1129,8 +1176,10 @@ export default async function CasePage({ params, searchParams }: Props) {
               <CaseOverflowMenu
                 caseId={caseRow.id}
                 caseNumber={caseRow.case_number}
-                assignedId={caseRow.assigned_rcic}
-                staffOptions={assignableStaff}
+                rcicId={team.rcic?.id ?? null}
+                rcicOptions={rcicOptions}
+                priority={(caseRow.priority as string | null) ?? "normal"}
+                canEdit={canEditCase}
                 canDelete={Boolean(me && staffCan(me, "delete_cases"))}
               />
             </div>
@@ -1170,12 +1219,7 @@ export default async function CasePage({ params, searchParams }: Props) {
           {/* Key facts strip */}
           <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border lg:grid-cols-4">
             <Fact label="Assigned">
-              <AssignedFact
-                caseId={caseRow.id}
-                assignedId={caseRow.assigned_rcic}
-                options={assignableStaff}
-                canEdit={canEditCase}
-              />
+              <AssignedFact rcic={team.rcic} workers={team.workers} />
             </Fact>
             <Fact label="Immigration status">
               <ImmigrationStatusFact
@@ -1438,14 +1482,12 @@ export default async function CasePage({ params, searchParams }: Props) {
             </Card>
 
             <Card>
-              <CardContent className="space-y-2 p-4">
-                <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-                  Assigned
-                </div>
-                <AssignmentCard
+              <CardContent className="p-4">
+                <CaseTeamPanel
                   caseId={caseRow.id}
-                  assignedId={caseRow.assigned_rcic}
-                  options={assignableStaff}
+                  team={team}
+                  rcicOptions={rcicOptions}
+                  workerOptions={workerOptions}
                   canEdit={canEditCase}
                 />
               </CardContent>

@@ -180,6 +180,34 @@ export async function createCase(
     return { error: `Could not create case: ${caseErr?.message ?? "unknown"}` };
   }
 
+  // Seed the case team: the chosen RCIC of record plus the creator as the first
+  // case worker. Both roles are required; workers can be adjusted later in the
+  // Case team panel. A DB trigger keeps cases.assigned_rcic equal to the
+  // rcic_of_record row.
+  const { error: teamErr } = await supabase
+    .schema("crm")
+    .from("case_assignments")
+    .insert([
+      {
+        case_id: newCase.id,
+        staff_id: parsed.data.rcic_id,
+        role: "rcic_of_record",
+        created_by: staff.id,
+      },
+      {
+        case_id: newCase.id,
+        staff_id: staff.id,
+        role: "case_worker",
+        created_by: staff.id,
+      },
+    ]);
+  if (teamErr) {
+    console.error(
+      `[createCase] Could not seed case team for case ${newCase.id}:`,
+      teamErr.message,
+    );
+  }
+
   // The trg_ensure_retainer_for_new_case trigger has now created the
   // retainer row. Stamp rcic_id on it so loadRetainerData renders the
   // chosen RCIC even before the agreement is sent — without this it

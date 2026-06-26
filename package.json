@@ -13,7 +13,7 @@
     "graph:test": "tsx --env-file=.env.local scripts/test-graph.ts",
     "appointments:check-graph": "tsx --env-file=.env.local scripts/setup-appointment-graph.ts",
     "mail:test": "tsx --env-file=.env.local scripts/test-resend.ts",
-    "test": "tsx --test src/lib/cases/action-chip.test.ts src/lib/appointments/slots.test.ts src/lib/appointments/ics.test.ts",
+    "test": "tsx --test src/lib/cases/action-chip.test.ts src/lib/cases/board-card.test.ts src/lib/utils/date-mask.test.ts src/lib/appointments/slots.test.ts src/lib/appointments/ics.test.ts",
     "bootstrap": "tsx --env-file=.env.local scripts/bootstrap-superuser.ts",
     "wipe:checklists": "tsx --env-file=.env.local scripts/wipe-checklists.ts",
     "db:types": "supabase gen types typescript --linked --schema crm,files,portal,audit,ref"
@@ -34,6 +34,7 @@
     "next": "^16.2.7",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "recharts": "^3.9.0",
     "resend": "^6.12.2",
     "tailwind-merge": "^3.5.0",
     "tw-animate-css": "^1.4.0",

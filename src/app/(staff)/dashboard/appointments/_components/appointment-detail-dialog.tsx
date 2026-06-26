@@ -245,7 +245,7 @@ export function AppointmentDetailDialog({
       <DialogTrigger
         className={
           children
-            ? undefined
+            ? "block h-full w-full"
             : "inline-flex h-8 items-center rounded-md border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 shadow-sm transition-colors hover:bg-stone-100"
         }
       >
@@ -501,8 +501,8 @@ export function AppointmentDetailDialog({
               appointment={appointment}
               pending={pending}
               onCancel={() => setMode("view")}
-              onSubmit={(reason, staff_notes) =>
-                handleResult(updateAppointmentNotes({ id: appointment.id, reason, staff_notes }))
+              onSubmit={(staff_notes) =>
+                handleResult(updateAppointmentNotes({ id: appointment.id, staff_notes }))
               }
             />
           </div>
@@ -546,7 +546,7 @@ export function AppointmentDetailDialog({
                     <CalendarClock className="mr-1 h-3.5 w-3.5" /> Reschedule
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => setMode("notes")} disabled={pending}>
-                    <Pencil className="mr-1 h-3.5 w-3.5" /> Edit notes
+                    <Pencil className="mr-1 h-3.5 w-3.5" /> Edit staff notes
                   </Button>
                 </>
               )}
@@ -711,24 +711,27 @@ function NotesMode({
   appointment: AppointmentRow;
   pending: boolean;
   onCancel: () => void;
-  onSubmit: (reason: string, staffNotes: string | null) => void;
+  onSubmit: (staffNotes: string | null) => void;
 }) {
-  const [reason, setReason] = useState(appointment.reason);
   const [staffNotes, setStaffNotes] = useState(appointment.staff_notes ?? "");
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-stone-800">Edit notes</h3>
+      <h3 className="text-sm font-medium text-stone-800">Edit staff notes</h3>
       <div>
-        <Label className="text-xs font-medium text-stone-600">Reason</Label>
-        <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className="mt-1 w-full border border-stone-200 bg-white px-3 py-2 text-sm" />
+        <Label className="text-xs font-medium text-stone-600">
+          Client&apos;s reason (read-only)
+        </Label>
+        <p className="mt-1 w-full border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-600">
+          {appointment.reason || "Not provided"}
+        </p>
       </div>
       <div>
         <Label className="text-xs font-medium text-stone-600">Staff notes</Label>
-        <textarea value={staffNotes} onChange={(e) => setStaffNotes(e.target.value)} rows={3} className="mt-1 w-full border border-stone-200 bg-white px-3 py-2 text-sm" />
+        <textarea value={staffNotes} onChange={(e) => setStaffNotes(e.target.value)} rows={3} placeholder="Internal only. Not emailed to the client." className="mt-1 w-full border border-stone-200 bg-white px-3 py-2 text-sm" />
       </div>
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={onCancel} disabled={pending}>Back</Button>
-        <Button onClick={() => onSubmit(reason.trim(), staffNotes.trim() || null)} disabled={pending || !reason.trim()}>
+        <Button onClick={() => onSubmit(staffNotes.trim() || null)} disabled={pending}>
           {pending ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Saving...</> : "Save"}
         </Button>
       </div>

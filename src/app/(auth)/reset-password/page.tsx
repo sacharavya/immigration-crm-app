@@ -2,7 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +30,13 @@ export default function ResetPasswordPage() {
     resetPassword,
     initialState,
   );
+
+  // On success the action returns the /logout URL. /logout is a route handler
+  // that signs out and 303-redirects, so it needs a full browser navigation,
+  // not a client-router push.
+  useEffect(() => {
+    if (state.redirectTo) window.location.assign(state.redirectTo);
+  }, [state.redirectTo]);
 
   return (
     <main className="flex min-h-dvh items-center justify-center px-6 py-12">

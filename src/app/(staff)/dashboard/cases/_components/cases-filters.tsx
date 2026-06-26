@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import type { AttentionFilter } from "@/lib/cases/board-card";
 import { PHASE_LABELS } from "@/lib/utils/phase";
 
 import type { CasesView } from "./view-toggle";
@@ -13,6 +14,13 @@ export type ServiceTypePick = { id: string; name: string };
 
 const PHASES = [1, 2, 3, 4, 5] as const;
 
+const ATTENTION_OPTIONS: ReadonlyArray<{ value: AttentionFilter; label: string }> = [
+  { value: "at_risk", label: "At risk" },
+  { value: "stalled", label: "Stalled" },
+  { value: "firm", label: "Needs firm action" },
+  { value: "priority", label: "Priority set" },
+];
+
 export function CasesFilters({
   view,
   phase,
@@ -20,6 +28,7 @@ export function CasesFilters({
   assigneeOptions,
   serviceType,
   serviceTypeOptions,
+  attention,
 }: {
   view: CasesView;
   phase: number | null;
@@ -27,6 +36,7 @@ export function CasesFilters({
   assigneeOptions: StaffPick[];
   serviceType: string | null;
   serviceTypeOptions: ServiceTypePick[];
+  attention: AttentionFilter | null;
 }) {
   const router = useRouter();
 
@@ -34,9 +44,9 @@ export function CasesFilters({
     phase?: number | null;
     assignee?: string | null;
     serviceType?: string | null;
+    attention?: AttentionFilter | null;
   }) {
     const params = new URLSearchParams();
-    // Board is the default view; only include when set to list.
     if (view === "list") params.set("view", "list");
 
     const nextPhase = next.phase === undefined ? phase : next.phase;
@@ -44,13 +54,16 @@ export function CasesFilters({
       params.set("phase", String(nextPhase));
     }
 
-    const nextAssignee =
-      next.assignee === undefined ? assignee : next.assignee;
+    const nextAssignee = next.assignee === undefined ? assignee : next.assignee;
     if (nextAssignee) params.set("assignee", nextAssignee);
 
     const nextServiceType =
       next.serviceType === undefined ? serviceType : next.serviceType;
     if (nextServiceType) params.set("service_type", nextServiceType);
+
+    const nextAttention =
+      next.attention === undefined ? attention : next.attention;
+    if (nextAttention) params.set("attention", nextAttention);
 
     const qs = params.toString();
     return qs ? `/dashboard/cases?${qs}` : "/dashboard/cases";
@@ -58,20 +71,15 @@ export function CasesFilters({
 
   function pushPhase(value: string) {
     const parsed = Number.parseInt(value, 10);
-    const next = parsed >= 1 && parsed <= 6 ? parsed : null;
+    const next = parsed >= 1 && parsed <= 5 ? parsed : null;
     router.push(buildHref({ phase: next }));
   }
 
-  function pushAssignee(value: string) {
-    router.push(buildHref({ assignee: value === "" ? null : value }));
-  }
-
-  function pushServiceType(value: string) {
-    router.push(buildHref({ serviceType: value === "" ? null : value }));
-  }
-
   const hasFilters =
-    phase !== null || assignee !== null || serviceType !== null;
+    phase !== null ||
+    assignee !== null ||
+    serviceType !== null ||
+    attention !== null;
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -91,7 +99,7 @@ export function CasesFilters({
       <FilterSelect
         label="Assigned"
         value={assignee ?? ""}
-        onChange={pushAssignee}
+        onChange={(v) => router.push(buildHref({ assignee: v === "" ? null : v }))}
       >
         <option value="">Anyone</option>
         {assigneeOptions.map((s) => (
@@ -104,7 +112,9 @@ export function CasesFilters({
       <FilterSelect
         label="Service"
         value={serviceType ?? ""}
-        onChange={pushServiceType}
+        onChange={(v) =>
+          router.push(buildHref({ serviceType: v === "" ? null : v }))
+        }
       >
         <option value="">All services</option>
         {serviceTypeOptions.map((s) => (
@@ -114,10 +124,27 @@ export function CasesFilters({
         ))}
       </FilterSelect>
 
+      <FilterSelect
+        label="Attention"
+        value={attention ?? ""}
+        onChange={(v) =>
+          router.push(
+            buildHref({ attention: v === "" ? null : (v as AttentionFilter) }),
+          )
+        }
+      >
+        <option value="">Everything</option>
+        {ATTENTION_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </FilterSelect>
+
       {hasFilters && (
         <Link
           href={view === "list" ? "/dashboard/cases?view=list" : "/dashboard/cases"}
-          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <X className="h-3 w-3" />
           Clear
@@ -140,13 +167,13 @@ function FilterSelect({
 }) {
   return (
     <label className="inline-flex items-center gap-2 text-xs">
-      <span className="font-medium uppercase tracking-wider text-stone-500">
+      <span className="font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-8 rounded-md border border-stone-200 bg-white px-2.5 text-sm text-stone-900 transition-colors focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/30"
+        className="h-8 rounded-md border border-border bg-card px-2.5 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
       >
         {children}
       </select>

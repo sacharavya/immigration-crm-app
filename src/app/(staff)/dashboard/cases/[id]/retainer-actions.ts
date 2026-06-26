@@ -1011,6 +1011,28 @@ export async function startNewRetainer(
     };
   }
 
+  // Copy the case team (RCIC of record + every worker) onto the continuation
+  // case so it opens with the same team. A DB trigger keeps assigned_rcic in
+  // sync with the rcic_of_record row.
+  const { data: srcTeam } = await supabase
+    .schema("crm")
+    .from("case_assignments")
+    .select("staff_id, role")
+    .eq("case_id", caseId);
+  if (srcTeam && srcTeam.length > 0) {
+    await supabase
+      .schema("crm")
+      .from("case_assignments")
+      .insert(
+        srcTeam.map((a) => ({
+          case_id: newCase.id,
+          staff_id: a.staff_id,
+          role: a.role,
+          created_by: g.me.id,
+        })),
+      );
+  }
+
   // Stamp rcic_id on the new (auto-created) retainer so loadRetainerData
   // resolves it directly. Mirrors the same step in createCase. Also
   // enforces the HST country gate: when the client is not in Canada,

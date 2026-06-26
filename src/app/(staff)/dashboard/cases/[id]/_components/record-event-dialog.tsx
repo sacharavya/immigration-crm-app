@@ -21,6 +21,8 @@ import {
   type Milestone,
 } from "@/lib/utils/phase";
 
+import { Input } from "@/components/ui/input";
+
 import { recordEvent } from "../actions";
 
 import { GateBlockedView } from "./gate-blocked-view";
@@ -302,12 +304,12 @@ function ConfirmView({
           <span className="block text-xs font-medium text-stone-600">
             Date
           </span>
-          <input
+          <Input
             type="date"
             value={date}
             max={today}
             onChange={(e) => setDate(e.target.value)}
-            className="mt-1 h-9 w-full rounded-md border border-stone-200 bg-white px-3 text-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/30"
+            className="mt-1 h-9"
           />
         </label>
         <label className="block text-sm">
@@ -341,11 +343,11 @@ function ConfirmView({
               When does the approved permit or status expire? This updates the
               client&apos;s immigration status automatically.
             </p>
-            <input
+            <Input
               type="date"
               value={statusExpiry}
               onChange={(e) => setStatusExpiry(e.target.value)}
-              className="mt-1 h-9 w-full rounded-md border border-stone-200 bg-white px-3 text-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/30"
+              className="mt-1 h-9"
             />
           </label>
         )}

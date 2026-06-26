@@ -116,6 +116,9 @@ export function NewAppointmentDialog({
   // Load slots whenever (typeId, date) changes.
   useEffect(() => {
     if (!open || !typeId) return;
+    // The date field is masked and emits partial values while typing; only
+    // query once it is a complete YYYY-MM-DD, otherwise new Date() is invalid.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
     let cancelled = false;
     const from = new Date(`${date}T00:00:00.000Z`).toISOString();
     const to = new Date(`${plusDays(date, 1)}T00:00:00.000Z`).toISOString();

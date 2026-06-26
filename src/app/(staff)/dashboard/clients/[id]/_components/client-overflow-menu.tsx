@@ -94,7 +94,10 @@ export function ClientOverflowMenu({
                 <>
                   <Menu.Separator className="my-1 h-px bg-border" />
                   <Menu.Item
-                    className={`${itemClass} text-[var(--destructive-text)] data-[highlighted]:bg-[var(--maple-50)]`}
+                    className={`${itemClass.replace(
+                      "text-foreground",
+                      "text-[var(--destructive)]",
+                    )} data-[highlighted]:bg-[var(--maple-50)]`}
                     onClick={() => setDeleteOpen(true)}
                   >
                     <Trash2 className="h-4 w-4" />

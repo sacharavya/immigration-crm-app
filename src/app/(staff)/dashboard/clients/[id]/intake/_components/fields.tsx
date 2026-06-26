@@ -59,8 +59,23 @@ export function TextField({
   const [value, setValue] = useState<string>(initial ?? "");
   useSyncedInitial(initial ?? "", value, setValue);
 
+  // For date fields the masked input emits a value on every keystroke, so an
+  // incomplete date would autosave and bounce back "Use YYYY-MM-DD". Hold the
+  // last saved value (`initial`) until the date is complete or cleared, so the
+  // save fires once, on a valid YYYY-MM-DD or an empty field.
+  const isDate = type === "date";
+  const autosaveValue: string | null = isDate
+    ? value === ""
+      ? null
+      : /^\d{4}-\d{2}-\d{2}$/.test(value)
+        ? value
+        : (initial ?? null)
+    : value.trim() === ""
+      ? null
+      : value;
+
   const { state, error } = useDebouncedAutosave<string | null>(
-    value.trim() === "" ? null : value,
+    autosaveValue,
     save,
     { enabled: !disabled },
   );

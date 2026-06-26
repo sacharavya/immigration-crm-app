@@ -37,14 +37,26 @@ export default async function AppointmentsPage({
 
   const params = await searchParams;
   const view = params.view ?? "calendar";
+  const isCalendar = view === "calendar";
 
   const supabase = await createClient();
 
-  const fromDate = params.from ?? new Date().toISOString();
+  // The calendar is a record of what happened as well as what is coming, so it
+  // reaches back into the past and shows every status by default. The list view
+  // stays a forward-looking, confirmed-only work queue.
+  const PAST_HORIZON_DAYS = 90;
+  const nowMs = new Date().getTime();
+  const fromDate =
+    params.from ??
+    (isCalendar
+      ? new Date(nowMs - PAST_HORIZON_DAYS * 86400 * 1000).toISOString()
+      : new Date(nowMs).toISOString());
   const toDate =
     params.to ??
-    new Date(Date.now() + DEFAULT_HORIZON_DAYS * 86400 * 1000).toISOString();
-  const statusFilter = params.status ?? "confirmed";
+    new Date(
+      nowMs + (isCalendar ? 30 : DEFAULT_HORIZON_DAYS) * 86400 * 1000,
+    ).toISOString();
+  const statusFilter = params.status ?? (isCalendar ? "all" : "confirmed");
 
   let query = supabase
     .schema("crm")
@@ -218,7 +230,11 @@ export default async function AppointmentsPage({
       />
 
       {view === "calendar" ? (
-        <AppointmentsCalendar appointments={appointments} staffList={staffList} />
+        <AppointmentsCalendar
+          appointments={appointments}
+          staffList={staffList}
+          nowIso={new Date(nowMs).toISOString()}
+        />
       ) : (
         <AppointmentsList appointments={appointments} staffList={staffList} />
       )}

@@ -111,16 +111,25 @@ function dateInTz(iso: string): string {
 export function AppointmentsCalendar({
   appointments,
   staffList = [],
+  nowIso,
 }: {
   appointments: AppointmentRow[];
   staffList?: StaffOption[];
+  nowIso?: string;
 }) {
   const today = todayStr();
   const [weekMon, setWeekMon] = useState(() => weekStart(today));
+  // A fixed "now" from the server keeps past/upcoming styling stable between
+  // SSR and hydration.
+  const nowMs = useMemo(
+    () => (nowIso ? new Date(nowIso).getTime() : new Date().getTime()),
+    [nowIso],
+  );
 
   const weekDays = useMemo(() => {
     const days: string[] = [];
-    for (let i = 0; i < 7; i++) days.push(addDays(weekMon, i));
+    // Monday to Friday only; the firm does not run weekend appointments.
+    for (let i = 0; i < 5; i++) days.push(addDays(weekMon, i));
     return days;
   }, [weekMon]);
 
@@ -145,7 +154,7 @@ export function AppointmentsCalendar({
       day: "numeric",
       timeZone: "UTC",
     });
-    const e = new Date(`${weekDays[6]}T12:00:00Z`).toLocaleDateString("en-CA", {
+    const e = new Date(`${weekDays[4]}T12:00:00Z`).toLocaleDateString("en-CA", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -186,9 +195,9 @@ export function AppointmentsCalendar({
 
       {/* ── Grid ───────────────────────────────────────────────── */}
       <div className="overflow-x-auto rounded-md border border-stone-200 bg-white">
-        <div className="min-w-[900px]">
+        <div className="min-w-[700px]">
           {/* ── Column headers ─────────────────────────────────── */}
-          <div className="grid border-b border-stone-200" style={{ gridTemplateColumns: "64px repeat(7, 1fr)" }}>
+          <div className="grid border-b border-stone-200" style={{ gridTemplateColumns: "64px repeat(5, 1fr)" }}>
             {/* Time gutter header */}
             <div className="border-r border-stone-100 px-2 py-3" />
             {weekDays.map((day) => {
@@ -218,7 +227,7 @@ export function AppointmentsCalendar({
           <div
             className="relative grid"
             style={{
-              gridTemplateColumns: "64px repeat(7, 1fr)",
+              gridTemplateColumns: "64px repeat(5, 1fr)",
               height: `${TOTAL_HOURS * HOUR_HEIGHT_PX}px`,
             }}
           >
@@ -268,7 +277,17 @@ export function AppointmentsCalendar({
                     // Clamp to grid bounds
                     if (startH >= END_HOUR || endH <= START_HOUR) return null;
 
-                    const toneClass = typeColor(appt.appointment_type?.id);
+                    // Past and cancelled events are de-emphasised so the
+                    // calendar reads as a record without competing with what is
+                    // still upcoming.
+                    const isPast = new Date(appt.ends_at).getTime() < nowMs;
+                    const isVoid =
+                      appt.status === "cancelled" || appt.status === "no_show";
+                    const toneClass = isVoid
+                      ? "bg-muted text-muted-foreground border-border line-through opacity-70"
+                      : isPast
+                        ? "bg-muted text-muted-foreground border-border opacity-75"
+                        : typeColor(appt.appointment_type?.id);
                     const typeName =
                       appt.appointment_type?.name ?? "Appointment";
                     const clientName = appt.snapshot_client_name;
@@ -307,6 +326,18 @@ export function AppointmentsCalendar({
             })}
           </div>
         </div>
+      </div>
+
+      {/* Legend: what the muted treatment means. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm border border-[var(--navy-200)] bg-[var(--navy-100)]" />
+          Upcoming
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm border border-border bg-muted opacity-75" />
+          Past
+        </span>
       </div>
     </div>
   );

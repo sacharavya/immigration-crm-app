@@ -37,7 +37,25 @@
       "Bash(npx --yes shadcn@latest add form --force)",
       "Bash(git checkout *)",
       "Bash(git clone *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git -C /Users/sacharavya/Desktop/b-b-i-crm/.claude/worktrees/dash-light diff HEAD -- 'src/app/\\(staff\\)/dashboard/page.tsx' 'src/app/\\(staff\\)/_components/staff-sidebar.tsx')",
+      "Bash(wc -l /Users/sacharavya/.claude/jobs/06c3209d/tmp/dash-light.patch)",
+      "Bash(echo \"--- files touched ---\")",
+      "Bash(git -C /Users/sacharavya/Desktop/b-b-i-crm/.claude/worktrees/dash-light diff --stat HEAD -- 'src/app/\\(staff\\)/dashboard/page.tsx' 'src/app/\\(staff\\)/_components/staff-sidebar.tsx')",
+      "Bash(git apply *)",
+      "Bash(npx eslint *)",
+      "Bash(npx tsc *)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(supabase db *)",
+      "Bash(set -e)",
+      "Bash(mv __TRACKED_VAR__/20260625000002_immigration_location_and_states.sql supabase/migrations/)",
+      "Bash(supabase migration *)",
+      "Bash(npx supabase *)",
+      "Bash(grep -qiE \"ready|started|local:\" /private/tmp/claude-501/-Users-sacharavya-Desktop-b-b-i-crm/c9f88cec-3f77-4e90-a865-ea9fe9ac60cb/tasks/b4v2e5huo.output)",
+      "Bash(break)",
+      "Bash(tail -15 /private/tmp/claude-501/-Users-sacharavya-Desktop-b-b-i-crm/c9f88cec-3f77-4e90-a865-ea9fe9ac60cb/tasks/b4v2e5huo.output)",
+      "Bash(git config *)"
     ],
     "additionalDirectories": [
       "/tmp"

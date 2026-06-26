@@ -7,6 +7,7 @@ import {
   CalendarDays,
   CheckSquare,
   ChevronDown,
+  Handshake,
   History,
   LineChart,
   ListChecks,
@@ -107,6 +108,14 @@ export function StaffSidebar() {
             active={isActive("/dashboard/checklists")}
           />
         </Can>
+        <Can permission="view_agents">
+          <NavItem
+            href="/dashboard/agents"
+            label="Agents"
+            Icon={Handshake}
+            active={isActive("/dashboard/agents")}
+          />
+        </Can>
         <Can permission="manage_staff">
           <NavItem
             href="/dashboard/staff"
@@ -138,7 +147,7 @@ export function StaffSidebar() {
           <span
             aria-hidden
             title={`${staff.first_name} ${staff.last_name}`}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stone-200 text-sm font-semibold text-stone-600 ring-2 ring-white"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--navy-100)] text-sm font-semibold text-[var(--navy-700)] ring-2 ring-white"
           >
             {initials}
           </span>
@@ -182,8 +191,8 @@ function NavItem({
       className={cn(
         "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
         active
-          ? "bg-stone-200/70 font-medium text-stone-900"
-          : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
+          ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
+          : "text-stone-600 hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
       )}
     >
       <Icon className="h-4 w-4" />
@@ -212,8 +221,8 @@ function CasesSection({ pathname }: { pathname: string }) {
           className={cn(
             "flex flex-1 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
             sectionActive
-              ? "bg-stone-200/70 font-medium text-stone-900"
-              : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
+              ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
+              : "text-stone-600 hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
           )}
         >
           <Briefcase className="h-4 w-4" />
@@ -276,8 +285,8 @@ function AppointmentsSection({ pathname }: { pathname: string }) {
           className={cn(
             "flex flex-1 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
             sectionActive
-              ? "bg-stone-200/70 font-medium text-stone-900"
-              : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
+              ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
+              : "text-stone-600 hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
           )}
         >
           <CalendarDays className="h-4 w-4" />
@@ -343,8 +352,8 @@ function SubNavItem({
       className={cn(
         "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors",
         active
-          ? "bg-stone-200/70 font-medium text-stone-900"
-          : "text-stone-600 hover:bg-stone-100 hover:text-stone-900",
+          ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
+          : "text-stone-600 hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
       )}
     >
       <Icon className="h-3.5 w-3.5" />

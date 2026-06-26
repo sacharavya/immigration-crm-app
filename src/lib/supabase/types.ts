@@ -406,6 +406,82 @@ export type Database = {
           },
         ]
       }
+      firm_metric_daily: {
+        Row: {
+          active_cases: number
+          created_at: string
+          outstanding_fees_cad: number | null
+          retained_mtd: number
+          snapshot_date: string
+          total_clients: number
+        }
+        Insert: {
+          active_cases?: number
+          created_at?: string
+          outstanding_fees_cad?: number | null
+          retained_mtd?: number
+          snapshot_date: string
+          total_clients?: number
+        }
+        Update: {
+          active_cases?: number
+          created_at?: string
+          outstanding_fees_cad?: number | null
+          retained_mtd?: number
+          snapshot_date?: string
+          total_clients?: number
+        }
+        Relationships: []
+      }
+      case_assignments: {
+        Row: {
+          case_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          role: Database["crm"]["Enums"]["case_team_role"]
+          staff_id: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role: Database["crm"]["Enums"]["case_team_role"]
+          staff_id: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          role?: Database["crm"]["Enums"]["case_team_role"]
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_assignments_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_assignments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_assignments_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_events: {
         Row: {
           case_id: string
@@ -1275,6 +1351,7 @@ export type Database = {
           country_of_residence: string | null
           created_at: string
           created_by: string | null
+          created_by_agent: string | null
           custom_fields: Json | null
           date_of_birth: string | null
           deleted_at: string | null
@@ -1326,6 +1403,7 @@ export type Database = {
           country_of_residence?: string | null
           created_at?: string
           created_by?: string | null
+          created_by_agent?: string | null
           custom_fields?: Json | null
           date_of_birth?: string | null
           deleted_at?: string | null
@@ -1377,6 +1455,7 @@ export type Database = {
           country_of_residence?: string | null
           created_at?: string
           created_by?: string | null
+          created_by_agent?: string | null
           custom_fields?: Json | null
           date_of_birth?: string | null
           deleted_at?: string | null
@@ -1428,6 +1507,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_created_by_agent_fkey"
+            columns: ["created_by_agent"]
+            isOneToOne: false
+            referencedRelation: "referral_agents"
             referencedColumns: ["id"]
           },
           {
@@ -1755,6 +1841,94 @@ export type Database = {
           {
             foreignKeyName: "payments_recorded_by_fkey"
             columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_agents: {
+        Row: {
+          agent_type: Database["crm"]["Enums"]["referral_agent_type"]
+          auth_user_id: string | null
+          commission_terms: string | null
+          country_code: string | null
+          created_at: string
+          created_by: string | null
+          deactivated_at: string | null
+          deactivated_by: string | null
+          deleted_at: string | null
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          organization: string | null
+          password_reset_required_at: string | null
+          phone: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          agent_type?: Database["crm"]["Enums"]["referral_agent_type"]
+          auth_user_id?: string | null
+          commission_terms?: string | null
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          deleted_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          organization?: string | null
+          password_reset_required_at?: string | null
+          phone?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          agent_type?: Database["crm"]["Enums"]["referral_agent_type"]
+          auth_user_id?: string | null
+          commission_terms?: string | null
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          deleted_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          organization?: string | null
+          password_reset_required_at?: string | null
+          phone?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_agents_country_code_fkey"
+            columns: ["country_code"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "referral_agents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_agents_deactivated_by_fkey"
+            columns: ["deactivated_by"]
             isOneToOne: false
             referencedRelation: "staff"
             referencedColumns: ["id"]
@@ -2282,6 +2456,7 @@ export type Database = {
         | "passport_requested"
         | "refused"
         | "closed"
+      case_team_role: "rcic_of_record" | "case_worker"
       client_status: "lead" | "active" | "dormant" | "closed"
       communication_channel:
         | "email"
@@ -2357,6 +2532,13 @@ export type Database = {
         | "cash"
         | "cheque"
         | "wire"
+        | "other"
+      referral_agent_type:
+        | "individual"
+        | "agency"
+        | "partner"
+        | "lawyer"
+        | "consultant"
         | "other"
       relationship_type:
         | "father"
@@ -3051,6 +3233,7 @@ export const Constants = {
         "refused",
         "closed",
       ],
+      case_team_role: ["rcic_of_record", "case_worker"],
       client_status: ["lead", "active", "dormant", "closed"],
       communication_channel: [
         "email",

@@ -1520,28 +1520,349 @@ export async function revokeClientPortalToken(
   return { ok: true };
 }
 
-const assignmentSchema = z.object({
+// ============================================================================
+// Case team — RCIC of record + case worker(s)
+//
+// The team lives in crm.case_assignments (role enum 'rcic_of_record' |
+// 'case_worker'). A DB trigger mirrors the rcic_of_record row back onto
+// crm.cases.assigned_rcic so legacy readers (retainer / IRCC PDFs, the signing
+// flow, reports, list filters) keep working untouched. Every action gates on
+// edit_cases and records the change in the case audit trail (crm.case_events).
+//
+// Invariants enforced server-side (the UI also gates): the RCIC of record must
+// be a licensed consultant, the RCIC of record cannot be cleared, and a case
+// must keep at least one case worker.
+// ============================================================================
+
+export type TeamActionResult = { ok: true } | { error: string };
+
+const setRcicSchema = z.object({
   caseId: z.string().uuid(),
-  // Legacy column name in the DB; UI now exposes a single "Assigned" slot.
-  rcicId: z.string().uuid("Pick a staff member"),
+  staffId: z.string().uuid("Pick a licensed consultant"),
 });
 
-export type UpdateAssignmentInput = z.infer<typeof assignmentSchema>;
-export type UpdateAssignmentResult = { ok: true } | { error: string };
+async function loadEditableCase(
+  caseId: string,
+): Promise<
+  | { ok: true; supabase: Awaited<ReturnType<typeof createClient>>; meId: string }
+  | { ok: false; error: string }
+> {
+  const me = await getStaff();
+  if (!me) return { ok: false, error: "Not authenticated" };
+  if (!staffCan(me, "edit_cases")) {
+    return { ok: false, error: "You don't have permission to change the case team." };
+  }
+  const supabase = await createClient();
+  const { data: caseRow, error: loadErr } = await supabase
+    .schema("crm")
+    .from("cases")
+    .select("id")
+    .eq("id", caseId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (loadErr || !caseRow) {
+    return { ok: false, error: loadErr?.message ?? "Case not found" };
+  }
+  return { ok: true, supabase, meId: me.id };
+}
 
-export async function updateAssignment(
-  input: UpdateAssignmentInput,
-): Promise<UpdateAssignmentResult> {
-  const parsed = assignmentSchema.safeParse(input);
+export async function setRcicOfRecord(
+  input: z.infer<typeof setRcicSchema>,
+): Promise<TeamActionResult> {
+  const parsed = setRcicSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
-  const { caseId, rcicId } = parsed.data;
+  const { caseId, staffId } = parsed.data;
+
+  const ctx = await loadEditableCase(caseId);
+  if (!ctx.ok) return { error: ctx.error };
+  const { supabase, meId } = ctx;
+
+  // The chosen staff member must be an active, flagged RCIC. The DB trigger
+  // re-checks is_rcic, but a clear message beats a raw constraint error.
+  const { data: rcic } = await supabase
+    .schema("crm")
+    .from("staff")
+    .select("id, is_rcic, is_active, deleted_at")
+    .eq("id", staffId)
+    .maybeSingle();
+  if (!rcic || rcic.deleted_at || !rcic.is_active) {
+    return { error: "Selected staff member is not active." };
+  }
+  if (!rcic.is_rcic) {
+    return { error: "The RCIC of record must be a licensed consultant (RCIC)." };
+  }
+
+  const { data: current } = await supabase
+    .schema("crm")
+    .from("case_assignments")
+    .select("id, staff_id")
+    .eq("case_id", caseId)
+    .eq("role", "rcic_of_record")
+    .maybeSingle();
+
+  if (current?.staff_id === staffId) return { ok: true };
+
+  const mutation = current
+    ? supabase
+        .schema("crm")
+        .from("case_assignments")
+        .update({ staff_id: staffId, created_by: meId })
+        .eq("id", current.id)
+    : supabase
+        .schema("crm")
+        .from("case_assignments")
+        .insert({
+          case_id: caseId,
+          staff_id: staffId,
+          role: "rcic_of_record",
+          created_by: meId,
+        });
+  const { error: writeErr } = await mutation;
+  if (writeErr) return { error: writeErr.message };
+
+  await supabase
+    .schema("crm")
+    .from("case_events")
+    .insert({
+      case_id: caseId,
+      event_type: "other",
+      event_data: {
+        kind: "case_team",
+        role: "rcic_of_record",
+        from: current?.staff_id ?? null,
+        to: staffId,
+      },
+      description: "RCIC of record changed",
+      created_by: meId,
+    });
+
+  revalidatePath(`/dashboard/cases/${caseId}`);
+  return { ok: true };
+}
+
+const workerSchema = z.object({
+  caseId: z.string().uuid(),
+  staffId: z.string().uuid("Pick a staff member"),
+});
+
+export async function addCaseWorker(
+  input: z.infer<typeof workerSchema>,
+): Promise<TeamActionResult> {
+  const parsed = workerSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const { caseId, staffId } = parsed.data;
+
+  const ctx = await loadEditableCase(caseId);
+  if (!ctx.ok) return { error: ctx.error };
+  const { supabase, meId } = ctx;
+
+  const { data: worker } = await supabase
+    .schema("crm")
+    .from("staff")
+    .select("id, is_active, deleted_at")
+    .eq("id", staffId)
+    .maybeSingle();
+  if (!worker || worker.deleted_at || !worker.is_active) {
+    return { error: "Selected staff member is not active." };
+  }
+
+  // Idempotent: a person already on the team as a worker is a no-op.
+  const { data: existing } = await supabase
+    .schema("crm")
+    .from("case_assignments")
+    .select("id")
+    .eq("case_id", caseId)
+    .eq("role", "case_worker")
+    .eq("staff_id", staffId)
+    .maybeSingle();
+  if (existing) return { ok: true };
+
+  const { error: writeErr } = await supabase
+    .schema("crm")
+    .from("case_assignments")
+    .insert({
+      case_id: caseId,
+      staff_id: staffId,
+      role: "case_worker",
+      created_by: meId,
+    });
+  if (writeErr) return { error: writeErr.message };
+
+  await supabase
+    .schema("crm")
+    .from("case_events")
+    .insert({
+      case_id: caseId,
+      event_type: "other",
+      event_data: { kind: "case_team", role: "case_worker", added: staffId },
+      description: "Case worker added",
+      created_by: meId,
+    });
+
+  revalidatePath(`/dashboard/cases/${caseId}`);
+  return { ok: true };
+}
+
+export async function removeCaseWorker(
+  input: z.infer<typeof workerSchema>,
+): Promise<TeamActionResult> {
+  const parsed = workerSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const { caseId, staffId } = parsed.data;
+
+  const ctx = await loadEditableCase(caseId);
+  if (!ctx.ok) return { error: ctx.error };
+  const { supabase, meId } = ctx;
+
+  const { data: workers } = await supabase
+    .schema("crm")
+    .from("case_assignments")
+    .select("id, staff_id")
+    .eq("case_id", caseId)
+    .eq("role", "case_worker");
+
+  const rows = workers ?? [];
+  const target = rows.find((w) => w.staff_id === staffId);
+  if (!target) {
+    return { error: "That staff member is not a case worker on this case." };
+  }
+  if (rows.length <= 1) {
+    return { error: "A case must keep at least one case worker." };
+  }
+
+  const { error: delErr } = await supabase
+    .schema("crm")
+    .from("case_assignments")
+    .delete()
+    .eq("id", target.id);
+  if (delErr) return { error: delErr.message };
+
+  await supabase
+    .schema("crm")
+    .from("case_events")
+    .insert({
+      case_id: caseId,
+      event_type: "other",
+      event_data: { kind: "case_team", role: "case_worker", removed: staffId },
+      description: "Case worker removed",
+      created_by: meId,
+    });
+
+  revalidatePath(`/dashboard/cases/${caseId}`);
+  return { ok: true };
+}
+
+const replaceWorkerSchema = z.object({
+  caseId: z.string().uuid(),
+  fromStaffId: z.string().uuid(),
+  toStaffId: z.string().uuid("Pick a staff member"),
+});
+
+export async function replaceCaseWorker(
+  input: z.infer<typeof replaceWorkerSchema>,
+): Promise<TeamActionResult> {
+  const parsed = replaceWorkerSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const { caseId, fromStaffId, toStaffId } = parsed.data;
+  if (fromStaffId === toStaffId) return { ok: true };
+
+  const ctx = await loadEditableCase(caseId);
+  if (!ctx.ok) return { error: ctx.error };
+  const { supabase, meId } = ctx;
+
+  const { data: toStaff } = await supabase
+    .schema("crm")
+    .from("staff")
+    .select("id, is_active, deleted_at")
+    .eq("id", toStaffId)
+    .maybeSingle();
+  if (!toStaff || toStaff.deleted_at || !toStaff.is_active) {
+    return { error: "Selected staff member is not active." };
+  }
+
+  const { data: workers } = await supabase
+    .schema("crm")
+    .from("case_assignments")
+    .select("id, staff_id")
+    .eq("case_id", caseId)
+    .eq("role", "case_worker");
+
+  const rows = workers ?? [];
+  const fromRow = rows.find((w) => w.staff_id === fromStaffId);
+  if (!fromRow) {
+    return { error: "That staff member is not a case worker on this case." };
+  }
+  if (rows.some((w) => w.staff_id === toStaffId)) {
+    return { error: "That staff member is already a case worker on this case." };
+  }
+
+  // Update the existing row in place: the worker count never changes, so the
+  // last-worker invariant is preserved automatically.
+  const { error: writeErr } = await supabase
+    .schema("crm")
+    .from("case_assignments")
+    .update({ staff_id: toStaffId, created_by: meId })
+    .eq("id", fromRow.id);
+  if (writeErr) return { error: writeErr.message };
+
+  await supabase
+    .schema("crm")
+    .from("case_events")
+    .insert({
+      case_id: caseId,
+      event_type: "other",
+      event_data: {
+        kind: "case_team",
+        role: "case_worker",
+        from: fromStaffId,
+        to: toStaffId,
+      },
+      description: "Case worker changed",
+      created_by: meId,
+    });
+
+  revalidatePath(`/dashboard/cases/${caseId}`);
+  return { ok: true };
+}
+
+// ============================================================================
+// setCasePriority: the one manual field on the cases board
+// ============================================================================
+//
+// Priority is the only board signal a human sets; everything else is derived.
+// Levels: 'normal' (the default, shown as no pill), 'high', 'critical'. Never
+// set automatically. Gated on edit_cases at the action level as defence in
+// depth behind the UI.
+
+const casePrioritySchema = z.object({
+  caseId: z.string().uuid(),
+  priority: z.enum(["normal", "high", "critical"]),
+});
+
+export type SetCasePriorityInput = z.infer<typeof casePrioritySchema>;
+export type SetCasePriorityResult = { ok: true } | { error: string };
+
+export async function setCasePriority(
+  input: SetCasePriorityInput,
+): Promise<SetCasePriorityResult> {
+  const parsed = casePrioritySchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const { caseId, priority } = parsed.data;
 
   const me = await getStaff();
   if (!me) return { error: "Not authenticated" };
   if (!staffCan(me, "edit_cases")) {
-    return { error: "You don't have permission to change assignments." };
+    return { error: "You don't have permission to change case priority." };
   }
 
   const supabase = await createClient();
@@ -1549,36 +1870,22 @@ export async function updateAssignment(
   const { data: caseRow, error: loadErr } = await supabase
     .schema("crm")
     .from("cases")
-    .select("assigned_rcic")
+    .select("priority")
     .eq("id", caseId)
     .is("deleted_at", null)
     .maybeSingle();
-
   if (loadErr || !caseRow) {
     return { error: loadErr?.message ?? "Case not found" };
   }
-
-  // Verify the chosen staff member is still active.
-  const { data: assignee } = await supabase
-    .schema("crm")
-    .from("staff")
-    .select("id, is_active, deleted_at")
-    .eq("id", rcicId)
-    .maybeSingle();
-  if (!assignee || assignee.deleted_at || !assignee.is_active) {
-    return { error: "Selected staff member is not active." };
-  }
-
-  if (caseRow.assigned_rcic === rcicId) {
+  if ((caseRow.priority ?? "normal") === priority) {
     return { ok: true };
   }
 
   const { error: updateErr } = await supabase
     .schema("crm")
     .from("cases")
-    .update({ assigned_rcic: rcicId })
+    .update({ priority })
     .eq("id", caseId);
-
   if (updateErr) return { error: updateErr.message };
 
   await supabase
@@ -1587,12 +1894,13 @@ export async function updateAssignment(
     .insert({
       case_id: caseId,
       event_type: "other",
-      event_data: { from: caseRow.assigned_rcic, to: rcicId },
-      description: "Assignment updated",
+      event_data: { from: caseRow.priority ?? "normal", to: priority },
+      description: "Priority changed",
       created_by: me.id,
     });
 
   revalidatePath(`/dashboard/cases/${caseId}`);
+  revalidatePath("/dashboard/cases");
   return { ok: true };
 }
 

@@ -3,6 +3,7 @@
 import { Menu } from "@base-ui/react/menu";
 import {
   Check,
+  Flag,
   Link2,
   MoreHorizontal,
   PauseCircle,
@@ -16,10 +17,19 @@ import { useState, useTransition } from "react";
 
 import { DeleteConfirmDialog } from "@/components/checklists/delete-confirm-dialog";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils/index";
 
-import { deleteCase } from "../actions";
-import type { StaffOption } from "./assignment-card";
-import { ReassignDialog } from "./reassign-dialog";
+import { deleteCase, setCasePriority } from "../actions";
+import { RcicPickerDialog } from "./rcic-picker-dialog";
+import type { StaffOption } from "./team";
+
+type PriorityLevel = "normal" | "high" | "critical";
+
+const PRIORITY_OPTIONS: ReadonlyArray<{ value: PriorityLevel; label: string }> = [
+  { value: "normal", label: "None" },
+  { value: "high", label: "High" },
+  { value: "critical", label: "Critical" },
+];
 
 const itemClass =
   "flex cursor-pointer select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground outline-none data-[highlighted]:bg-muted data-[disabled]:cursor-not-allowed data-[disabled]:text-[var(--subtle-foreground)] data-[disabled]:data-[highlighted]:bg-transparent";
@@ -27,14 +37,18 @@ const itemClass =
 export function CaseOverflowMenu({
   caseId,
   caseNumber,
-  assignedId,
-  staffOptions,
+  rcicId,
+  rcicOptions,
+  priority,
+  canEdit,
   canDelete,
 }: {
   caseId: string;
   caseNumber: string;
-  assignedId: string | null;
-  staffOptions: StaffOption[];
+  rcicId: string | null;
+  rcicOptions: StaffOption[];
+  priority: string;
+  canEdit: boolean;
   canDelete: boolean;
 }) {
   const router = useRouter();
@@ -43,6 +57,16 @@ export function CaseOverflowMenu({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
+  const currentPriority: PriorityLevel =
+    priority === "high" || priority === "critical" ? priority : "normal";
+
+  function changePriority(next: PriorityLevel) {
+    if (next === currentPriority) return;
+    startTransition(async () => {
+      const result = await setCasePriority({ caseId, priority: next });
+      if (!("error" in result)) router.refresh();
+    });
+  }
 
   function copyLink() {
     if (typeof window === "undefined") return;
@@ -86,8 +110,42 @@ export function CaseOverflowMenu({
                 onClick={() => setReassignOpen(true)}
               >
                 <UserCog className="h-4 w-4" />
-                Reassign case
+                Change RCIC of record
               </Menu.Item>
+              {canEdit && (
+                <Menu.SubmenuRoot>
+                  <Menu.SubmenuTrigger className={itemClass}>
+                    <Flag className="h-4 w-4" />
+                    Set priority
+                    <span className="ml-auto text-xs text-[var(--subtle-foreground)]">
+                      {PRIORITY_OPTIONS.find((o) => o.value === currentPriority)?.label}
+                    </span>
+                  </Menu.SubmenuTrigger>
+                  <Menu.Portal>
+                    <Menu.Positioner sideOffset={2} align="start" className="z-50">
+                      <Menu.Popup className="min-w-40 rounded-lg border border-border bg-popover p-1 text-popover-foreground outline-none">
+                        {PRIORITY_OPTIONS.map((o) => (
+                          <Menu.Item
+                            key={o.value}
+                            className={itemClass}
+                            onClick={() => changePriority(o.value)}
+                          >
+                            <Check
+                              className={cn(
+                                "h-4 w-4",
+                                o.value === currentPriority
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            {o.label}
+                          </Menu.Item>
+                        ))}
+                      </Menu.Popup>
+                    </Menu.Positioner>
+                  </Menu.Portal>
+                </Menu.SubmenuRoot>
+              )}
               <Menu.Item className={itemClass} disabled title="Coming soon">
                 <Repeat className="h-4 w-4" />
                 Change service type
@@ -109,7 +167,10 @@ export function CaseOverflowMenu({
                 <>
                   <Menu.Separator className="my-1 h-px bg-border" />
                   <Menu.Item
-                    className={`${itemClass} text-[var(--destructive-text)] data-[highlighted]:bg-[var(--maple-50)]`}
+                    className={`${itemClass.replace(
+                      "text-foreground",
+                      "text-[var(--destructive)]",
+                    )} data-[highlighted]:bg-[var(--maple-50)]`}
                     onClick={() => setDeleteOpen(true)}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -122,12 +183,12 @@ export function CaseOverflowMenu({
         </Menu.Portal>
       </Menu.Root>
 
-      <ReassignDialog
+      <RcicPickerDialog
         open={reassignOpen}
         onOpenChange={setReassignOpen}
         caseId={caseId}
-        options={staffOptions}
-        currentId={assignedId}
+        options={rcicOptions}
+        currentId={rcicId}
       />
 
       {canDelete && (

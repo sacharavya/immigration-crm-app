@@ -15,6 +15,7 @@ type Props = {
   counts: SegmentCounts;
   params: WorklistParams;
   staffById: Record<string, string>;
+  agentById: Record<string, string>;
   ownerOptions: Option[];
   serviceTypeOptions: Option[];
   citizenshipOptions: CitOption[];
@@ -25,6 +26,7 @@ export function WorklistShell({
   counts,
   params,
   staffById,
+  agentById,
   ownerOptions,
   serviceTypeOptions,
   citizenshipOptions,
@@ -40,7 +42,7 @@ export function WorklistShell({
         citizenshipOptions={citizenshipOptions}
       />
 
-      <WorklistTable rows={rows} staffById={staffById} />
+      <WorklistTable rows={rows} staffById={staffById} agentById={agentById} />
 
       <p className="text-xs text-stone-400">
         {rows.length} client{rows.length === 1 ? "" : "s"}

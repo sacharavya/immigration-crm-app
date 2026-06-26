@@ -10,16 +10,20 @@
    ================================================================ */
 :root {
   /* ── Brand scales ─────────────────────────────────────────── */
-  --navy: #1D3358;
-  --navy-light: #284571;
-  --navy-50: #EEF2F9;
-  --navy-100: #D8E1F0;
-  --navy-200: #B0C2E0;
-  --navy-400: #5273A8;
-  --navy-600: #284571;
-  --navy-700: #1D3358;
-  --navy-800: #15284A;
-  --navy-900: #0F1D38;
+  /* The "navy" scale is now derived from the primary colour (#3266ad): the
+     brand/action shades equal primary / primary-hover, and the tints are
+     primary-hued light washes. Re-pointed here so every var(--navy*) consumer
+     switches to primary in one place. */
+  --navy: #3266ad;
+  --navy-light: #5380bf;
+  --navy-50: #eef3fb;
+  --navy-100: #d6e2f4;
+  --navy-200: #b0c8ea;
+  --navy-400: #6189c5;
+  --navy-600: #2a5693;
+  --navy-700: #3266ad;
+  --navy-800: #28507f;
+  --navy-900: #1f3d68;
   --maple-50: #FCEBE9;
   --maple-100: #F8D5D0;
   --maple-500: #D8453A;
@@ -41,14 +45,14 @@
   /* Slightly stronger divider for dashed ghost controls (e.g. "Add another"). */
   --border-secondary: #D2D6DB;
   --input: #D2D6DB;
-  --ring: #1D3358;
+  --ring: #3266ad;
   --primary: #3266ad;
   --primary-foreground: #FFFFFF;
   --primary-hover: #2a5693;
   --secondary: #EEF0F2;
   --secondary-foreground: #3A414B;
-  --accent: #EEF2F9;
-  --accent-foreground: #1D3358;
+  --accent: #eef3fb;
+  --accent-foreground: #3266ad;
   --destructive: #C5362C;
   --destructive-foreground: #FFFFFF;
   /* Safe stop: the darker maple used for destructive *text* on light
@@ -75,20 +79,20 @@
   --surface-sunken: #F6F7F9;
 
   /* ── Charts ───────────────────────────────────────────────── */
-  --chart-1: #1D3358;
-  --chart-2: #5273A8;
-  --chart-3: #B0C2E0;
+  --chart-1: #3266ad;
+  --chart-2: #6189c5;
+  --chart-3: #b0c8ea;
   --chart-4: #2E7D4F;
   --chart-5: #B97D12;
 
   /* Sharp edges globally. Revert to 0.625rem for rounded corners. */
   --radius: 0;
 
-  /* ── Sidebar (dark navy) ──────────────────────────────────── */
-  --sidebar: #15284A;
+  /* ── Sidebar (dark primary) ───────────────────────────────── */
+  --sidebar: #28507f;
   --sidebar-foreground: #C7D2E6;
   --sidebar-primary: #FFFFFF;
-  --sidebar-primary-foreground: #15284A;
+  --sidebar-primary-foreground: #28507f;
   --sidebar-accent: rgba(255, 255, 255, 0.08);
   --sidebar-accent-foreground: #FFFFFF;
   --sidebar-border: rgba(255, 255, 255, 0.10);
