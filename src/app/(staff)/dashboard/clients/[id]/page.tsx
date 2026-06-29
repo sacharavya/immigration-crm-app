@@ -177,13 +177,25 @@ export default async function ClientDetailPage({ params }: Props) {
 
   const supabase = await createClient();
 
-  const { data: clientRow } = await supabase
-    .schema("crm")
-    .from("clients")
-    .select("*")
-    .eq("id", id)
-    .is("deleted_at", null)
-    .maybeSingle();
+  // The client row and its cases both key off the URL id, so fetch them
+  // together. Everything below (services, chips, participants) keys off the
+  // resulting case ids and runs as a second parallel wave.
+  const [{ data: clientRow }, { data: caseRows }] = await Promise.all([
+    supabase
+      .schema("crm")
+      .from("clients")
+      .select("*")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle(),
+    supabase
+      .schema("crm")
+      .from("cases")
+      .select("id, case_number, status, opened_at, service_type_id")
+      .eq("client_id", id)
+      .is("deleted_at", null)
+      .order("opened_at", { ascending: false }),
+  ]);
 
   if (!clientRow) notFound();
 
@@ -203,14 +215,6 @@ export default async function ClientDetailPage({ params }: Props) {
   const immigrationInCanada = ext.immigration_in_canada ?? null;
   const uci = ext.uci ?? null;
 
-  const { data: caseRows } = await supabase
-    .schema("crm")
-    .from("cases")
-    .select("id, case_number, status, opened_at, service_type_id")
-    .eq("client_id", id)
-    .is("deleted_at", null)
-    .order("opened_at", { ascending: false });
-
   const caseRowsList = caseRows ?? [];
   const caseNumberById = new Map(
     caseRowsList.map((c) => [c.id, c.case_number]),
@@ -218,25 +222,56 @@ export default async function ClientDetailPage({ params }: Props) {
   const serviceIds = Array.from(
     new Set(caseRowsList.map((c) => c.service_type_id)),
   );
-  const { data: serviceRows } = serviceIds.length
-    ? await supabase
-        .schema("ref")
-        .from("service_types")
-        .select("id, name")
-        .in("id", serviceIds)
-    : { data: [] as Array<{ id: string; name: string }> };
+  const caseIds = caseRowsList.map((c) => c.id);
+
+  // Services, chip inputs, and case participants all key off the case ids, so
+  // fetch them in one parallel wave rather than three sequential round-trips.
+  const [{ data: serviceRows }, { data: chipRows }, { data: participantRows }] =
+    await Promise.all([
+      serviceIds.length
+        ? supabase
+            .schema("ref")
+            .from("service_types")
+            .select("id, name")
+            .in("id", serviceIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+      caseIds.length
+        ? supabase
+            .schema("crm")
+            .from("v_case_chip_inputs")
+            .select("*")
+            .in("case_id", caseIds)
+        : Promise.resolve({ data: [] }),
+      caseIds.length
+        ? (supabase
+            .schema("crm")
+            .from("case_participants")
+            .select(
+              "id, role, client_id, case_id, client:clients(legal_name_full, given_names, family_name)",
+            )
+            .in("case_id", caseIds)
+            .order("added_at", { ascending: true }) as unknown as Promise<{
+            data:
+              | Array<{
+                  id: string;
+                  role: ParticipantRole;
+                  client_id: string;
+                  case_id: string;
+                  client: {
+                    legal_name_full: string | null;
+                    given_names: string | null;
+                    family_name: string | null;
+                  } | null;
+                }>
+              | null;
+          }>)
+        : Promise.resolve({ data: [] as never[] }),
+    ]);
+
   const serviceNameById = new Map(
     (serviceRows ?? []).map((s) => [s.id, s.name]),
   );
 
-  const caseIds = caseRowsList.map((c) => c.id);
-  const { data: chipRows } = caseIds.length
-    ? await supabase
-        .schema("crm")
-        .from("v_case_chip_inputs")
-        .select("*")
-        .in("case_id", caseIds)
-    : { data: [] };
   const chipNow = new Date();
   const chipById = new Map<string, ChipOutput>();
   for (const row of chipRows ?? []) {
@@ -255,31 +290,8 @@ export default async function ClientDetailPage({ params }: Props) {
   ).length;
 
   // Related people: everyone linked to this client through their cases, minus
-  // the client themself. Rendered only when present.
-  const { data: participantRows } = caseIds.length
-    ? ((await supabase
-        .schema("crm")
-        .from("case_participants")
-        .select(
-          "id, role, client_id, case_id, client:clients(legal_name_full, given_names, family_name)",
-        )
-        .in("case_id", caseIds)
-        .order("added_at", { ascending: true })) as unknown as {
-        data:
-          | Array<{
-              id: string;
-              role: ParticipantRole;
-              client_id: string;
-              case_id: string;
-              client: {
-                legal_name_full: string | null;
-                given_names: string | null;
-                family_name: string | null;
-              } | null;
-            }>
-          | null;
-      })
-    : { data: [] as never[] };
+  // the client themself. Fetched in the parallel wave above; rendered only when
+  // present.
   const relatedPeople: RelatedPerson[] = (participantRows ?? [])
     .filter((p) => p.client_id !== id)
     .map((p) => {

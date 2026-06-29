@@ -55,7 +55,8 @@
       "Bash(grep -qiE \"ready|started|local:\" /private/tmp/claude-501/-Users-sacharavya-Desktop-b-b-i-crm/c9f88cec-3f77-4e90-a865-ea9fe9ac60cb/tasks/b4v2e5huo.output)",
       "Bash(break)",
       "Bash(tail -15 /private/tmp/claude-501/-Users-sacharavya-Desktop-b-b-i-crm/c9f88cec-3f77-4e90-a865-ea9fe9ac60cb/tasks/b4v2e5huo.output)",
-      "Bash(git config *)"
+      "Bash(git config *)",
+      "Bash(npm test *)"
     ],
     "additionalDirectories": [
       "/tmp"

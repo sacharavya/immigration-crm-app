@@ -6,7 +6,7 @@ import { MyTasks } from "@/components/dashboard/MyTasks";
 import { NeedsAttention } from "@/components/dashboard/NeedsAttention";
 import { PipelineStrip } from "@/components/dashboard/PipelineStrip";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { SuccessRadar } from "@/components/dashboard/SuccessRadar";
+import { SuccessRadar } from "@/components/dashboard/success-radar-lazy";
 import { buttonVariants } from "@/components/ui/button";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";

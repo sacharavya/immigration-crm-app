@@ -25,24 +25,36 @@ export async function computeFirmMetrics(
 ): Promise<FirmMetrics> {
   const monthStart = startOfMonthISO();
 
-  const [casesRes, clientCountRes, paymentsRes] = await Promise.all([
-    supabase
-      .schema("crm")
-      .from("cases")
-      .select("id, retained_at, quoted_fee_cad, government_fee_cad")
-      .is("deleted_at", null)
-      .neq("status", "closed"),
-    supabase
-      .schema("crm")
-      .from("clients")
-      .select("id", { count: "exact", head: true })
-      .is("deleted_at", null),
-    supabase
-      .schema("crm")
-      .from("payments")
-      .select("case_id, amount_cad, is_refund, client_uploaded_at, verified_at")
-      .is("deleted_at", null),
-  ]);
+  // All four reads run together. The retainer snapshot used to wait for the
+  // case ids; instead pull every signed, non-voided retainer in the same batch
+  // and join in memory, so this is one round-trip wave, not two.
+  const [casesRes, clientCountRes, paymentsRes, retainersRes] =
+    await Promise.all([
+      supabase
+        .schema("crm")
+        .from("cases")
+        .select("id, retained_at, quoted_fee_cad, government_fee_cad")
+        .is("deleted_at", null)
+        .neq("status", "closed"),
+      supabase
+        .schema("crm")
+        .from("clients")
+        .select("id", { count: "exact", head: true })
+        .is("deleted_at", null),
+      supabase
+        .schema("crm")
+        .from("payments")
+        .select(
+          "case_id, amount_cad, is_refund, client_uploaded_at, verified_at",
+        )
+        .is("deleted_at", null),
+      supabase
+        .schema("crm")
+        .from("retainer_agreements")
+        .select("case_id, government_fee_cad, hst_cad, signed_at, voided_at")
+        .is("deleted_at", null)
+        .not("signed_at", "is", null),
+    ]);
 
   const cases = casesRes.data ?? [];
   const totalClients =
@@ -50,29 +62,18 @@ export async function computeFirmMetrics(
   const payments = paymentsRes.data ?? [];
 
   // Signed-retainer snapshot per case so the outstanding total includes the
-  // government fee and HST, not just the service fee.
+  // government fee and HST, not just the service fee. Extra rows for closed
+  // cases are simply never looked up below.
   const retainersByCase = new Map<
     string,
     { government_fee_cad: number | null; hst_cad: number | null }
   >();
-  if (cases.length > 0) {
-    const { data: retainers } = await supabase
-      .schema("crm")
-      .from("retainer_agreements")
-      .select("case_id, government_fee_cad, hst_cad, signed_at, voided_at")
-      .in(
-        "case_id",
-        cases.map((c) => c.id),
-      )
-      .is("deleted_at", null)
-      .not("signed_at", "is", null);
-    for (const r of retainers ?? []) {
-      if (r.case_id && r.signed_at && !r.voided_at) {
-        retainersByCase.set(r.case_id, {
-          government_fee_cad: r.government_fee_cad,
-          hst_cad: r.hst_cad,
-        });
-      }
+  for (const r of retainersRes.data ?? []) {
+    if (r.case_id && r.signed_at && !r.voided_at) {
+      retainersByCase.set(r.case_id, {
+        government_fee_cad: r.government_fee_cad,
+        hst_cad: r.hst_cad,
+      });
     }
   }
 

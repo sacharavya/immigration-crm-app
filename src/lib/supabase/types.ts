@@ -359,6 +359,13 @@ export type Database = {
             foreignKeyName: "appointments_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "agent_case_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "cases"
             referencedColumns: ["id"]
           },
@@ -406,33 +413,6 @@ export type Database = {
           },
         ]
       }
-      firm_metric_daily: {
-        Row: {
-          active_cases: number
-          created_at: string
-          outstanding_fees_cad: number | null
-          retained_mtd: number
-          snapshot_date: string
-          total_clients: number
-        }
-        Insert: {
-          active_cases?: number
-          created_at?: string
-          outstanding_fees_cad?: number | null
-          retained_mtd?: number
-          snapshot_date: string
-          total_clients?: number
-        }
-        Update: {
-          active_cases?: number
-          created_at?: string
-          outstanding_fees_cad?: number | null
-          retained_mtd?: number
-          snapshot_date?: string
-          total_clients?: number
-        }
-        Relationships: []
-      }
       case_assignments: {
         Row: {
           case_id: string
@@ -463,8 +443,22 @@ export type Database = {
             foreignKeyName: "case_assignments_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "agent_case_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_assignments_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_assignments_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "v_case_chip_inputs"
+            referencedColumns: ["case_id"]
           },
           {
             foreignKeyName: "case_assignments_created_by_fkey"
@@ -524,6 +518,13 @@ export type Database = {
             foreignKeyName: "case_events_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "agent_case_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "cases"
             referencedColumns: ["id"]
           },
@@ -577,6 +578,13 @@ export type Database = {
             foreignKeyName: "case_participants_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "agent_case_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_participants_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "cases"
             referencedColumns: ["id"]
           },
@@ -593,6 +601,88 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_requests: {
+        Row: {
+          agent_id: string
+          client_id: string
+          created_at: string
+          handled_at: string | null
+          handled_by: string | null
+          id: string
+          note: string | null
+          resulting_case_id: string | null
+          service_type_id: string | null
+          status: Database["crm"]["Enums"]["case_request_status"]
+        }
+        Insert: {
+          agent_id: string
+          client_id: string
+          created_at?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          note?: string | null
+          resulting_case_id?: string | null
+          service_type_id?: string | null
+          status?: Database["crm"]["Enums"]["case_request_status"]
+        }
+        Update: {
+          agent_id?: string
+          client_id?: string
+          created_at?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          note?: string | null
+          resulting_case_id?: string | null
+          service_type_id?: string | null
+          status?: Database["crm"]["Enums"]["case_request_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "referral_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_requests_handled_by_fkey"
+            columns: ["handled_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_requests_resulting_case_id_fkey"
+            columns: ["resulting_case_id"]
+            isOneToOne: false
+            referencedRelation: "agent_case_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_requests_resulting_case_id_fkey"
+            columns: ["resulting_case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_requests_resulting_case_id_fkey"
+            columns: ["resulting_case_id"]
+            isOneToOne: false
+            referencedRelation: "v_case_chip_inputs"
+            referencedColumns: ["case_id"]
           },
         ]
       }
@@ -628,6 +718,13 @@ export type Database = {
           set_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "case_required_documents_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "agent_case_status"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "case_required_documents_case_id_fkey"
             columns: ["case_id"]
@@ -1364,6 +1461,12 @@ export type Database = {
           has_prior_biometrics: boolean | null
           has_siblings: boolean | null
           id: string
+          immigration_in_canada: boolean | null
+          immigration_status:
+            | Database["crm"]["Enums"]["immigration_status_type"]
+            | null
+          immigration_status_expiry: string | null
+          immigration_status_note: string | null
           intake_portal_token: string | null
           intake_portal_token_created_at: string | null
           intake_submitted_at: string | null
@@ -1384,6 +1487,7 @@ export type Database = {
           source: string | null
           status: Database["crm"]["Enums"]["client_status"]
           travel_completed: boolean | null
+          uci: string | null
           updated_at: string
           years_elementary: number | null
           years_post_secondary: number | null
@@ -1416,6 +1520,12 @@ export type Database = {
           has_prior_biometrics?: boolean | null
           has_siblings?: boolean | null
           id?: string
+          immigration_in_canada?: boolean | null
+          immigration_status?:
+            | Database["crm"]["Enums"]["immigration_status_type"]
+            | null
+          immigration_status_expiry?: string | null
+          immigration_status_note?: string | null
           intake_portal_token?: string | null
           intake_portal_token_created_at?: string | null
           intake_submitted_at?: string | null
@@ -1436,6 +1546,7 @@ export type Database = {
           source?: string | null
           status?: Database["crm"]["Enums"]["client_status"]
           travel_completed?: boolean | null
+          uci?: string | null
           updated_at?: string
           years_elementary?: number | null
           years_post_secondary?: number | null
@@ -1468,6 +1579,12 @@ export type Database = {
           has_prior_biometrics?: boolean | null
           has_siblings?: boolean | null
           id?: string
+          immigration_in_canada?: boolean | null
+          immigration_status?:
+            | Database["crm"]["Enums"]["immigration_status_type"]
+            | null
+          immigration_status_expiry?: string | null
+          immigration_status_note?: string | null
           intake_portal_token?: string | null
           intake_portal_token_created_at?: string | null
           intake_submitted_at?: string | null
@@ -1488,6 +1605,7 @@ export type Database = {
           source?: string | null
           status?: Database["crm"]["Enums"]["client_status"]
           travel_completed?: boolean | null
+          uci?: string | null
           updated_at?: string
           years_elementary?: number | null
           years_post_secondary?: number | null
@@ -1503,17 +1621,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "clients_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "staff"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "clients_created_by_agent_fkey"
             columns: ["created_by_agent"]
             isOneToOne: false
             referencedRelation: "referral_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
           {
@@ -1591,6 +1709,13 @@ export type Database = {
             foreignKeyName: "communications_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "agent_case_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communications_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "cases"
             referencedColumns: ["id"]
           },
@@ -1623,6 +1748,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      firm_metric_daily: {
+        Row: {
+          active_cases: number
+          created_at: string
+          outstanding_fees_cad: number | null
+          retained_mtd: number
+          snapshot_date: string
+          total_clients: number
+        }
+        Insert: {
+          active_cases?: number
+          created_at?: string
+          outstanding_fees_cad?: number | null
+          retained_mtd?: number
+          snapshot_date: string
+          total_clients?: number
+        }
+        Update: {
+          active_cases?: number
+          created_at?: string
+          outstanding_fees_cad?: number | null
+          retained_mtd?: number
+          snapshot_date?: string
+          total_clients?: number
+        }
+        Relationships: []
       }
       invoice_line_items: {
         Row: {
@@ -1722,6 +1874,13 @@ export type Database = {
             foreignKeyName: "invoices_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "agent_case_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "cases"
             referencedColumns: ["id"]
           },
@@ -1742,6 +1901,88 @@ export type Database = {
           {
             foreignKeyName: "invoices_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          body: string | null
+          case_id: string | null
+          created_at: string
+          id: string
+          read_at: string | null
+          source_event_id: string | null
+          staff_id: string
+          title: string
+          type: Database["crm"]["Enums"]["notification_type"]
+        }
+        Insert: {
+          actor_id?: string | null
+          body?: string | null
+          case_id?: string | null
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          source_event_id?: string | null
+          staff_id: string
+          title: string
+          type: Database["crm"]["Enums"]["notification_type"]
+        }
+        Update: {
+          actor_id?: string | null
+          body?: string | null
+          case_id?: string | null
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          source_event_id?: string | null
+          staff_id?: string
+          title?: string
+          type?: Database["crm"]["Enums"]["notification_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "agent_case_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "v_case_chip_inputs"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "notifications_source_event_id_fkey"
+            columns: ["source_event_id"]
+            isOneToOne: false
+            referencedRelation: "case_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_staff_id_fkey"
+            columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff"
             referencedColumns: ["id"]
@@ -1814,6 +2055,13 @@ export type Database = {
             foreignKeyName: "payments_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "agent_case_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "cases"
             referencedColumns: ["id"]
           },
@@ -1841,6 +2089,13 @@ export type Database = {
           {
             foreignKeyName: "payments_recorded_by_fkey"
             columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_verified_by_fkey"
+            columns: ["verified_by"]
             isOneToOne: false
             referencedRelation: "staff"
             referencedColumns: ["id"]
@@ -1912,13 +2167,6 @@ export type Database = {
           website?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "referral_agents_country_code_fkey"
-            columns: ["country_code"]
-            isOneToOne: false
-            referencedRelation: "countries"
-            referencedColumns: ["code"]
-          },
           {
             foreignKeyName: "referral_agents_created_by_fkey"
             columns: ["created_by"]
@@ -2096,6 +2344,13 @@ export type Database = {
           withdrawal_refund_floor_cad?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "retainer_agreements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: true
+            referencedRelation: "agent_case_status"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "retainer_agreements_case_id_fkey"
             columns: ["case_id"]
@@ -2324,6 +2579,13 @@ export type Database = {
             foreignKeyName: "tasks_case_id_fkey"
             columns: ["case_id"]
             isOneToOne: false
+            referencedRelation: "agent_case_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
             referencedRelation: "cases"
             referencedColumns: ["id"]
           },
@@ -2359,6 +2621,26 @@ export type Database = {
       }
     }
     Views: {
+      agent_case_status: {
+        Row: {
+          case_number: string | null
+          client_id: string | null
+          created_at: string | null
+          id: string | null
+          service_name: string | null
+          service_type_id: string | null
+          status: Database["crm"]["Enums"]["case_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cases_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_case_chip_inputs: {
         Row: {
           accepted_docs: number | null
@@ -2412,6 +2694,7 @@ export type Database = {
         }[]
       }
       case_total_collected: { Args: { p_case_id: string }; Returns: number }
+      current_agent_id: { Args: never; Returns: string }
       current_staff_id: { Args: never; Returns: string }
       current_staff_role: {
         Args: never
@@ -2448,6 +2731,7 @@ export type Database = {
         | "scheduled"
         | "completed"
         | "exempt"
+      case_request_status: "pending" | "opened" | "dismissed"
       case_status:
         | "retainer_pending"
         | "documentation_in_progress"
@@ -2510,6 +2794,21 @@ export type Database = {
         | "document_viewed"
         | "passport_requested"
       gender: "male" | "female" | "other" | "prefer_not_to_say"
+      immigration_status_type:
+        | "study_permit"
+        | "work_permit"
+        | "pgwp"
+        | "visitor_record"
+        | "visitor"
+        | "bridging_owp"
+        | "permanent_resident"
+        | "citizen"
+        | "refugee_claimant"
+        | "no_status"
+        | "other"
+        | "trp"
+        | "maintained_status"
+        | "restoration"
       invoice_status: "draft" | "sent" | "partial" | "paid" | "void" | "overdue"
       marital_status:
         | "single"
@@ -2519,6 +2818,17 @@ export type Database = {
         | "widowed"
         | "separated"
         | "annulled"
+      notification_type:
+        | "case_status_changed"
+        | "document_received"
+        | "document_accepted"
+        | "document_rejected"
+        | "document_requested"
+        | "phase_blocked"
+        | "deadline_set"
+        | "deadline_missed"
+        | "fee_collected"
+        | "task_assigned"
       participant_role:
         | "principal"
         | "spouse"
@@ -2701,13 +3011,13 @@ export type Database = {
       pending_drive_moves: {
         Row: {
           attempt_count: number
-          parent_folder_item_id: string
           created_at: string
           document_id: string
           id: string
           last_error: string | null
           max_attempts: number
           next_attempt_at: string
+          parent_folder_item_id: string
           source_drive_id: string
           source_item_id: string
           status: string
@@ -2717,13 +3027,13 @@ export type Database = {
         }
         Insert: {
           attempt_count?: number
-          parent_folder_item_id: string
           created_at?: string
           document_id: string
           id?: string
           last_error?: string | null
           max_attempts?: number
           next_attempt_at?: string
+          parent_folder_item_id: string
           source_drive_id: string
           source_item_id: string
           status?: string
@@ -2733,13 +3043,13 @@ export type Database = {
         }
         Update: {
           attempt_count?: number
-          parent_folder_item_id?: string
           created_at?: string
           document_id?: string
           id?: string
           last_error?: string | null
           max_attempts?: number
           next_attempt_at?: string
+          parent_folder_item_id?: string
           source_drive_id?: string
           source_item_id?: string
           status?: string
@@ -2862,6 +3172,60 @@ export type Database = {
           code?: string
           display_order?: number
           name?: string
+        }
+        Relationships: []
+      }
+      noc_occupations: {
+        Row: {
+          broad_category: string
+          code: string
+          created_at: string
+          duties_flat: string
+          duties_tsv: unknown
+          employment_requirements: string
+          example_titles: string[]
+          example_titles_flat: string
+          exclusions: string[]
+          lead_statement: string
+          main_duties: string[]
+          sowp_listed: boolean
+          teer: number
+          title: string
+          title_tsv: unknown
+        }
+        Insert: {
+          broad_category: string
+          code: string
+          created_at?: string
+          duties_flat?: string
+          duties_tsv?: unknown
+          employment_requirements?: string
+          example_titles?: string[]
+          example_titles_flat?: string
+          exclusions?: string[]
+          lead_statement?: string
+          main_duties?: string[]
+          sowp_listed?: boolean
+          teer: number
+          title: string
+          title_tsv?: unknown
+        }
+        Update: {
+          broad_category?: string
+          code?: string
+          created_at?: string
+          duties_flat?: string
+          duties_tsv?: unknown
+          employment_requirements?: string
+          example_titles?: string[]
+          example_titles_flat?: string
+          exclusions?: string[]
+          lead_statement?: string
+          main_duties?: string[]
+          sowp_listed?: boolean
+          teer?: number
+          title?: string
+          title_tsv?: unknown
         }
         Relationships: []
       }
@@ -2997,6 +3361,33 @@ export type Database = {
             referencedColumns: ["code"]
           },
         ]
+      }
+      sowp_list_version: {
+        Row: {
+          created_at: string
+          id: number
+          last_verified: string
+          source_url: string | null
+          updated_at: string
+          version_label: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          last_verified: string
+          source_url?: string | null
+          updated_at?: string
+          version_label: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          last_verified?: string
+          source_url?: string | null
+          updated_at?: string
+          version_label?: string
+        }
+        Relationships: []
       }
       template_documents: {
         Row: {
@@ -3224,6 +3615,7 @@ export const Constants = {
         "completed",
         "exempt",
       ],
+      case_request_status: ["pending", "opened", "dismissed"],
       case_status: [
         "retainer_pending",
         "documentation_in_progress",
@@ -3289,6 +3681,22 @@ export const Constants = {
         "passport_requested",
       ],
       gender: ["male", "female", "other", "prefer_not_to_say"],
+      immigration_status_type: [
+        "study_permit",
+        "work_permit",
+        "pgwp",
+        "visitor_record",
+        "visitor",
+        "bridging_owp",
+        "permanent_resident",
+        "citizen",
+        "refugee_claimant",
+        "no_status",
+        "other",
+        "trp",
+        "maintained_status",
+        "restoration",
+      ],
       invoice_status: ["draft", "sent", "partial", "paid", "void", "overdue"],
       marital_status: [
         "single",
@@ -3298,6 +3706,18 @@ export const Constants = {
         "widowed",
         "separated",
         "annulled",
+      ],
+      notification_type: [
+        "case_status_changed",
+        "document_received",
+        "document_accepted",
+        "document_rejected",
+        "document_requested",
+        "phase_blocked",
+        "deadline_set",
+        "deadline_missed",
+        "fee_collected",
+        "task_assigned",
       ],
       participant_role: [
         "principal",
@@ -3313,6 +3733,14 @@ export const Constants = {
         "cash",
         "cheque",
         "wire",
+        "other",
+      ],
+      referral_agent_type: [
+        "individual",
+        "agency",
+        "partner",
+        "lawyer",
+        "consultant",
         "other",
       ],
       relationship_type: [

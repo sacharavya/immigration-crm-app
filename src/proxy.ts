@@ -23,8 +23,10 @@ export const config = {
      * - _next/static  (static asset files)
      * - _next/image   (image optimization files)
      * - favicon.ico, sitemap.xml, robots.txt
-     * - any file with an extension served from /public (svg, png, jpg, etc.)
+     * - any static asset with a known extension (images, fonts, css, js, map,
+     *   web manifest). These never need the Supabase auth-session refresh, so
+     *   excluding them avoids an auth round-trip per asset request.
      */
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|otf|eot|css|js|mjs|map|webmanifest|txt)$).*)",
   ],
 };

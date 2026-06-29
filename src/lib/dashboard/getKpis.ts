@@ -75,19 +75,26 @@ function buildSeries(
 export async function getKpis(
   supabase: SupabaseClient<Database>,
 ): Promise<KpiView[]> {
-  const current = await computeFirmMetrics(supabase);
-
-  // Tolerate the snapshot table being empty or unavailable (for example before
-  // the migration runs on a given database): current values still render, the
-  // trend just degrades to flat.
-  const { data } = await supabase
-    .schema("crm")
-    .from("firm_metric_daily")
-    .select(
-      "snapshot_date, active_cases, total_clients, retained_mtd, outstanding_fees_cad",
-    )
-    .order("snapshot_date", { ascending: true });
-  const history = (data ?? []) as SnapshotRow[];
+  // The live current values and the snapshot history are independent, so fetch
+  // them together instead of in series. History is bounded to the most recent
+  // window the trend/sparkline needs (vs-30-days plus 8 sampled points), rather
+  // than every snapshot ever recorded.
+  const [current, { data }] = await Promise.all([
+    computeFirmMetrics(supabase),
+    // Tolerate the snapshot table being empty or unavailable (for example
+    // before the migration runs on a given database): current values still
+    // render, the trend just degrades to flat.
+    supabase
+      .schema("crm")
+      .from("firm_metric_daily")
+      .select(
+        "snapshot_date, active_cases, total_clients, retained_mtd, outstanding_fees_cad",
+      )
+      .order("snapshot_date", { ascending: false })
+      .limit(90),
+  ]);
+  // Re-order to ascending so valueAround / buildSeries read oldest to newest.
+  const history = ((data ?? []) as SnapshotRow[]).slice().reverse();
 
   const currentByKey: Record<KpiKey, number> = {
     active_cases: current.activeCases,

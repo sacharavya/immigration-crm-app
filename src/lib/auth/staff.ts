@@ -20,10 +20,14 @@ import type { Role, StaffWithOverrides } from "./permissions";
 export const getStaff = cache(async (): Promise<StaffWithOverrides | null> => {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  // The proxy middleware already calls auth.getUser() on every request, which
+  // validates and refreshes the session against the Auth server before this
+  // runs. So here we only need the user id: getClaims() verifies the JWT
+  // (locally when asymmetric signing keys are in use, no network round-trip)
+  // instead of a second getUser() call to the Auth server per page render.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const userId = claimsData?.claims?.sub;
+  if (!userId) return null;
 
   const { data: row } = await supabase
     .schema("crm")
@@ -31,7 +35,7 @@ export const getStaff = cache(async (): Promise<StaffWithOverrides | null> => {
     .select(
       "id, role, first_name, last_name, email, permission_overrides, is_active, password_reset_required_at",
     )
-    .eq("auth_user_id", user.id)
+    .eq("auth_user_id", userId)
     .is("deleted_at", null)
     .maybeSingle();
 

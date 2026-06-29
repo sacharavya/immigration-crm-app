@@ -311,6 +311,7 @@ export default async function CasePage({ params, searchParams }: Props) {
     staffRes,
     eventsRes,
     teamRes,
+    chipRes,
   ] = await Promise.all([
     supabase
       .schema("crm")
@@ -403,18 +404,20 @@ export default async function CasePage({ params, searchParams }: Props) {
       .from("case_assignments")
       .select("staff_id, role")
       .eq("case_id", id),
+    // FLOW-3a: this case's chip-input row. Depends only on the case id, so it
+    // joins the batch above instead of trailing it as a separate round-trip.
+    supabase
+      .schema("crm")
+      .from("v_case_chip_inputs")
+      .select("*")
+      .eq("case_id", id)
+      .maybeSingle(),
   ]);
 
   const client = clientRes.data;
   const service = serviceRes.data;
 
-  // FLOW-3a: pull this case's chip-input row and compute the chip.
-  const { data: chipRow } = await supabase
-    .schema("crm")
-    .from("v_case_chip_inputs")
-    .select("*")
-    .eq("case_id", id)
-    .maybeSingle();
+  const chipRow = chipRes.data;
   const chip = chipRow
     ? (() => {
         const input = chipInputFromViewRow(chipRow, new Date());

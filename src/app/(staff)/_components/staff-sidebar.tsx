@@ -27,6 +27,8 @@ import { Can } from "@/components/auth/can";
 import { useStaff } from "@/lib/auth/staff-context";
 import { cn } from "@/lib/utils/index";
 
+import { NotificationBell } from "./notification-bell";
+
 const PRIMARY_NAV: ReadonlyArray<{
   href: string;
   label: string;
@@ -157,6 +159,7 @@ export function StaffSidebar() {
             </div>
             <div className="truncate text-xs text-stone-500">{staff.email}</div>
           </div>
+          <NotificationBell />
         </div>
         <form action="/logout" method="post" className="mt-1">
           <button
