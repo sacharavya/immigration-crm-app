@@ -240,6 +240,25 @@ export async function createCase(
       created_by: staff.id,
     });
 
+  // If this case was opened from an agent's case request, close that request
+  // out and link it to the new case. Scoped to a pending request for this same
+  // client so a stale or mismatched id is a no-op. case_requests_staff_update
+  // RLS already requires create_cases, which we checked above.
+  if (parsed.data.request_id) {
+    await supabase
+      .schema("crm")
+      .from("case_requests")
+      .update({
+        status: "opened",
+        resulting_case_id: newCase.id,
+        handled_by: staff.id,
+        handled_at: new Date().toISOString(),
+      })
+      .eq("id", parsed.data.request_id)
+      .eq("client_id", clientId)
+      .eq("status", "pending");
+  }
+
   // The retainer_agreements row is created automatically by the
   // trg_ensure_retainer_for_new_case trigger (migration 20260503000006).
   // No app-side INSERT needed — the trigger is the single source of

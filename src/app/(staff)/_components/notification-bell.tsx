@@ -3,11 +3,15 @@
 import { Menu } from "@base-ui/react/menu";
 import { formatDistanceToNow } from "date-fns";
 import { Bell } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
+import { useStaff } from "@/lib/auth/staff-context";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils/index";
 
+import { notificationHref } from "../dashboard/_actions/notification-href";
 import {
   getRecentNotifications,
   getUnreadCount,
@@ -16,41 +20,65 @@ import {
   type NotificationRow,
 } from "../dashboard/_actions/notifications";
 
-// Poll the unread count on this cadence. Kept generous: notifications are not
-// time-critical and a tighter loop just adds DB load.
-const POLL_MS = 45_000;
+// Safety-net poll in case the Realtime socket drops (sleep/wake, flaky network).
+// Realtime is the primary push channel; this just reconciles occasionally.
+const FALLBACK_POLL_MS = 120_000;
 
 export function NotificationBell() {
   const router = useRouter();
+  const staff = useStaff();
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState<NotificationRow[]>([]);
   const [open, setOpen] = useState(false);
   const [, startTransition] = useTransition();
+  // So the realtime handler can refresh the visible list only when it's open.
+  // Kept in sync inside handleOpenChange (the only place `open` changes).
+  const openRef = useRef(false);
 
   const refreshCount = useCallback(async () => {
     setUnread(await getUnreadCount());
   }, []);
 
-  // Realtime-later seam: this whole effect is the only thing that changes to go
-  // live — swap the interval for a supabase.channel(...).on('postgres_changes',
-  // { table: 'notifications', filter: `staff_id=eq.<id>` }).subscribe() using
-  // the browser client in src/lib/supabase/client.ts.
   useEffect(() => {
     // Deferred so the initial fetch's setState doesn't run synchronously in the
-    // effect body (it's a subscription, not derived state).
+    // effect body.
     queueMicrotask(() => void refreshCount());
-    const id = window.setInterval(() => {
-      if (document.visibilityState === "visible") void refreshCount();
-    }, POLL_MS);
+
+    // Primary channel: Supabase Realtime. RLS (notifications_select_own) scopes
+    // delivery to this staff member; the filter narrows it server-side too.
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`notifications:${staff.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "crm",
+          table: "notifications",
+          filter: `staff_id=eq.${staff.id}`,
+        },
+        () => {
+          void refreshCount();
+          if (openRef.current) void getRecentNotifications().then(setItems);
+        },
+      )
+      .subscribe();
+
     const onFocus = () => void refreshCount();
     window.addEventListener("focus", onFocus);
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refreshCount();
+    }, FALLBACK_POLL_MS);
+
     return () => {
-      window.clearInterval(id);
+      void supabase.removeChannel(channel);
       window.removeEventListener("focus", onFocus);
+      window.clearInterval(id);
     };
-  }, [refreshCount]);
+  }, [staff.id, refreshCount]);
 
   function handleOpenChange(next: boolean) {
+    openRef.current = next;
     setOpen(next);
     if (next) void getRecentNotifications().then(setItems);
   }
@@ -68,7 +96,8 @@ export function NotificationBell() {
         await refreshCount();
       });
     }
-    if (n.case_id) router.push(`/dashboard/cases/${n.case_id}`);
+    const href = notificationHref(n);
+    if (href) router.push(href);
   }
 
   function handleMarkAll() {
@@ -149,6 +178,15 @@ export function NotificationBell() {
                   </Menu.Item>
                 ))
               )}
+            </div>
+            <div className="border-t border-border px-3 py-2 text-center">
+              <Link
+                href="/dashboard/notifications"
+                onClick={() => setOpen(false)}
+                className="text-xs font-medium text-[var(--primary)] hover:underline"
+              >
+                See all notifications
+              </Link>
             </div>
           </Menu.Popup>
         </Menu.Positioner>

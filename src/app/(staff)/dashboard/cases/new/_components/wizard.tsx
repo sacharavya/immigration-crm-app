@@ -89,6 +89,7 @@ export function NewCaseWizard({
   rcicOptions,
   canManageTemplates,
   preselectedClient,
+  requestId,
 }: {
   categories: CategoryOption[];
   variants: VariantOption[];
@@ -96,6 +97,7 @@ export function NewCaseWizard({
   rcicOptions: RcicOption[];
   canManageTemplates: boolean;
   preselectedClient?: ClientSearchResult | null;
+  requestId?: string;
 }) {
   const [step, setStep] = useState<Step>(preselectedClient ? 2 : 1);
   const [client, setClient] = useState<ClientChoice | null>(
@@ -172,6 +174,7 @@ export function NewCaseWizard({
             government_fee_cad: gov,
             retained_at: retainedAtInput,
             apply_hst: effectiveApplyHst,
+            request_id: requestId,
           }
         : {
             client_kind: "new",
@@ -183,6 +186,7 @@ export function NewCaseWizard({
             government_fee_cad: gov,
             retained_at: retainedAtInput,
             apply_hst: effectiveApplyHst,
+            request_id: requestId,
           };
 
     startTransition(async () => {

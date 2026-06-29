@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Handshake,
   History,
+  Inbox,
   LineChart,
   ListChecks,
   LogOut,
@@ -82,6 +83,14 @@ export function StaffSidebar() {
           active={isActive(PRIMARY_NAV[0].href)}
         />
         <CasesSection pathname={pathname} />
+        <Can permission="create_cases">
+          <NavItem
+            href="/dashboard/requests"
+            label="Case requests"
+            Icon={Inbox}
+            active={isActive("/dashboard/requests")}
+          />
+        </Can>
         {PRIMARY_NAV.slice(1).map(({ href, label, Icon }) => (
           <NavItem
             key={href}

@@ -15,9 +15,12 @@ export type NotificationRow = {
   title: string;
   body: string | null;
   case_id: string | null;
+  link: string | null;
   read_at: string | null;
   created_at: string;
 };
+
+const SELECT_COLS = "id, type, title, body, case_id, link, read_at, created_at";
 
 // Lightweight count the bell polls. Uses head+exact so no rows travel.
 export async function getUnreadCount(): Promise<number> {
@@ -37,6 +40,15 @@ export async function getUnreadCount(): Promise<number> {
 
 // Newest notifications for the dropdown (read + unread).
 export async function getRecentNotifications(): Promise<NotificationRow[]> {
+  return fetchNotifications(20);
+}
+
+// Larger feed for the dedicated /dashboard/notifications page.
+export async function getAllNotifications(): Promise<NotificationRow[]> {
+  return fetchNotifications(100);
+}
+
+async function fetchNotifications(limit: number): Promise<NotificationRow[]> {
   const me = await getStaff();
   if (!me) return [];
 
@@ -44,9 +56,9 @@ export async function getRecentNotifications(): Promise<NotificationRow[]> {
   const { data, error } = await supabase
     .schema("crm")
     .from("notifications")
-    .select("id, type, title, body, case_id, read_at, created_at")
+    .select(SELECT_COLS)
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(limit);
 
   if (error) return [];
   return (data ?? []) as NotificationRow[];

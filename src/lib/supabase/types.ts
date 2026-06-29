@@ -1914,6 +1914,7 @@ export type Database = {
           case_id: string | null
           created_at: string
           id: string
+          link: string | null
           read_at: string | null
           source_event_id: string | null
           staff_id: string
@@ -1926,6 +1927,7 @@ export type Database = {
           case_id?: string | null
           created_at?: string
           id?: string
+          link?: string | null
           read_at?: string | null
           source_event_id?: string | null
           staff_id: string
@@ -1938,6 +1940,7 @@ export type Database = {
           case_id?: string | null
           created_at?: string
           id?: string
+          link?: string | null
           read_at?: string | null
           source_event_id?: string | null
           staff_id?: string
@@ -2711,6 +2714,10 @@ export type Database = {
         Args: { p_permission: string; p_user_id: string }
         Returns: boolean
       }
+      staff_ids_with_permission: {
+        Args: { p_permission: string }
+        Returns: string[]
+      }
     }
     Enums: {
       appointment_booking_source: "staff" | "public_portal" | "manual_import"
@@ -2829,6 +2836,8 @@ export type Database = {
         | "deadline_missed"
         | "fee_collected"
         | "task_assigned"
+        | "appointment_booked"
+        | "new_lead"
       participant_role:
         | "principal"
         | "spouse"
@@ -3718,6 +3727,8 @@ export const Constants = {
         "deadline_missed",
         "fee_collected",
         "task_assigned",
+        "appointment_booked",
+        "new_lead",
       ],
       participant_role: [
         "principal",

@@ -112,6 +112,9 @@ const feeFields = {
   // it based on the client's country_of_residence (CA / unknown stays on,
   // anything else flips off) and staff can override either way.
   apply_hst: z.boolean().default(true),
+  // Optional: when staff open a case from an agent case request, this carries
+  // the request id so createCase can mark it opened and link the new case.
+  request_id: z.string().uuid().optional(),
 };
 
 export const newCaseSchema = z.discriminatedUnion("client_kind", [

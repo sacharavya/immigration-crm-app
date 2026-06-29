@@ -94,7 +94,12 @@ export default async function PortalPage() {
                       {c.client_number}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {c.legal_name_full}
+                      <Link
+                        href={`/portal/clients/${c.id}`}
+                        className="text-[var(--navy)] hover:underline"
+                      >
+                        {c.legal_name_full}
+                      </Link>
                     </TableCell>
                     <TableCell className="text-xs text-stone-600">
                       {c.email ?? c.phone_primary ?? "—"}

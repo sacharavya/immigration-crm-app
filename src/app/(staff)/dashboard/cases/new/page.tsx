@@ -9,7 +9,7 @@ import { NewCaseWizard } from "./_components/wizard";
 import type { ClientSearchResult } from "./actions";
 
 type Props = {
-  searchParams: Promise<{ client_id?: string }>;
+  searchParams: Promise<{ client_id?: string; request_id?: string }>;
 };
 
 export default async function NewCasePage({ searchParams }: Props) {
@@ -167,6 +167,11 @@ export default async function NewCasePage({ searchParams }: Props) {
           rcicOptions={rcicOptions}
           canManageTemplates={canManageTemplates}
           preselectedClient={preselectedClient}
+          requestId={
+            sp.request_id && /^[0-9a-f-]{36}$/i.test(sp.request_id)
+              ? sp.request_id
+              : undefined
+          }
         />
       </main>
     </div>
