@@ -50,3 +50,8 @@ supabase/.branches/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# claude / agent tooling
+.claude/
+CLAUDE.md
+AGENTS.md
