@@ -13,13 +13,15 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export { maskDateValue };
 
 // A date field that accepts typed input (masked to YYYY-MM-DD) and keeps a
-// calendar affordance via the browser date picker. Drop-in for the native
-// `type="date"` input: same `value` (a YYYY-MM-DD string), same change event
-// (the masked string is on `event.target.value`), and `min` / `max` flow to
-// the picker. The shared Input component routes `type="date"` here.
+// calendar affordance via the browser date picker. A true drop-in for the
+// native `type="date"` input: works both CONTROLLED (`value` + `onChange`) and
+// UNCONTROLLED (`defaultValue` + `name`, read via FormData). The shared Input
+// component routes `type="date"` here, so many forms rely on the uncontrolled
+// path — without it the field silently ignores typing and calendar picks.
 export function DateInput({
   className,
   value,
+  defaultValue,
   onChange,
   disabled,
   min,
@@ -28,13 +30,35 @@ export function DateInput({
   ...props
 }: React.ComponentProps<"input">) {
   const pickerRef = React.useRef<HTMLInputElement>(null);
-  const current = typeof value === "string" ? value : "";
+
+  // Controlled when `value` is supplied; otherwise hold internal state seeded
+  // from `defaultValue`, exactly like a native input.
+  const isControlled = value !== undefined;
+  const [internal, setInternal] = React.useState(
+    typeof defaultValue === "string" ? defaultValue : "",
+  );
+  const current = isControlled
+    ? typeof value === "string"
+      ? value
+      : ""
+    : internal;
+
+  function emit(event: React.ChangeEvent<HTMLInputElement>, next: string) {
+    if (!isControlled) setInternal(next);
+    onChange?.(event);
+  }
 
   function handleText(event: React.ChangeEvent<HTMLInputElement>) {
     // Rewrite the live value to the masked form before the caller reads it,
-    // so the caller's controlled state and this input stay in lock-step.
-    event.target.value = maskDateValue(event.target.value);
-    onChange?.(event);
+    // so controlled state and this input stay in lock-step.
+    const masked = maskDateValue(event.target.value);
+    event.target.value = masked;
+    emit(event, masked);
+  }
+
+  function handlePicker(event: React.ChangeEvent<HTMLInputElement>) {
+    // Native date picker already yields a valid YYYY-MM-DD (or "").
+    emit(event, event.target.value);
   }
 
   function openPicker() {
@@ -79,7 +103,7 @@ export function DateInput({
         value={ISO_DATE.test(current) ? current : ""}
         min={typeof min === "string" ? min : undefined}
         max={typeof max === "string" ? max : undefined}
-        onChange={(e) => onChange?.(e)}
+        onChange={handlePicker}
         tabIndex={-1}
         aria-hidden
         className="pointer-events-none absolute bottom-0 right-2 h-0 w-0 opacity-0"

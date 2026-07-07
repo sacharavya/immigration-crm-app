@@ -36,7 +36,20 @@ export function NotificationBell() {
   const openRef = useRef(false);
 
   const refreshCount = useCallback(async () => {
-    setUnread(await getUnreadCount());
+    try {
+      setUnread(await getUnreadCount());
+    } catch {
+      // Transient transport failure (page-load race, HMR, brief offline).
+      // Keep the last known count; the interval + focus handler reconcile.
+    }
+  }, []);
+
+  const loadItems = useCallback(() => {
+    getRecentNotifications()
+      .then(setItems)
+      .catch(() => {
+        // Non-fatal: the dropdown just keeps whatever it last showed.
+      });
   }, []);
 
   useEffect(() => {
@@ -59,7 +72,7 @@ export function NotificationBell() {
         },
         () => {
           void refreshCount();
-          if (openRef.current) void getRecentNotifications().then(setItems);
+          if (openRef.current) loadItems();
         },
       )
       .subscribe();
@@ -75,12 +88,12 @@ export function NotificationBell() {
       window.removeEventListener("focus", onFocus);
       window.clearInterval(id);
     };
-  }, [staff.id, refreshCount]);
+  }, [staff.id, refreshCount, loadItems]);
 
   function handleOpenChange(next: boolean) {
     openRef.current = next;
     setOpen(next);
-    if (next) void getRecentNotifications().then(setItems);
+    if (next) loadItems();
   }
 
   function handleOpenItem(n: NotificationRow) {
@@ -92,7 +105,11 @@ export function NotificationBell() {
         ),
       );
       startTransition(async () => {
-        await markRead(n.id);
+        try {
+          await markRead(n.id);
+        } catch {
+          // Optimistic UI already cleared it; reconcile on next refresh.
+        }
         await refreshCount();
       });
     }
