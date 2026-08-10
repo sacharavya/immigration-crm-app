@@ -20,7 +20,7 @@ const VALID_STATUSES: ReadonlyArray<RequestStatus> = [
 ];
 
 const EMPTY_COPY: Record<RequestStatus, string> = {
-  pending: "No pending case requests. New referrals from agents land here.",
+  pending: "No pending case requests. New referrals from referral partners land here.",
   opened: "No requests have been opened into cases yet.",
   dismissed: "No dismissed requests.",
 };
@@ -202,7 +202,7 @@ export default async function CaseRequestsPage({ searchParams }: Props) {
           Case requests
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Agents asking the firm to open a case for a client they referred.
+          Referral partners asking the firm to open a case for a client they referred.
         </p>
       </div>
 

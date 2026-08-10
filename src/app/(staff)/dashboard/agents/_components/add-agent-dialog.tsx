@@ -86,7 +86,7 @@ export function AddAgentDialog({ countries }: { countries: Country[] }) {
 
   return (
     <>
-      <Button onClick={() => handleOpenChange(true)}>+ Add agent</Button>
+      <Button onClick={() => handleOpenChange(true)}>+ Add referral partner</Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-lg">
@@ -100,7 +100,7 @@ export function AddAgentDialog({ countries }: { countries: Country[] }) {
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle>Add agent</DialogTitle>
+                <DialogTitle>Add referral partner</DialogTitle>
                 <DialogDescription>
                   Creates a referral-partner login. They&apos;ll receive a
                   welcome email with a temporary password (also shown here),
@@ -245,7 +245,7 @@ export function AddAgentDialog({ countries }: { countries: Country[] }) {
                         Adding…
                       </>
                     ) : (
-                      "Add agent"
+                      "Add referral partner"
                     )}
                   </Button>
                 </DialogFooter>
@@ -286,7 +286,7 @@ function SuccessView({
             <CheckCircle2 className="h-5 w-5" />
           </span>
           <div>
-            <DialogTitle>Agent added</DialogTitle>
+            <DialogTitle>Referral partner added</DialogTitle>
             <DialogDescription>
               {emailSent
                 ? "Welcome email sent. Share the password directly only if delivery fails."

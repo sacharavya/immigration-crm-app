@@ -31,7 +31,7 @@ async function requireManager(): Promise<
   const me = await getStaff();
   if (!me) return { ok: false, error: "Not authenticated" };
   if (!staffCan(me, "manage_agents")) {
-    return { ok: false, error: "You don't have permission to manage agents." };
+    return { ok: false, error: "You don't have permission to manage referral partners." };
   }
   return { ok: true };
 }
@@ -63,7 +63,7 @@ export async function addAgent(payload: unknown): Promise<AddAgentResult> {
   const me = await getStaff();
   if (!me) return { error: "Not authenticated" };
   if (!staffCan(me, "manage_agents")) {
-    return { error: "You don't have permission to manage agents." };
+    return { error: "You don't have permission to manage referral partners." };
   }
 
   const tempPassword = generateTempPassword();
@@ -105,7 +105,7 @@ export async function addAgent(payload: unknown): Promise<AddAgentResult> {
   if (insertErr || !newAgent) {
     // Roll back the auth user so we don't leak an account with no agent row.
     await admin.auth.admin.deleteUser(created.user.id);
-    return { error: insertErr?.message ?? "Could not create agent row" };
+    return { error: insertErr?.message ?? "Could not create referral partner" };
   }
 
   const baseUrl = await getBaseUrl();
@@ -143,7 +143,7 @@ export async function updateAgent(
   payload: unknown,
 ): Promise<UpdateAgentResult> {
   if (!z.string().uuid().safeParse(agentId).success) {
-    return { error: "Invalid agent id" };
+    return { error: "Invalid referral partner" };
   }
   const parsed = updateAgentSchema.safeParse(payload);
   if (!parsed.success) {
@@ -188,13 +188,13 @@ export async function deactivateAgent(
   agentId: string,
 ): Promise<{ ok: true } | { error: string }> {
   if (!z.string().uuid().safeParse(agentId).success) {
-    return { error: "Invalid agent id" };
+    return { error: "Invalid referral partner" };
   }
 
   const me = await getStaff();
   if (!me) return { error: "Not authenticated" };
   if (!staffCan(me, "manage_agents")) {
-    return { error: "You don't have permission to manage agents." };
+    return { error: "You don't have permission to manage referral partners." };
   }
 
   const supabase = await createClient();
@@ -204,8 +204,8 @@ export async function deactivateAgent(
     .select("id, auth_user_id, deleted_at")
     .eq("id", agentId)
     .maybeSingle();
-  if (!target) return { error: "Agent not found" };
-  if (target.deleted_at) return { error: "Agent already deactivated" };
+  if (!target) return { error: "Referral partner not found" };
+  if (target.deleted_at) return { error: "Referral partner already deactivated" };
 
   const now = new Date().toISOString();
   const { error: updateErr } = await supabase
@@ -246,13 +246,13 @@ export async function reactivateAgent(
   agentId: string,
 ): Promise<{ ok: true } | { error: string }> {
   if (!z.string().uuid().safeParse(agentId).success) {
-    return { error: "Invalid agent id" };
+    return { error: "Invalid referral partner" };
   }
 
   const me = await getStaff();
   if (!me) return { error: "Not authenticated" };
   if (!staffCan(me, "manage_agents")) {
-    return { error: "You don't have permission to manage agents." };
+    return { error: "You don't have permission to manage referral partners." };
   }
 
   const supabase = await createClient();
@@ -262,7 +262,7 @@ export async function reactivateAgent(
     .select("id, auth_user_id")
     .eq("id", agentId)
     .maybeSingle();
-  if (!target) return { error: "Agent not found" };
+  if (!target) return { error: "Referral partner not found" };
 
   const { error: updateErr } = await supabase
     .schema("crm")
@@ -305,7 +305,7 @@ export async function resetAgentPassword(
   agentId: string,
 ): Promise<ResetAgentPasswordResult> {
   if (!z.string().uuid().safeParse(agentId).success) {
-    return { error: "Invalid agent id" };
+    return { error: "Invalid referral partner" };
   }
 
   const me = await getStaff();
@@ -313,7 +313,7 @@ export async function resetAgentPassword(
   // Reuse the staff reset_passwords gate; managing agents implies it for
   // super_user/admin, but check the dedicated permission for parity.
   if (!staffCan(me, "manage_agents")) {
-    return { error: "You don't have permission to manage agents." };
+    return { error: "You don't have permission to manage referral partners." };
   }
 
   const supabase = await createClient();
@@ -323,7 +323,7 @@ export async function resetAgentPassword(
     .select("id, auth_user_id, name, email, deleted_at")
     .eq("id", agentId)
     .maybeSingle();
-  if (!target) return { error: "Agent not found" };
+  if (!target) return { error: "Referral partner not found" };
   if (target.deleted_at) {
     return { error: "Cannot reset password for a deactivated agent." };
   }

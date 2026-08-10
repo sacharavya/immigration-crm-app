@@ -122,7 +122,7 @@ export function StaffSidebar() {
         <Can permission="view_agents">
           <NavItem
             href="/dashboard/agents"
-            label="Agents"
+            label="Referral Partners"
             Icon={Handshake}
             active={isActive("/dashboard/agents")}
           />

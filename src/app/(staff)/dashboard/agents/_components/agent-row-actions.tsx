@@ -222,7 +222,7 @@ function DeactivateButton({ target }: { target: Target }) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{action} agent</DialogTitle>
+            <DialogTitle>{action} referral partner</DialogTitle>
             <DialogDescription>
               {target.deactivated ? (
                 <>

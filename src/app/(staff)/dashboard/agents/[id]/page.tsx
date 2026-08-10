@@ -66,7 +66,7 @@ export default async function AgentDetailPage({
           href="/dashboard/agents"
           className="text-sm text-stone-500 hover:text-[var(--primary)] hover:underline"
         >
-          ← Agents
+          ← Referral Partners
         </Link>
       </div>
 

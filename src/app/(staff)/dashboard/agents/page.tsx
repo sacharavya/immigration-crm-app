@@ -67,7 +67,7 @@ export default async function AgentsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--navy)]">
-            Agents
+            Referral Partners
           </h1>
           <p className="mt-1 text-sm text-stone-500">
             Referral partners who register and refer their own clients.

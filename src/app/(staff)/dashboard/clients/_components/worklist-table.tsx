@@ -145,7 +145,7 @@ export function WorklistTable({
                 </div>
                 {row.created_by_agent && (
                   <div className="mt-0.5 inline-flex max-w-full items-center truncate bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700">
-                    Agent: {agentById[row.created_by_agent] ?? "Referral"}
+                    Referred by: {agentById[row.created_by_agent] ?? "Referral"}
                   </div>
                 )}
               </div>

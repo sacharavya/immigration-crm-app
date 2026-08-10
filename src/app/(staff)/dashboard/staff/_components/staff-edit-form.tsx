@@ -96,8 +96,8 @@ const PERMISSION_LABEL: Record<Permission, string> = {
   manage_appointments: "Manage appointments",
   manage_settings: "Manage appointment settings",
   review_payments: "Review consultation payments",
-  view_agents: "View referral agents",
-  manage_agents: "Manage referral agents",
+  view_agents: "View referral partners",
+  manage_agents: "Manage referral partners",
 };
 
 type OverrideChoice = "default" | "allow" | "deny";

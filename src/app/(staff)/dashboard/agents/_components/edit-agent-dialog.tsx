@@ -93,9 +93,9 @@ export function EditAgentDialog({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit agent</DialogTitle>
+            <DialogTitle>Edit referral partner</DialogTitle>
             <DialogDescription>
-              Update the agent&apos;s profile. The login email cannot be
+              Update the referral partner&apos;s profile. The login email cannot be
               changed here.
             </DialogDescription>
           </DialogHeader>
