@@ -55,6 +55,7 @@ import {
   PaymentsTab,
   type PaymentRow as PaymentTabRow,
 } from "./_components/payments-tab";
+import { PaymentBreakdown } from "./_components/payment-breakdown";
 import { NotifyForPaymentTrigger } from "./_components/notify-for-payment-trigger";
 import { RecordPaymentTrigger } from "./_components/record-payment-trigger";
 import {
@@ -897,16 +898,19 @@ export default async function CasePage({ params, searchParams }: Props) {
   // on a screenshot we haven't reviewed yet.
   const collected = sumVerifiedPayments(payments);
   const pendingVerificationAmount = sumPendingVerification(payments);
-  // The "amount the client owes" total includes the service fee plus
-  // any government fee (snapshotted on the retainer at signing or set
-  // on the case row pre-retainer) plus HST when applicable. Keeping
-  // this in sync with the payment-request email so the dashboard
-  // denominator and the email's "Amount due" agree.
-  const quotedBase = Number(caseRow.quoted_fee_cad);
-  const quotedGovernmentFee = Number(
-    retainerRow?.government_fee_cad ?? caseRow.government_fee_cad ?? 0,
-  );
-  const quotedHst = Number(retainerRow?.hst_cad ?? 0);
+  // The "amount the client owes" breakdown must match the retainer document
+  // exactly, so source it from retainerData (which computes HST as 13% of the
+  // fee when hst_cad is unset, and keeps government fees tax-exempt). Fall back
+  // to the case row only when no retainer has been loaded.
+  const quotedBase = retainerData
+    ? retainerData.quoted_fee_cad
+    : Number(caseRow.quoted_fee_cad);
+  const quotedGovernmentFee = retainerData
+    ? retainerData.government_fee_cad
+    : Number(retainerRow?.government_fee_cad ?? caseRow.government_fee_cad ?? 0);
+  const quotedHst = retainerData
+    ? retainerData.hst_cad
+    : Number(retainerRow?.hst_cad ?? 0);
   const quoted = quotedBase + quotedGovernmentFee + quotedHst;
 
   const staffNameById = new Map(
@@ -1416,6 +1420,9 @@ export default async function CasePage({ params, searchParams }: Props) {
             caseId={caseRow.id}
             payments={paymentRows}
             totalQuoted={quoted}
+            quotedFee={quotedBase}
+            quotedHst={quotedHst}
+            quotedGovernmentFee={quotedGovernmentFee}
             canManage={canManagePayments}
           />
         ) : (
@@ -1442,6 +1449,14 @@ export default async function CasePage({ params, searchParams }: Props) {
                   <div
                     className="h-full bg-green-500 transition-all"
                     style={{ width: `${paymentPct}%` }}
+                  />
+                </div>
+
+                <div className="border-t border-stone-100 pt-2">
+                  <PaymentBreakdown
+                    fee={quotedBase}
+                    hst={quotedHst}
+                    governmentFee={quotedGovernmentFee}
                   />
                 </div>
 

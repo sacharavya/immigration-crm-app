@@ -245,7 +245,6 @@ export async function loadRetainerData(
     retainer.hst_cad !== null
       ? Number(retainer.hst_cad)
       : Math.round(quoted * 0.13 * 100) / 100;
-  const subtotal = Math.round((quoted + hst) * 100) / 100;
 
   // Installment split. Stored columns (first_installment_cad,
   // second_installment_cad, retainer_minimum_cad) hold PRE-TAX
@@ -312,11 +311,14 @@ export async function loadRetainerData(
       ? Number(retainer.withdrawal_refund_floor_cad)
       : firstInst;
 
-  // Snapshot columns are populated at sendRetainerForSignature time and
-  // never re-read after. For draft / expired retainers, snapshots may
-  // be null — fall through to live data. For anything past 'sent',
-  // prefer snapshot so post-sign edits to clients/staff don't
-  // retroactively rewrite the agreement.
+  // The retainer reflects LIVE client/RCIC records until it is signed by both
+  // parties; only then does the *_at_signing snapshot freeze the document.
+  // Snapshots are written at send time, so gating on signed_at (not merely
+  // "past sent") is what lets a corrected RCIC name still show pre-signature.
+  const isSigned = retainer.signed_at !== null;
+  const pick = <T,>(snapshot: T | null | undefined, live: T): T =>
+    isSigned && snapshot != null ? snapshot : live;
+
   const liveRcicName = rcic
     ? `${rcic.first_name} ${rcic.last_name}`.trim()
     : "[RCIC not selected]";
@@ -327,54 +329,54 @@ export async function loadRetainerData(
     service_description:
       retainer.service_description ?? serviceLabel ?? "the application",
 
-    client_legal_name_full:
-      retainer.client_legal_name_full_at_signing ?? client.legal_name_full,
+    client_legal_name_full: pick(
+      retainer.client_legal_name_full_at_signing,
+      client.legal_name_full,
+    ),
     // Fall back to splitLegalName when the client row carries a full
     // name but no first/last split (legacy clients created before the
     // server-side derive in createClientStandalone). Keeps the
     // retainer from rendering blank "First Name:" and "Last Name:"
     // fields when only the legal_name_full was captured.
-    client_given_name:
-      retainer.client_given_names_at_signing ??
+    client_given_name: pick(
+      retainer.client_given_names_at_signing,
       client.given_names ??
-      splitLegalName(client.legal_name_full).given_names ??
-      "",
-    client_family_name:
-      retainer.client_family_name_at_signing ??
+        splitLegalName(client.legal_name_full).given_names ??
+        "",
+    ),
+    client_family_name: pick(
+      retainer.client_family_name_at_signing,
       client.family_name ??
-      splitLegalName(client.legal_name_full).family_name ??
-      "",
-    client_address:
-      retainer.client_address_at_signing ?? (clientAddress || "—"),
-    client_email: retainer.client_email_at_signing ?? client.email ?? "",
-    client_phone:
-      retainer.client_phone_at_signing ?? client.phone_primary ?? "",
+        splitLegalName(client.legal_name_full).family_name ??
+        "",
+    ),
+    client_address: pick(retainer.client_address_at_signing, clientAddress || "—"),
+    client_email: pick(retainer.client_email_at_signing, client.email ?? ""),
+    client_phone: pick(retainer.client_phone_at_signing, client.phone_primary ?? ""),
 
-    rcic_name: retainer.rcic_name_at_signing ?? liveRcicName,
-    rcic_given_name:
-      retainer.rcic_given_name_at_signing ?? rcic?.first_name ?? "",
-    rcic_family_name:
-      retainer.rcic_family_name_at_signing ?? rcic?.last_name ?? "",
-    rcic_membership_number:
-      retainer.rcic_membership_number_at_signing ??
-      rcic?.rcic_membership_number ??
-      "",
-    rcic_address:
-      retainer.rcic_address_at_signing ?? rcic?.office_address ?? "",
-    rcic_phone: retainer.rcic_phone_at_signing ?? liveRcicPhone,
-    rcic_office_phone:
-      retainer.rcic_office_phone_at_signing ?? rcic?.office_phone ?? "",
-    rcic_cell_phone:
-      retainer.rcic_cell_phone_at_signing ?? rcic?.cell_phone ?? "",
-    rcic_email: retainer.rcic_email_at_signing ?? rcic?.email ?? "",
-    rcic_signature_image_url:
-      retainer.rcic_signature_image_url_at_signing ??
-      rcic?.signature_image_url ??
-      "",
-    rcic_printed_name:
-      retainer.rcic_printed_name_at_signing ??
-      rcic?.printed_name_for_signature ??
-      null,
+    rcic_name: pick(retainer.rcic_name_at_signing, liveRcicName),
+    rcic_given_name: pick(retainer.rcic_given_name_at_signing, rcic?.first_name ?? ""),
+    rcic_family_name: pick(retainer.rcic_family_name_at_signing, rcic?.last_name ?? ""),
+    rcic_membership_number: pick(
+      retainer.rcic_membership_number_at_signing,
+      rcic?.rcic_membership_number ?? "",
+    ),
+    rcic_address: pick(retainer.rcic_address_at_signing, rcic?.office_address ?? ""),
+    rcic_phone: pick(retainer.rcic_phone_at_signing, liveRcicPhone),
+    rcic_office_phone: pick(
+      retainer.rcic_office_phone_at_signing,
+      rcic?.office_phone ?? "",
+    ),
+    rcic_cell_phone: pick(retainer.rcic_cell_phone_at_signing, rcic?.cell_phone ?? ""),
+    rcic_email: pick(retainer.rcic_email_at_signing, rcic?.email ?? ""),
+    rcic_signature_image_url: pick(
+      retainer.rcic_signature_image_url_at_signing,
+      rcic?.signature_image_url ?? "",
+    ),
+    rcic_printed_name: pick(
+      retainer.rcic_printed_name_at_signing,
+      rcic?.printed_name_for_signature ?? null,
+    ),
 
     quoted_fee_cad: quoted,
     government_fee_cad: govFee,

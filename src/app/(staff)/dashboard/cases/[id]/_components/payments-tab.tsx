@@ -24,6 +24,7 @@ import { PAYMENT_METHOD_LABEL, type PaymentMethod } from "@/lib/validators/payme
 
 import { attachPaymentProof, removePaymentProof } from "../actions";
 
+import { PaymentBreakdown } from "./payment-breakdown";
 import { RecordPaymentTrigger } from "./record-payment-trigger";
 
 const ACCEPTED_MIME = [
@@ -41,6 +42,7 @@ const cadFormatter = new Intl.NumberFormat("en-CA", {
   currency: "CAD",
 });
 const fmtCad = (n: number) => cadFormatter.format(n);
+
 
 export type PaymentRow = {
   id: string;
@@ -63,6 +65,9 @@ type Props = {
   caseId: string;
   payments: PaymentRow[];
   totalQuoted: number;
+  quotedFee: number;
+  quotedHst: number;
+  quotedGovernmentFee: number;
   canManage: boolean;
 };
 
@@ -70,6 +75,9 @@ export function PaymentsTab({
   caseId,
   payments,
   totalQuoted,
+  quotedFee,
+  quotedHst,
+  quotedGovernmentFee,
   canManage,
 }: Props) {
   const collected = payments.reduce(
@@ -113,6 +121,13 @@ export function PaymentsTab({
             value={fmtCad(outstanding)}
             accent={outstanding > 0 ? "amber" : "emerald"}
           />
+          <div className="rounded-md border border-stone-200 bg-white p-3 sm:col-span-3">
+            <PaymentBreakdown
+              fee={quotedFee}
+              hst={quotedHst}
+              governmentFee={quotedGovernmentFee}
+            />
+          </div>
           <div className="sm:col-span-3">
             <div className="h-1.5 overflow-hidden rounded-full bg-stone-200">
               <div

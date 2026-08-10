@@ -2858,7 +2858,13 @@ export async function notifyClientForPayment(
   const governmentFee = Number(
     retainer?.government_fee_cad ?? caseRow.government_fee_cad ?? 0,
   );
-  const hst = Number(retainer?.hst_cad ?? 0);
+  // Match the retainer document + payment card: default HST to 13% of the
+  // pre-tax fee when unset (inside-Canada default). An explicit 0 (client
+  // outside Canada) stays 0. Government fees are tax-exempt and added after.
+  const hst =
+    retainer?.hst_cad != null
+      ? Number(retainer.hst_cad)
+      : Math.round(quoted * 0.13 * 100) / 100;
   const totalDue = quoted + governmentFee + hst;
   const amountDue = Math.max(0, totalDue - alreadyPaid);
   if (amountDue <= 0) {
