@@ -156,6 +156,7 @@ export type Database = {
           name: string
           preparation_notes: string | null
           requires_case: boolean
+          requires_consultation_agreement: boolean
           updated_at: string
         }
         Insert: {
@@ -173,6 +174,7 @@ export type Database = {
           name: string
           preparation_notes?: string | null
           requires_case?: boolean
+          requires_consultation_agreement?: boolean
           updated_at?: string
         }
         Update: {
@@ -190,6 +192,7 @@ export type Database = {
           name?: string
           preparation_notes?: string | null
           requires_case?: boolean
+          requires_consultation_agreement?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -205,6 +208,14 @@ export type Database = {
           case_id: string | null
           client_id: string | null
           confirmation_email_sent_at: string | null
+          consultation_agreement_document_id: string | null
+          consultation_agreement_ip: unknown
+          consultation_agreement_sent_at: string | null
+          consultation_agreement_signed_at: string | null
+          consultation_agreement_terms: Json | null
+          consultation_agreement_token: string | null
+          consultation_agreement_token_expires_at: string | null
+          consultation_agreement_user_agent: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -216,6 +227,7 @@ export type Database = {
           graph_sync_status: string | null
           graph_synced_at: string | null
           id: string
+          is_pro_bono: boolean
           linked_payment_id: string | null
           location_type: string
           management_token: string | null
@@ -251,6 +263,14 @@ export type Database = {
           case_id?: string | null
           client_id?: string | null
           confirmation_email_sent_at?: string | null
+          consultation_agreement_document_id?: string | null
+          consultation_agreement_ip?: unknown
+          consultation_agreement_sent_at?: string | null
+          consultation_agreement_signed_at?: string | null
+          consultation_agreement_terms?: Json | null
+          consultation_agreement_token?: string | null
+          consultation_agreement_token_expires_at?: string | null
+          consultation_agreement_user_agent?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -262,6 +282,7 @@ export type Database = {
           graph_sync_status?: string | null
           graph_synced_at?: string | null
           id?: string
+          is_pro_bono?: boolean
           linked_payment_id?: string | null
           location_type: string
           management_token?: string | null
@@ -297,6 +318,14 @@ export type Database = {
           case_id?: string | null
           client_id?: string | null
           confirmation_email_sent_at?: string | null
+          consultation_agreement_document_id?: string | null
+          consultation_agreement_ip?: unknown
+          consultation_agreement_sent_at?: string | null
+          consultation_agreement_signed_at?: string | null
+          consultation_agreement_terms?: Json | null
+          consultation_agreement_token?: string | null
+          consultation_agreement_token_expires_at?: string | null
+          consultation_agreement_user_agent?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -308,6 +337,7 @@ export type Database = {
           graph_sync_status?: string | null
           graph_synced_at?: string | null
           id?: string
+          is_pro_bono?: boolean
           linked_payment_id?: string | null
           location_type?: string
           management_token?: string | null

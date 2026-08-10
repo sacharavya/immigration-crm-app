@@ -33,6 +33,7 @@ export type TypeRow = {
   preparation_notes: string | null;
   is_public: boolean;
   requires_case: boolean;
+  requires_consultation_agreement: boolean;
   fee_cad: number | null;
   display_order: number;
   active: boolean;
@@ -59,6 +60,7 @@ function toFormInput(row: TypeRow): TypeFormInput {
     preparation_notes: row.preparation_notes,
     is_public: row.is_public,
     requires_case: row.requires_case,
+    requires_consultation_agreement: row.requires_consultation_agreement,
     fee_cad: row.fee_cad,
     display_order: row.display_order,
   };

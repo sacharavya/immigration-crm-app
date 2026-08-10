@@ -25,7 +25,7 @@ export default async function BookPage() {
     .schema("crm")
     .from("appointment_types")
     .select(
-      "id, name, code, description, preparation_notes, duration_minutes, fee_cad, default_location_type",
+      "id, name, code, description, preparation_notes, duration_minutes, fee_cad, default_location_type, requires_consultation_agreement",
     )
     .eq("active", true)
     .eq("is_public", true)
@@ -47,6 +47,7 @@ export default async function BookPage() {
     duration_minutes: t.duration_minutes,
     fee_cad: t.fee_cad === null ? null : Number(t.fee_cad),
     default_location_type: t.default_location_type as LocationType,
+    requires_consultation_agreement: t.requires_consultation_agreement,
   }));
 
   return (

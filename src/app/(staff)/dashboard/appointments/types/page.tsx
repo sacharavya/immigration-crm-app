@@ -21,7 +21,7 @@ export default async function AppointmentTypesPage() {
     .schema("crm")
     .from("appointment_types")
     .select(
-      "id, name, code, duration_minutes, default_location_type, description, preparation_notes, is_public, requires_case, fee_cad, display_order, active, deleted_at",
+      "id, name, code, duration_minutes, default_location_type, description, preparation_notes, is_public, requires_case, requires_consultation_agreement, fee_cad, display_order, active, deleted_at",
     )
     .is("deleted_at", null)
     .order("display_order")

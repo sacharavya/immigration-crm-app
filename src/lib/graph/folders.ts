@@ -191,6 +191,32 @@ export async function ensureConsultationPaymentsFolder(
   return { driveId, folderItemId: parent.id };
 }
 
+// Signed Initial Consultation Agreements. Separate tree from case retainers
+// (appointment-only clients have no case folder) and from payment proofs, so
+// staff can find agreements on their own.
+export async function ensureConsultationAgreementsFolder(
+  year: string,
+): Promise<{ driveId: string; folderItemId: string }> {
+  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
+  if (!driveId) {
+    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
+  }
+
+  const rootFolder = process.env.GRAPH_ROOT_FOLDER?.trim() ?? "";
+  const rootParts = rootFolder
+    ? rootFolder.split("/").map((p) => p.trim()).filter(Boolean).map(sanitize)
+    : [];
+
+  const root = await graphFetch<DriveItem>(`/drives/${driveId}/root`);
+  let parent: DriveItem = root;
+  for (const part of rootParts) {
+    parent = await ensureFolder(driveId, parent.id, part);
+  }
+  parent = await ensureFolder(driveId, parent.id, "Consultation Agreements");
+  parent = await ensureFolder(driveId, parent.id, sanitize(year));
+  return { driveId, folderItemId: parent.id };
+}
+
 /**
  * Returns the drive id + a "99 Rejected" subfolder under the given
  * parent folder, creating it lazily. The numeric "99 " prefix sorts

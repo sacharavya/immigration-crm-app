@@ -13,6 +13,7 @@ import {
   sendPaymentPending,
   sendPaymentStaffNotification,
 } from "@/lib/email/appointments";
+import { maybeSendConsultationAgreement } from "@/lib/consultation/send";
 import { ensureConsultationPaymentsFolder } from "@/lib/graph/folders";
 import { uploadFile } from "@/lib/graph/uploads";
 
@@ -271,6 +272,10 @@ export async function bookAppointment(
     }
     await sendInternalNotification(supabase, appt.id);
   }
+
+  // Email a consultation-agreement sign-link if the type requires it and the
+  // client is a first-time (non-retained) client. Best-effort.
+  await maybeSendConsultationAgreement(supabase, appt.id);
 
   return {
     ok: true,

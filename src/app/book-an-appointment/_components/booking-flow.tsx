@@ -51,7 +51,7 @@ export function BookingFlow({
   // consistent if the prop ever changes (defensive — unlikely in practice).
   useEffect(() => {
     if (types.length === 1 && state.step === "pick-type") {
-      setState({ step: "pick-slot", type: types[0] });
+      queueMicrotask(() => setState({ step: "pick-slot", type: types[0] }));
     }
   }, [types, state.step]);
 

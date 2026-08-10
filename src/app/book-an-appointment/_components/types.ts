@@ -11,6 +11,7 @@ export type PublicBookingType = {
   duration_minutes: number;
   fee_cad: number | null;
   default_location_type: LocationType;
+  requires_consultation_agreement: boolean;
 };
 
 export type PublicSlot = {

@@ -27,6 +27,7 @@ const baseFields = {
   preparation_notes: z.string().max(2000).nullable(),
   is_public: z.boolean(),
   requires_case: z.boolean(),
+  requires_consultation_agreement: z.boolean().default(false),
   fee_cad: z.number().min(0).max(100000).nullable(),
   display_order: z.number().int().min(0).max(10000).default(100),
 };
@@ -104,6 +105,7 @@ export async function createAppointmentType(
       preparation_notes: data.preparation_notes,
       is_public: data.is_public,
       requires_case: data.requires_case,
+      requires_consultation_agreement: data.requires_consultation_agreement,
       fee_cad: data.fee_cad,
       display_order: data.display_order,
       active: true,
@@ -202,7 +204,7 @@ export async function duplicateAppointmentType(
     .schema("crm")
     .from("appointment_types")
     .select(
-      "name, code, duration_minutes, default_location_type, description, preparation_notes, is_public, requires_case, fee_cad, display_order",
+      "name, code, duration_minutes, default_location_type, description, preparation_notes, is_public, requires_case, requires_consultation_agreement, fee_cad, display_order",
     )
     .eq("id", id)
     .maybeSingle();
@@ -236,6 +238,7 @@ export async function duplicateAppointmentType(
       preparation_notes: original.preparation_notes,
       is_public: original.is_public,
       requires_case: original.requires_case,
+      requires_consultation_agreement: original.requires_consultation_agreement,
       fee_cad: original.fee_cad,
       display_order: original.display_order,
       active: true,

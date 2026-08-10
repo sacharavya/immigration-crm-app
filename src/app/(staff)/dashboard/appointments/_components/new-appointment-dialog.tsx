@@ -105,12 +105,14 @@ export function NewAppointmentDialog({
 
   const feeRaw = selectedType?.fee_cad == null ? null : Number(selectedType.fee_cad);
   const isPaid = feeRaw !== null && feeRaw > 0;
+  const [proBono, setProBono] = useState(false);
 
   // When the type changes, snap duration/location defaults.
   useEffect(() => {
     if (!selectedType) return;
     setLocationType(selectedType.default_location_type);
     setSelectedSlot(null);
+    setProBono(false);
   }, [selectedType]);
 
   // Load slots whenever (typeId, date) changes.
@@ -200,6 +202,7 @@ export function NewAppointmentDialog({
         reason: reason.trim(),
         staff_notes: staffNotes.trim() || null,
         send_confirmation_email: sendEmail,
+        pro_bono: proBono,
       });
       if ("error" in result) {
         setError(result.error);
@@ -276,7 +279,7 @@ export function NewAppointmentDialog({
             />
           </Field>
 
-          {isPaid && (
+          {isPaid && !proBono && (
             <div className="sm:col-span-2 flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
               <DollarSign className="h-4 w-4 shrink-0 text-amber-600" />
               <div className="flex-1">
@@ -290,6 +293,26 @@ export function NewAppointmentDialog({
                 </p>
               </div>
             </div>
+          )}
+
+          {isPaid && (
+            <label className="sm:col-span-2 flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={proBono}
+                onChange={(e) => setProBono(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-stone-300"
+              />
+              <span>
+                <span className="font-medium text-stone-700">
+                  Pro bono — waive the fee
+                </span>
+                <span className="block text-xs text-stone-500">
+                  The firm does this consultation for free. No payment is
+                  requested and the appointment is confirmed immediately.
+                </span>
+              </span>
+            </label>
           )}
 
           <div className="sm:col-span-2">

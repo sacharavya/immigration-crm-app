@@ -40,6 +40,7 @@ export type TypeFormInput = {
   preparation_notes: string | null;
   is_public: boolean;
   requires_case: boolean;
+  requires_consultation_agreement: boolean;
   fee_cad: number | null;
   display_order: number;
 };
@@ -53,6 +54,7 @@ const EMPTY: TypeFormInput = {
   preparation_notes: null,
   is_public: false,
   requires_case: false,
+  requires_consultation_agreement: false,
   fee_cad: null,
   display_order: 100,
 };
@@ -82,9 +84,11 @@ export function TypeFormDialog({
 
   useEffect(() => {
     if (open) {
-      setForm(initial ?? EMPTY);
-      setCodeTouched(Boolean(initial?.id));
-      setError(null);
+      queueMicrotask(() => {
+        setForm(initial ?? EMPTY);
+        setCodeTouched(Boolean(initial?.id));
+        setError(null);
+      });
     }
   }, [open, initial]);
 
@@ -120,6 +124,8 @@ export function TypeFormDialog({
             preparation_notes: payload.preparation_notes,
             is_public: payload.is_public,
             requires_case: payload.requires_case,
+            requires_consultation_agreement:
+              payload.requires_consultation_agreement,
             fee_cad: payload.fee_cad,
             display_order: payload.display_order,
           })
@@ -132,6 +138,8 @@ export function TypeFormDialog({
             preparation_notes: payload.preparation_notes,
             is_public: payload.is_public,
             requires_case: payload.requires_case,
+            requires_consultation_agreement:
+              payload.requires_consultation_agreement,
             fee_cad: payload.fee_cad,
             display_order: payload.display_order,
           });
@@ -281,6 +289,25 @@ export function TypeFormDialog({
                 {form.is_public
                   ? "Disabled — public types cannot require a case."
                   : "Cannot be booked without selecting an existing case."}
+              </span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-2 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={form.requires_consultation_agreement}
+              onChange={(e) =>
+                update("requires_consultation_agreement", e.target.checked)
+              }
+              className="mt-1 h-4 w-4 rounded border-stone-300"
+            />
+            <span>
+              <span className="font-medium text-stone-700">
+                Requires Initial Consultation Agreement
+              </span>
+              <span className="block text-xs text-stone-500">
+                Client must sign the agreement at booking (PR consultations).
               </span>
             </span>
           </label>

@@ -9,6 +9,7 @@ import { z } from "zod";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
 import { getOpenSlotsForType } from "@/lib/appointments/get-open-slots";
+import { maybeSendConsultationAgreement } from "@/lib/consultation/send";
 import {
   syncAppointmentCreate,
   syncAppointmentDelete,
@@ -49,6 +50,8 @@ const createSchema = z.object({
   reason: z.string().min(1).max(2000),
   staff_notes: z.string().max(2000).nullable(),
   send_confirmation_email: z.boolean().default(true),
+  // Staff waive the fee on a paid type — the firm does it for free.
+  pro_bono: z.boolean().default(false),
 });
 
 export type CreateAppointmentInput = z.infer<typeof createSchema>;
@@ -134,6 +137,11 @@ export async function createAppointment(
 
   const fee = typeRow.fee_cad == null ? null : Number(typeRow.fee_cad);
   const isPaid = fee !== null && fee > 0;
+  // Pro bono only means anything on a paid type. It waives the fee, so the
+  // appointment follows the free/confirmed path (no payment) but records the
+  // waiver (is_pro_bono) and a $0 fee_cad_at_booking.
+  const proBono = isPaid && input.pro_bono;
+  const effectivePaid = isPaid && !proBono;
 
   // Paid consultations need a client_id downstream (payment row +
   // files.documents CHECK). If staff didn't link one, find-or-create a
@@ -195,7 +203,9 @@ export async function createAppointment(
   // client receives a payment-instruction email with a management link,
   // and the slot is held until midnight. Confirmation email + calendar
   // sync only fire after staff accepts the payment proof.
-  const managementToken = isPaid ? randomBytes(32).toString("hex") : null;
+  const managementToken = effectivePaid
+    ? randomBytes(32).toString("hex")
+    : null;
   const endsAt = new Date(input.ends_at);
   const managementTokenExpiresAt = managementToken
     ? new Date(endsAt.getTime() + 24 * 60 * 60 * 1000).toISOString()
@@ -222,10 +232,12 @@ export async function createAppointment(
       staff_notes: input.staff_notes,
       booking_source: "staff",
       created_by: staff?.id,
-      // Paid: pending_payment, no calendar sync yet. Free: confirmed, sync immediately.
-      status: isPaid ? "pending_payment" : "confirmed",
-      fee_cad_at_booking: isPaid ? fee : null,
-      graph_sync_status: isPaid ? null : "pending",
+      // Paid: pending_payment, no calendar sync yet. Free/pro-bono: confirmed,
+      // sync immediately. Pro bono records a $0 waived fee.
+      status: effectivePaid ? "pending_payment" : "confirmed",
+      fee_cad_at_booking: proBono ? 0 : isPaid ? fee : null,
+      is_pro_bono: proBono,
+      graph_sync_status: effectivePaid ? null : "pending",
       management_token: managementToken,
       management_token_expires_at: managementTokenExpiresAt,
     })
@@ -238,7 +250,7 @@ export async function createAppointment(
 
   const admin = adminClient();
 
-  if (isPaid) {
+  if (effectivePaid) {
     // Send payment-instruction email to the client (e-transfer details +
     // management URL for uploading proof). No calendar sync, no
     // confirmation — those fire only after staff accepts the proof.
@@ -259,6 +271,10 @@ export async function createAppointment(
     }
     await sendInternalNotification(admin, inserted.id);
   }
+
+  // Email a consultation-agreement sign-link if the type requires it and the
+  // client is a first-time (non-retained) client. Covers pro-bono too.
+  await maybeSendConsultationAgreement(admin, inserted.id);
 
   revalidateLinked(input.case_id, resolvedClientId);
   return { ok: true, id: inserted.id };
