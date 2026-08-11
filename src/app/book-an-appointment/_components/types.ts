@@ -36,6 +36,9 @@ export type BookingSuccess = {
   payment_required: boolean;
   fee_cad: number | null;
   appointment_short_id: string; // first 8 chars of appointment.id
+  // Set when the booking needs a consultation agreement: the /sign/consultation
+  // link. The confirmation prompts inline; the same link is also emailed.
+  consultation_sign_url: string | null;
 };
 
 export type BookingErrorCode =

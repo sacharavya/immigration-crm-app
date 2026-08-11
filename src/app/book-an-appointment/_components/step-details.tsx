@@ -6,6 +6,16 @@ import { useState } from "react";
 import { MeetingSidebar } from "./meeting-sidebar";
 import type { LocationType, PublicBookingType, PublicSlot } from "./types";
 
+const MARITAL_OPTIONS = [
+  { value: "single", label: "Single" },
+  { value: "married", label: "Married" },
+  { value: "common_law", label: "Common-law" },
+  { value: "divorced", label: "Divorced" },
+  { value: "widowed", label: "Widowed" },
+  { value: "separated", label: "Separated" },
+  { value: "annulled", label: "Annulled" },
+] as const;
+
 export function StepDetails({
   type,
   slot,
@@ -25,6 +35,15 @@ export function StepDetails({
     phone: string;
     reason: string;
     location_type: LocationType;
+    address: string;
+    city: string;
+    province: string;
+    postal_code: string;
+    date_of_birth: string;
+    marital_status: string;
+    highest_education: string;
+    primary_language: string;
+    occupation: string;
   }) => Promise<void> | void;
 }) {
   const [name, setName] = useState("");
@@ -34,6 +53,15 @@ export function StepDetails({
   const [locationType, setLocationType] = useState<LocationType>(
     type.default_location_type,
   );
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [province, setProvince] = useState("");
+  const [postal, setPostal] = useState("");
+  const [dob, setDob] = useState("");
+  const [marital, setMarital] = useState("");
+  const [education, setEducation] = useState("");
+  const [language, setLanguage] = useState("");
+  const [occupation, setOccupation] = useState("");
   const [consent, setConsent] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -45,7 +73,13 @@ export function StepDetails({
       );
       return;
     }
-    if (!name.trim() || !email.trim() || !phone.trim() || !reason.trim()) {
+    if (
+      !name.trim() ||
+      !email.trim() ||
+      !phone.trim() ||
+      !reason.trim() ||
+      !address.trim()
+    ) {
       setLocalError("Please fill in every required field.");
       return;
     }
@@ -56,6 +90,15 @@ export function StepDetails({
       phone: phone.trim(),
       reason: reason.trim(),
       location_type: locationType,
+      address: address.trim(),
+      city: city.trim(),
+      province: province.trim(),
+      postal_code: postal.trim(),
+      date_of_birth: dob,
+      marital_status: marital,
+      highest_education: education.trim(),
+      primary_language: language.trim(),
+      occupation: occupation.trim(),
     });
   }
 
@@ -153,6 +196,105 @@ export function StepDetails({
                   className="w-full border border-stone-200 bg-white px-3 py-2 text-sm"
                 />
               </FormField>
+
+              <div className="border-t border-stone-100 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+                  About you
+                </p>
+                <p className="mt-0.5 text-xs text-stone-500">
+                  Helps us prepare and tailor advice to your situation.
+                </p>
+              </div>
+
+              <FormField label="Street address" required>
+                <input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  autoComplete="street-address"
+                  disabled={submitting}
+                  className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                />
+              </FormField>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <FormField label="City">
+                  <input
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    disabled={submitting}
+                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                  />
+                </FormField>
+                <FormField label="Province / State">
+                  <input
+                    value={province}
+                    onChange={(e) => setProvince(e.target.value)}
+                    disabled={submitting}
+                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                  />
+                </FormField>
+                <FormField label="Postal / ZIP">
+                  <input
+                    value={postal}
+                    onChange={(e) => setPostal(e.target.value)}
+                    disabled={submitting}
+                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                  />
+                </FormField>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="Date of birth">
+                  <input
+                    type="date"
+                    value={dob}
+                    onChange={(e) => setDob(e.target.value)}
+                    disabled={submitting}
+                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                  />
+                </FormField>
+                <FormField label="Marital status">
+                  <select
+                    value={marital}
+                    onChange={(e) => setMarital(e.target.value)}
+                    disabled={submitting}
+                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                  >
+                    <option value="">Select…</option>
+                    {MARITAL_OPTIONS.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <FormField label="Highest education">
+                  <input
+                    value={education}
+                    onChange={(e) => setEducation(e.target.value)}
+                    disabled={submitting}
+                    placeholder="e.g. Bachelor's"
+                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                  />
+                </FormField>
+                <FormField label="Primary language">
+                  <input
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    disabled={submitting}
+                    placeholder="e.g. English"
+                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                  />
+                </FormField>
+                <FormField label="Current occupation">
+                  <input
+                    value={occupation}
+                    onChange={(e) => setOccupation(e.target.value)}
+                    disabled={submitting}
+                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                  />
+                </FormField>
+              </div>
 
               <label className="flex items-start gap-2 text-sm text-stone-700">
                 <input

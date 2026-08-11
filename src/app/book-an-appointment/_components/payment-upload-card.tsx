@@ -18,6 +18,9 @@ export type PaymentUploadCardProps = {
   durationMinutes: number;
   feeCad: number;
   referenceCode: string; // first 8 chars of appointment.id
+  // When set, the "received" view prompts the client to sign the consultation
+  // agreement inline (the same link is also emailed as a fallback).
+  signUrl?: string | null;
 };
 
 function formatFee(cad: number): string {
@@ -39,6 +42,7 @@ export function PaymentUploadCard({
   durationMinutes,
   feeCad,
   referenceCode,
+  signUrl,
 }: PaymentUploadCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -103,6 +107,22 @@ export function PaymentUploadCard({
           Our team will verify it shortly and confirm your appointment by
           email.
         </p>
+        {signUrl && (
+          <div className="mt-2 border-t border-stone-100 pt-3">
+            <p className="text-sm font-semibold text-stone-900">
+              One more step — sign your consultation agreement
+            </p>
+            <p className="mt-0.5 text-xs text-stone-600">
+              We&apos;ve also emailed you this link.
+            </p>
+            <a
+              href={signUrl}
+              className="mt-2 inline-flex h-9 items-center bg-[var(--navy)] px-4 text-sm font-medium text-white hover:bg-[var(--navy)]/90"
+            >
+              Sign now
+            </a>
+          </div>
+        )}
       </div>
     );
   }

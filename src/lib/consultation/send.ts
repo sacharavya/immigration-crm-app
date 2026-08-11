@@ -44,10 +44,12 @@ async function clientHasSignedRetainer(
 // After a booking: if the type requires the agreement and the client is a
 // first-time (non-retained) client, mint a token and email a sign-link.
 // Idempotent + best-effort — never throws into the booking flow.
+// Returns the sign-link URL when it just sent one (so the caller can also
+// prompt inline), or null when no agreement was needed / already handled.
 export async function maybeSendConsultationAgreement(
   supabase: Admin,
   appointmentId: string,
-): Promise<void> {
+): Promise<string | null> {
   try {
     const { data: appt } = await supabase
       .schema("crm")
@@ -57,9 +59,9 @@ export async function maybeSendConsultationAgreement(
       )
       .eq("id", appointmentId)
       .maybeSingle();
-    if (!appt) return;
+    if (!appt) return null;
     if (appt.consultation_agreement_signed_at || appt.consultation_agreement_token) {
-      return; // already signed or already sent
+      return null; // already signed or already sent
     }
 
     const { data: type } = await supabase
@@ -68,10 +70,10 @@ export async function maybeSendConsultationAgreement(
       .select("requires_consultation_agreement")
       .eq("id", appt.appointment_type_id)
       .maybeSingle();
-    if (!type?.requires_consultation_agreement) return;
+    if (!type?.requires_consultation_agreement) return null;
 
     if (await clientHasSignedRetainer(supabase, appt.snapshot_client_email)) {
-      return; // existing client — already agreed to terms via a retainer
+      return null; // existing client — already agreed to terms via a retainer
     }
 
     const token = randomBytes(32).toString("hex");
@@ -90,12 +92,13 @@ export async function maybeSendConsultationAgreement(
       .is("consultation_agreement_token", null)
       .select("id")
       .maybeSingle();
-    if (!claimed) return; // lost the race
+    if (!claimed) return null; // lost the race
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+    const signingUrl = `${baseUrl}/sign/consultation/${token}`;
     const email = consultationAgreementInviteEmail({
       clientName: appt.snapshot_client_name,
-      signingUrl: `${baseUrl}/sign/consultation/${token}`,
+      signingUrl,
       expiryDate: expiresAt,
     });
     await sendEmail({
@@ -104,7 +107,9 @@ export async function maybeSendConsultationAgreement(
       html: email.html,
       text: email.text,
     });
+    return signingUrl;
   } catch (err) {
     console.error("[maybeSendConsultationAgreement] failed:", err);
+    return null;
   }
 }

@@ -82,6 +82,7 @@ export function StepConfirmation({
             durationMinutes={result.duration_minutes}
             feeCad={result.fee_cad}
             referenceCode={result.appointment_short_id}
+            signUrl={result.consultation_sign_url}
           />
         </div>
       </div>
@@ -98,6 +99,23 @@ export function StepConfirmation({
         clientTimezone={clientTimezone}
       />
       <div className="min-w-0 flex-1">
+        {result.consultation_sign_url && (
+          <div className="mb-4 border border-[var(--navy)]/30 bg-[var(--navy)]/5 p-4">
+            <p className="text-sm font-semibold text-stone-900">
+              One more step — sign your consultation agreement
+            </p>
+            <p className="mt-0.5 text-xs text-stone-600">
+              We&apos;ve also emailed you this link in case you&apos;d like to
+              sign later.
+            </p>
+            <a
+              href={result.consultation_sign_url}
+              className="mt-2 inline-flex h-9 items-center bg-[var(--navy)] px-4 text-sm font-medium text-white hover:bg-[var(--navy-light)]"
+            >
+              Sign now
+            </a>
+          </div>
+        )}
         <div className="border border-stone-200 bg-white p-6">
           <div className="flex items-start gap-3">
             <CalendarCheck className="mt-1 h-6 w-6 text-emerald-600" />

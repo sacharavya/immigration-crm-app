@@ -70,27 +70,30 @@ export function BookingFlow({
     }
   }
 
-  async function submit(
-    input: {
-      name: string;
-      email: string;
-      phone: string;
-      reason: string;
-      location_type: LocationType;
-    },
-  ) {
+  async function submit(input: {
+    name: string;
+    email: string;
+    phone: string;
+    reason: string;
+    location_type: LocationType;
+    address: string;
+    city: string;
+    province: string;
+    postal_code: string;
+    date_of_birth: string;
+    marital_status: string;
+    highest_education: string;
+    primary_language: string;
+    occupation: string;
+  }) {
     if (state.step !== "details") return;
     setState({ step: "submitting", type: state.type, slot: state.slot });
     const result = await bookAppointment({
       appointment_type_id: state.type.id,
       starts_at: state.slot.start_utc,
-      name: input.name,
-      email: input.email,
-      phone: input.phone,
-      reason: input.reason,
-      location_type: input.location_type,
       consent: true,
       client_timezone: clientTimezone,
+      ...input,
     });
     setState({
       step: "result",
