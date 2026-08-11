@@ -24,9 +24,22 @@ export default async function AppointmentSettingsPage() {
     .schema("crm")
     .from("appointment_settings")
     .select(
-      "public_booking_enabled, teams_auto_create, hours_by_weekday, slot_increment_minutes, buffer_between_appointments_minutes, minimum_lead_time_hours, maximum_horizon_days, office_address, office_arrival_instructions, default_online_link, timezone",
+      "public_booking_enabled, teams_auto_create, hours_by_weekday, slot_increment_minutes, buffer_between_appointments_minutes, minimum_lead_time_hours, maximum_horizon_days, office_address, office_arrival_instructions, default_online_link, default_rcic_staff_id, timezone",
     )
     .maybeSingle();
+
+  const { data: rcicRows } = await supabase
+    .schema("crm")
+    .from("staff")
+    .select("id, first_name, last_name")
+    .eq("is_rcic", true)
+    .eq("is_active", true)
+    .is("deleted_at", null)
+    .order("first_name");
+  const rcicOptions = (rcicRows ?? []).map((s) => ({
+    id: s.id,
+    name: `${s.first_name} ${s.last_name}`.trim(),
+  }));
 
   if (!settings) {
     // The singleton is seeded in the APPT-1 migration — if it's missing
@@ -70,7 +83,9 @@ export default async function AppointmentSettingsPage() {
 
       <SettingsForm
         publicBookingUrl={publicBookingUrl}
+        rcicOptions={rcicOptions}
         initial={{
+          default_rcic_staff_id: settings.default_rcic_staff_id,
           public_booking_enabled: settings.public_booking_enabled,
           teams_auto_create: settings.teams_auto_create,
           hours_by_weekday: (settings.hours_by_weekday ?? {}) as HoursByWeekday,

@@ -21,7 +21,7 @@ const codeRegex = /^[a-z0-9_]+$/;
 
 const baseFields = {
   name: z.string().min(1).max(100),
-  duration_minutes: z.number().int().min(15).max(240),
+  duration_minutes: z.number().int().min(30).max(240),
   default_location_type: z.enum(["online", "onsite"]),
   description: z.string().min(1).max(200),
   preparation_notes: z.string().max(2000).nullable(),

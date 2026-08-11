@@ -78,6 +78,7 @@ export type Database = {
           buffer_between_appointments_minutes: number
           default_online_instructions: string | null
           default_online_link: string | null
+          default_rcic_staff_id: string | null
           graph_calendar_owner_email: string
           hours_by_weekday: Json
           id: string
@@ -97,6 +98,7 @@ export type Database = {
           buffer_between_appointments_minutes?: number
           default_online_instructions?: string | null
           default_online_link?: string | null
+          default_rcic_staff_id?: string | null
           graph_calendar_owner_email?: string
           hours_by_weekday?: Json
           id?: string
@@ -116,6 +118,7 @@ export type Database = {
           buffer_between_appointments_minutes?: number
           default_online_instructions?: string | null
           default_online_link?: string | null
+          default_rcic_staff_id?: string | null
           graph_calendar_owner_email?: string
           hours_by_weekday?: Json
           id?: string
@@ -131,6 +134,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "appointment_settings_default_rcic_staff_id_fkey"
+            columns: ["default_rcic_staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "appointment_settings_updated_by_fkey"
             columns: ["updated_by"]

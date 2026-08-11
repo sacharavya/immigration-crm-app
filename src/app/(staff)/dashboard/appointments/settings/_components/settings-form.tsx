@@ -31,6 +31,7 @@ type DayState = { open: boolean; start: string; end: string };
 
 export type SettingsFormProps = {
   publicBookingUrl: string;
+  rcicOptions: { id: string; name: string }[];
   initial: {
     public_booking_enabled: boolean;
     teams_auto_create: boolean;
@@ -42,6 +43,7 @@ export type SettingsFormProps = {
     office_address: string;
     office_arrival_instructions: string | null;
     default_online_link: string | null;
+    default_rcic_staff_id: string | null;
     timezone: string;
   };
 };
@@ -58,9 +60,13 @@ function asDayState(
 
 export function SettingsForm({
   publicBookingUrl,
+  rcicOptions,
   initial,
 }: SettingsFormProps) {
   const [enabled, setEnabled] = useState(initial.public_booking_enabled);
+  const [defaultRcicId, setDefaultRcicId] = useState(
+    initial.default_rcic_staff_id ?? "",
+  );
   const [days, setDays] = useState<Record<WeekdayKey, DayState>>(() => ({
     mon: asDayState(initial.hours_by_weekday.mon),
     tue: asDayState(initial.hours_by_weekday.tue),
@@ -128,6 +134,7 @@ export function SettingsForm({
       office_address: officeAddress.trim(),
       office_arrival_instructions: arrivalInstructions.trim() || null,
       default_online_link: defaultOnlineLink.trim() || null,
+      default_rcic_staff_id: defaultRcicId || null,
     };
 
     startTransition(async () => {
@@ -350,6 +357,24 @@ export function SettingsForm({
             onChange={(e) => setDefaultOnlineLink(e.target.value)}
             placeholder="https://teams.microsoft.com/l/..."
           />
+        </Field>
+
+        <Field
+          label="Default RCIC on consultation agreements"
+          helper="Whose name, details, and signature appear on the Initial Consultation Agreement when a booking has no assigned RCIC."
+        >
+          <select
+            value={defaultRcicId}
+            onChange={(e) => setDefaultRcicId(e.target.value)}
+            className="h-9 w-full rounded-md border border-stone-200 bg-white px-3 text-sm"
+          >
+            <option value="">Auto (first available RCIC)</option>
+            {rcicOptions.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
         </Field>
       </Section>
 

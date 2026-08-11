@@ -53,6 +53,23 @@ async function resolveRcic(supabase: Admin, assignedStaffId: string | null) {
     const s = data as RcicRow | null;
     if (s?.is_rcic && s.is_active && !s.deleted_at) return mapRcic(s);
   }
+  // No assigned RCIC → the firm's default consultation RCIC setting, else the
+  // first active RCIC (deterministic) so the block is never blank.
+  const { data: settings } = await supabase
+    .schema("crm")
+    .from("appointment_settings")
+    .select("default_rcic_staff_id")
+    .maybeSingle();
+  if (settings?.default_rcic_staff_id) {
+    const { data } = await supabase
+      .schema("crm")
+      .from("staff")
+      .select(RCIC_COLS)
+      .eq("id", settings.default_rcic_staff_id)
+      .maybeSingle();
+    const s = data as RcicRow | null;
+    if (s?.is_rcic && s.is_active && !s.deleted_at) return mapRcic(s);
+  }
   const { data: rows } = await supabase
     .schema("crm")
     .from("staff")
@@ -60,9 +77,10 @@ async function resolveRcic(supabase: Admin, assignedStaffId: string | null) {
     .eq("is_rcic", true)
     .eq("is_active", true)
     .is("deleted_at", null)
-    .limit(2);
+    .order("created_at", { ascending: true })
+    .limit(1);
   const list = (rows ?? []) as RcicRow[];
-  return list.length === 1 ? mapRcic(list[0]) : null;
+  return list.length >= 1 ? mapRcic(list[0]) : null;
 }
 
 // Assemble the (unsigned) agreement content for an appointment. `at` is the
@@ -76,11 +94,14 @@ export async function loadConsultationAgreementData(
     .schema("crm")
     .from("appointments")
     .select(
-      "client_id, assigned_staff_id, snapshot_client_name, snapshot_client_email, snapshot_client_phone, fee_cad_at_booking",
+      "client_id, assigned_staff_id, snapshot_client_name, snapshot_client_email, snapshot_client_phone, fee_cad_at_booking, starts_at, timezone",
     )
     .eq("id", appointmentId)
     .maybeSingle();
   if (!appt) throw new Error("Appointment not found");
+
+  const tz = appt.timezone || "America/Toronto";
+  const start = new Date(appt.starts_at);
 
   let clientAddress = "—";
   if (appt.client_id) {
@@ -111,6 +132,19 @@ export async function loadConsultationAgreementData(
 
   return {
     agreement_date: format(at, "d 'day of' MMMM yyyy"),
+    appointment_date: start.toLocaleDateString("en-CA", {
+      timeZone: tz,
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }),
+    appointment_time: start.toLocaleTimeString("en-CA", {
+      timeZone: tz,
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }),
     subject: "Permanent Resident Pathway to Canada",
     client_name: appt.snapshot_client_name,
     client_address: clientAddress,

@@ -46,6 +46,18 @@ const s = StyleSheet.create({
   subtitle: { fontWeight: 700, marginBottom: 6 },
   p: { marginTop: 8 },
   subject: { marginVertical: 8, fontWeight: 700 },
+  details: {
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: "#a8a29e",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  detailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginVertical: 1,
+  },
   heading: { marginTop: 14, fontWeight: 700 },
   field: { marginTop: 2 },
   label: { fontWeight: 700 },
@@ -57,6 +69,15 @@ const s = StyleSheet.create({
   sigLine: { borderTopWidth: 1, borderTopColor: "#292524", paddingTop: 2, fontSize: 9 },
   sigDate: { marginTop: 12, fontSize: 9, color: "#57534e" },
 });
+
+function DetailLine({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={s.detailRow}>
+      <Text>{label}:</Text>
+      <Text style={{ fontWeight: 700 }}>{value || "—"}</Text>
+    </View>
+  );
+}
 
 function LabeledField({ label, value }: { label: string; value: string }) {
   return (
@@ -83,6 +104,15 @@ export function ConsultationAgreementPdfDocument({
 
         <Text style={s.p}>{intro}</Text>
         <Text style={s.subject}>{data.subject}</Text>
+
+        <View style={s.details}>
+          <DetailLine label="Date" value={data.appointment_date} />
+          <DetailLine label="Time" value={data.appointment_time} />
+          <DetailLine label="Cost" value={data.fee_line ?? "Complimentary"} />
+          <DetailLine label="RCIC" value={data.rcic_name} />
+          <DetailLine label="RCIC Number" value={data.rcic_membership_number} />
+        </View>
+
         <Text style={s.p}>{governing}</Text>
 
         <Text style={s.heading}>CLIENT INFORMATION</Text>

@@ -6,6 +6,8 @@
 export type ConsultationAgreementData = {
   // "18 December 2025" style — pre-formatted so both surfaces match.
   agreement_date: string;
+  appointment_date: string;
+  appointment_time: string;
   subject: string; // e.g. "Permanent Resident Pathway to Canada"
 
   client_name: string;
@@ -66,6 +68,18 @@ export function ConsultationAgreementDocument({
 
       <p className="mt-5">{intro}</p>
       <p className="my-3 font-semibold">{data.subject}</p>
+
+      <div className="my-4 rounded border border-stone-300 px-4 py-2">
+        <DetailLine label="Date" value={data.appointment_date} />
+        <DetailLine label="Time" value={data.appointment_time} />
+        <DetailLine
+          label="Cost"
+          value={data.fee_line ?? "Complimentary"}
+        />
+        <DetailLine label="RCIC" value={data.rcic_name} />
+        <DetailLine label="RCIC Number" value={data.rcic_membership_number} />
+      </div>
+
       <p>{governing}</p>
 
       <p className="mt-5 font-bold">CLIENT INFORMATION</p>
@@ -103,6 +117,16 @@ export function ConsultationAgreementDocument({
         />
       </div>
     </div>
+  );
+}
+
+// Bolded key detail (cost / date / time / RCIC name + number).
+function DetailLine({ label, value }: { label: string; value: string }) {
+  return (
+    <p className="flex justify-between gap-4">
+      <span>{label}:</span>
+      <span className="font-bold">{value || "—"}</span>
+    </p>
   );
 }
 

@@ -188,7 +188,7 @@ export function TypeFormDialog({
           <Field label="Duration (minutes)">
             <Input
               type="number"
-              min={15}
+              min={30}
               max={240}
               value={form.duration_minutes}
               onChange={(e) =>

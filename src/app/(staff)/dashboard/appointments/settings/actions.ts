@@ -61,6 +61,9 @@ const schema = z.object({
     .url("Enter a valid URL or leave blank")
     .nullable()
     .or(z.literal("")),
+  // Default RCIC whose details/signature appear on consultation agreements when
+  // the booking has no assigned RCIC. "" from the form → null (auto-pick).
+  default_rcic_staff_id: z.string().uuid().nullable().or(z.literal("")),
 });
 
 export type AppointmentSettingsInput = z.infer<typeof schema>;
@@ -162,6 +165,7 @@ export async function updateAppointmentSettings(
       office_address: input.office_address,
       office_arrival_instructions: input.office_arrival_instructions,
       default_online_link: normalisedLink,
+      default_rcic_staff_id: input.default_rcic_staff_id || null,
       updated_by: staff.id,
     })
     .not("id", "is", null);
