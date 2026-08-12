@@ -166,7 +166,7 @@ export default async function AppointmentsPage({
   const { data: staffRows } = await supabase
     .schema("crm")
     .from("staff")
-    .select("id, first_name, last_name")
+    .select("id, first_name, last_name, is_rcic")
     .eq("is_active", true)
     .is("deleted_at", null)
     .order("first_name");
@@ -175,6 +175,9 @@ export default async function AppointmentsPage({
     first_name: s.first_name,
     last_name: s.last_name,
   }));
+  const rcicOptions = (staffRows ?? [])
+    .filter((s) => s.is_rcic)
+    .map((s) => ({ id: s.id, name: `${s.first_name} ${s.last_name}`.trim() }));
 
   // Office address for the new appointment dialog default
   const { data: settings } = await supabase
@@ -201,6 +204,7 @@ export default async function AppointmentsPage({
         <NewAppointmentDialog
           types={types as AppointmentTypeOption[]}
           officeAddress={officeAddress}
+          rcicOptions={rcicOptions}
         />
       </header>
 

@@ -11,6 +11,10 @@ import { getStaff } from "@/lib/auth/staff";
 import { getOpenSlotsForType } from "@/lib/appointments/get-open-slots";
 import { maybeSendConsultationAgreement } from "@/lib/consultation/send";
 import {
+  consultationIntakeScalars,
+  consultationIntakeJsonb,
+} from "@/lib/clients/consultation-intake";
+import {
   syncAppointmentCreate,
   syncAppointmentDelete,
   syncAppointmentUpdate,
@@ -52,6 +56,17 @@ const createSchema = z.object({
   send_confirmation_email: z.boolean().default(true),
   // Staff waive the fee on a paid type — the firm does it for free.
   pro_bono: z.boolean().default(false),
+  // Core intake (same as the public booking form), all optional here.
+  address: z.string().max(300).optional().default(""),
+  city: z.string().max(120).optional().default(""),
+  province: z.string().max(120).optional().default(""),
+  postal_code: z.string().max(20).optional().default(""),
+  date_of_birth: z.string().optional().default(""),
+  marital_status: z.string().max(20).optional().default(""),
+  highest_education: z.string().max(200).optional().default(""),
+  language_test: z.string().max(60).optional().default(""),
+  language_score: z.string().max(120).optional().default(""),
+  occupation: z.string().max(200).optional().default(""),
 });
 
 export type CreateAppointmentInput = z.infer<typeof createSchema>;
@@ -147,7 +162,7 @@ export async function createAppointment(
   // files.documents CHECK). If staff didn't link one, find-or-create a
   // lead client from the snapshot fields — same as the public flow.
   let resolvedClientId = input.client_id;
-  if (isPaid && !resolvedClientId) {
+  if (!resolvedClientId) {
     const emailLower = input.snapshot_client_email.toLowerCase();
     const { data: existing } = await supabase
       .schema("crm")
@@ -181,6 +196,8 @@ export async function createAppointment(
           phone_primary: input.snapshot_client_phone,
           status: "lead",
           source: "staff_booking",
+          ...consultationIntakeScalars(input),
+          background_responses: consultationIntakeJsonb(input),
         })
         .select("id")
         .single();
@@ -189,6 +206,16 @@ export async function createAppointment(
       }
       resolvedClientId = newClient.id;
     }
+  }
+
+  // Store the intake on the resolved client (linked or found) too, so the
+  // profile + agreement reflect what staff entered.
+  if (resolvedClientId) {
+    await supabase
+      .schema("crm")
+      .from("clients")
+      .update(consultationIntakeScalars(input))
+      .eq("id", resolvedClientId);
   }
 
   // Slot guard

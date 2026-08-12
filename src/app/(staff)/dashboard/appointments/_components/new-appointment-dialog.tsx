@@ -36,9 +36,32 @@ type Props = {
   // Open cases the client owns (when launched from a client page). Lets
   // staff link this appointment to one of them.
   availableCases?: CasePrefill[];
+  // Active RCICs — staff pick who the appointment (and its agreement) is with.
+  rcicOptions?: { id: string; name: string }[];
   triggerLabel?: string;
   triggerVariant?: "primary" | "outline";
 };
+
+const MARITAL_OPTIONS = [
+  { value: "single", label: "Single" },
+  { value: "married", label: "Married" },
+  { value: "common_law", label: "Common-law" },
+  { value: "divorced", label: "Divorced" },
+  { value: "widowed", label: "Widowed" },
+  { value: "separated", label: "Separated" },
+  { value: "annulled", label: "Annulled" },
+] as const;
+
+const LANGUAGE_TESTS = [
+  "IELTS General",
+  "IELTS Academic",
+  "CELPIP-General",
+  "PTE Core",
+  "TEF Canada",
+  "TCF Canada",
+  "Not taken yet",
+  "Other",
+] as const;
 
 type Slot = { start_utc: string; end_utc: string };
 type DayOfSlots = { date: string; slots: Slot[] };
@@ -70,6 +93,7 @@ export function NewAppointmentDialog({
   prefilledClient,
   prefilledCase,
   availableCases,
+  rcicOptions = [],
   triggerLabel = "+ New appointment",
   triggerVariant = "primary",
 }: Props) {
@@ -95,6 +119,22 @@ export function NewAppointmentDialog({
   const [sendEmail, setSendEmail] = useState(true);
   const [caseFieldError, setCaseFieldError] = useState<string | null>(null);
 
+  // RCIC assignment (defaults to the only RCIC when there's just one).
+  const [rcicId, setRcicId] = useState<string>(
+    rcicOptions.length === 1 ? rcicOptions[0].id : "",
+  );
+  // Core intake (mirrors the public booking form).
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [province, setProvince] = useState("");
+  const [postal, setPostal] = useState("");
+  const [dob, setDob] = useState("");
+  const [marital, setMarital] = useState("");
+  const [education, setEducation] = useState("");
+  const [languageTest, setLanguageTest] = useState("");
+  const [languageScore, setLanguageScore] = useState("");
+  const [occupation, setOccupation] = useState("");
+
   const [slotDays, setSlotDays] = useState<DayOfSlots[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
@@ -110,9 +150,11 @@ export function NewAppointmentDialog({
   // When the type changes, snap duration/location defaults.
   useEffect(() => {
     if (!selectedType) return;
-    setLocationType(selectedType.default_location_type);
-    setSelectedSlot(null);
-    setProBono(false);
+    queueMicrotask(() => {
+      setLocationType(selectedType.default_location_type);
+      setSelectedSlot(null);
+      setProBono(false);
+    });
   }, [selectedType]);
 
   // Load slots whenever (typeId, date) changes.
@@ -124,7 +166,9 @@ export function NewAppointmentDialog({
     let cancelled = false;
     const from = new Date(`${date}T00:00:00.000Z`).toISOString();
     const to = new Date(`${plusDays(date, 1)}T00:00:00.000Z`).toISOString();
-    setLoadingSlots(true);
+    queueMicrotask(() => {
+      if (!cancelled) setLoadingSlots(true);
+    });
     getAvailableSlots(typeId, from, to)
       .then((res) => {
         if (cancelled) return;
@@ -198,11 +242,21 @@ export function NewAppointmentDialog({
         online_link: locationType === "online" ? onlineLink.trim() || null : null,
         onsite_address:
           locationType === "onsite" ? onsiteAddress.trim() : null,
-        assigned_staff_id: null,
+        assigned_staff_id: rcicId || null,
         reason: reason.trim(),
         staff_notes: staffNotes.trim() || null,
         send_confirmation_email: sendEmail,
         pro_bono: proBono,
+        address: address.trim(),
+        city: city.trim(),
+        province: province.trim(),
+        postal_code: postal.trim(),
+        date_of_birth: dob,
+        marital_status: marital,
+        highest_education: education.trim(),
+        language_test: languageTest,
+        language_score: languageScore.trim(),
+        occupation: occupation.trim(),
       });
       if ("error" in result) {
         setError(result.error);
@@ -352,6 +406,23 @@ export function NewAppointmentDialog({
             )}
           </div>
 
+          {rcicOptions.length > 0 && (
+            <Field label="RCIC (assigned to this appointment)">
+              <select
+                value={rcicId}
+                onChange={(e) => setRcicId(e.target.value)}
+                className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+              >
+                <option value="">Unassigned</option>
+                {rcicOptions.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+
           <Field label="Client name">
             <Input
               value={name}
@@ -377,6 +448,71 @@ export function NewAppointmentDialog({
               onChange={(e) => setPhone(e.target.value)}
               disabled={!!prefilledClient}
             />
+          </Field>
+
+          {/* Applicant profile — mirrors the public booking intake, all optional */}
+          <div className="border-t border-stone-100 pt-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+              Applicant profile (optional)
+            </p>
+          </div>
+          <Field label="Street address">
+            <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+          </Field>
+          <div className="grid grid-cols-3 gap-2">
+            <Field label="City">
+              <Input value={city} onChange={(e) => setCity(e.target.value)} />
+            </Field>
+            <Field label="Province">
+              <Input value={province} onChange={(e) => setProvince(e.target.value)} />
+            </Field>
+            <Field label="Postal">
+              <Input value={postal} onChange={(e) => setPostal(e.target.value)} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Date of birth">
+              <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+            </Field>
+            <Field label="Marital status">
+              <select
+                value={marital}
+                onChange={(e) => setMarital(e.target.value)}
+                className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+              >
+                <option value="">Select…</option>
+                {MARITAL_OPTIONS.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <Field label="Highest education">
+            <Input value={education} onChange={(e) => setEducation(e.target.value)} placeholder="e.g. Bachelor's" />
+          </Field>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Language test">
+              <select
+                value={languageTest}
+                onChange={(e) => setLanguageTest(e.target.value)}
+                className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+              >
+                <option value="">Select…</option>
+                {LANGUAGE_TESTS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Test scores">
+              <Input value={languageScore} onChange={(e) => setLanguageScore(e.target.value)} placeholder="e.g. 7 each" />
+            </Field>
+          </div>
+          <Field label="Current occupation">
+            <Input value={occupation} onChange={(e) => setOccupation(e.target.value)} />
           </Field>
 
           {showCaseField && prefilledCase ? (

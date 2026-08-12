@@ -18,6 +18,10 @@ import { ensureConsultationPaymentsFolder } from "@/lib/graph/folders";
 import { uploadFile } from "@/lib/graph/uploads";
 
 import type { BookingResult } from "./_components/types";
+import {
+  consultationIntakeScalars,
+  consultationIntakeJsonb,
+} from "@/lib/clients/consultation-intake";
 
 // Service-role client. The booking page is anonymous, so every query goes
 // through service-role (matching the upload portal pattern). No user
@@ -50,39 +54,6 @@ const bookSchema = z.object({
   occupation: z.string().max(200).optional().default(""),
 });
 
-const MARITAL_VALUES = new Set([
-  "single",
-  "married",
-  "common_law",
-  "divorced",
-  "widowed",
-  "separated",
-  "annulled",
-]);
-
-// Scalar intake columns, safe to set on both new and existing clients.
-function clientIntakeScalars(d: z.infer<typeof bookSchema>) {
-  const dob = /^\d{4}-\d{2}-\d{2}$/.test(d.date_of_birth)
-    ? d.date_of_birth
-    : null;
-  return {
-    address_line1: d.address || null,
-    city: d.city || null,
-    province_state: d.province || null,
-    postal_code: d.postal_code || null,
-    date_of_birth: dob,
-    marital_status: MARITAL_VALUES.has(d.marital_status)
-      ? (d.marital_status as
-          | "single"
-          | "married"
-          | "common_law"
-          | "divorced"
-          | "widowed"
-          | "separated"
-          | "annulled")
-      : null,
-  };
-}
 
 function splitName(full: string): { given: string; family: string | null } {
   const parts = full.trim().split(/\s+/);
@@ -220,7 +191,7 @@ export async function bookAppointment(
     await supabase
       .schema("crm")
       .from("clients")
-      .update(clientIntakeScalars(data))
+      .update(consultationIntakeScalars(data))
       .eq("id", clientId);
   } else {
     // crm.generate_client_number() returns the next "BB-C-YYYY-NNNN" string.
@@ -243,15 +214,8 @@ export async function bookAppointment(
         phone_primary: data.phone,
         status: "lead",
         source: "public_booking",
-        ...clientIntakeScalars(data),
-        background_responses: {
-          consultation_intake: {
-            highest_education: data.highest_education || null,
-            occupation: data.occupation || null,
-            language_test: data.language_test || null,
-            language_score: data.language_score || null,
-          },
-        },
+        ...consultationIntakeScalars(data),
+        background_responses: consultationIntakeJsonb(data),
       })
       .select("id")
       .single();
