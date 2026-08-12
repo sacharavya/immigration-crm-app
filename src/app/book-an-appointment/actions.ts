@@ -45,7 +45,8 @@ const bookSchema = z.object({
   date_of_birth: z.string().optional().default(""),
   marital_status: z.string().max(20).optional().default(""),
   highest_education: z.string().max(200).optional().default(""),
-  primary_language: z.string().max(100).optional().default(""),
+  language_test: z.string().max(60).optional().default(""),
+  language_score: z.string().max(120).optional().default(""),
   occupation: z.string().max(200).optional().default(""),
 });
 
@@ -80,7 +81,6 @@ function clientIntakeScalars(d: z.infer<typeof bookSchema>) {
           | "separated"
           | "annulled")
       : null,
-    preferred_language: d.primary_language || null,
   };
 }
 
@@ -248,7 +248,8 @@ export async function bookAppointment(
           consultation_intake: {
             highest_education: data.highest_education || null,
             occupation: data.occupation || null,
-            primary_language: data.primary_language || null,
+            language_test: data.language_test || null,
+            language_score: data.language_score || null,
           },
         },
       })

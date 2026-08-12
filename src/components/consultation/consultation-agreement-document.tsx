@@ -112,7 +112,8 @@ export function ConsultationAgreementDocument({
         />
         <SignatureBlock
           line="RCIC"
-          imageUrl={data.rcic_signature_image_url}
+          // RCIC counter-signs only once the applicant has signed.
+          imageUrl={mode === "final" ? data.rcic_signature_image_url : null}
           date={mode === "final" ? data.signed_date : null}
         />
       </div>

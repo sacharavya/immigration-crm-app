@@ -6,6 +6,17 @@ import { useState } from "react";
 import { MeetingSidebar } from "./meeting-sidebar";
 import type { LocationType, PublicBookingType, PublicSlot } from "./types";
 
+const LANGUAGE_TESTS = [
+  "IELTS General",
+  "IELTS Academic",
+  "CELPIP-General",
+  "PTE Core",
+  "TEF Canada",
+  "TCF Canada",
+  "Not taken yet",
+  "Other",
+] as const;
+
 const MARITAL_OPTIONS = [
   { value: "single", label: "Single" },
   { value: "married", label: "Married" },
@@ -42,7 +53,8 @@ export function StepDetails({
     date_of_birth: string;
     marital_status: string;
     highest_education: string;
-    primary_language: string;
+    language_test: string;
+    language_score: string;
     occupation: string;
   }) => Promise<void> | void;
 }) {
@@ -60,7 +72,8 @@ export function StepDetails({
   const [dob, setDob] = useState("");
   const [marital, setMarital] = useState("");
   const [education, setEducation] = useState("");
-  const [language, setLanguage] = useState("");
+  const [languageTest, setLanguageTest] = useState("");
+  const [languageScore, setLanguageScore] = useState("");
   const [occupation, setOccupation] = useState("");
   const [consent, setConsent] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -97,7 +110,8 @@ export function StepDetails({
       date_of_birth: dob,
       marital_status: marital,
       highest_education: education.trim(),
-      primary_language: language.trim(),
+      language_test: languageTest,
+      language_score: languageScore.trim(),
       occupation: occupation.trim(),
     });
   }
@@ -277,12 +291,27 @@ export function StepDetails({
                     className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
                   />
                 </FormField>
-                <FormField label="Primary language">
-                  <input
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
+                <FormField label="Language test">
+                  <select
+                    value={languageTest}
+                    onChange={(e) => setLanguageTest(e.target.value)}
                     disabled={submitting}
-                    placeholder="e.g. English"
+                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                  >
+                    <option value="">Select…</option>
+                    {LANGUAGE_TESTS.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Test scores">
+                  <input
+                    value={languageScore}
+                    onChange={(e) => setLanguageScore(e.target.value)}
+                    disabled={submitting}
+                    placeholder="e.g. L8 R7 W7 S7 (or 7 each)"
                     className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
                   />
                 </FormField>

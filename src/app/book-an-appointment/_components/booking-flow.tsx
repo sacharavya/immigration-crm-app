@@ -83,7 +83,8 @@ export function BookingFlow({
     date_of_birth: string;
     marital_status: string;
     highest_education: string;
-    primary_language: string;
+    language_test: string;
+    language_score: string;
     occupation: string;
   }) {
     if (state.step !== "details") return;
