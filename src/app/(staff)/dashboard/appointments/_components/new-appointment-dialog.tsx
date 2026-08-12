@@ -296,7 +296,7 @@ export function NewAppointmentDialog({
         {triggerLabel}
       </DialogTrigger>
 
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>New appointment</DialogTitle>
           <DialogDescription>
