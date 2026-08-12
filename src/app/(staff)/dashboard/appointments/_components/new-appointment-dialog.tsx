@@ -296,7 +296,7 @@ export function NewAppointmentDialog({
         {triggerLabel}
       </DialogTrigger>
 
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New appointment</DialogTitle>
           <DialogDescription>
@@ -305,7 +305,7 @@ export function NewAppointmentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Appointment type">
             <select
               value={typeId}
@@ -334,7 +334,7 @@ export function NewAppointmentDialog({
           </Field>
 
           {isPaid && !proBono && (
-            <div className="sm:col-span-2 flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+            <div className="sm:col-span-2 lg:col-span-3 flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
               <DollarSign className="h-4 w-4 shrink-0 text-amber-600" />
               <div className="flex-1">
                 <span className="font-medium">
@@ -350,7 +350,7 @@ export function NewAppointmentDialog({
           )}
 
           {isPaid && (
-            <label className="sm:col-span-2 flex items-start gap-2 text-sm">
+            <label className="sm:col-span-2 lg:col-span-3 flex items-start gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={proBono}
@@ -369,7 +369,7 @@ export function NewAppointmentDialog({
             </label>
           )}
 
-          <div className="sm:col-span-2">
+          <div className="sm:col-span-2 lg:col-span-3">
             <Label className="text-xs font-semibold uppercase tracking-wider text-stone-500">
               Available slots
             </Label>
@@ -451,7 +451,7 @@ export function NewAppointmentDialog({
           </Field>
 
           {/* Applicant profile — mirrors the public booking intake, all optional */}
-          <div className="border-t border-stone-100 pt-3">
+          <div className="sm:col-span-2 lg:col-span-3 border-t border-stone-100 pt-3">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
               Applicant profile (optional)
             </p>
@@ -459,58 +459,52 @@ export function NewAppointmentDialog({
           <Field label="Street address">
             <Input value={address} onChange={(e) => setAddress(e.target.value)} />
           </Field>
-          <div className="grid grid-cols-3 gap-2">
-            <Field label="City">
-              <Input value={city} onChange={(e) => setCity(e.target.value)} />
-            </Field>
-            <Field label="Province">
-              <Input value={province} onChange={(e) => setProvince(e.target.value)} />
-            </Field>
-            <Field label="Postal">
-              <Input value={postal} onChange={(e) => setPostal(e.target.value)} />
-            </Field>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Date of birth">
-              <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
-            </Field>
-            <Field label="Marital status">
-              <select
-                value={marital}
-                onChange={(e) => setMarital(e.target.value)}
-                className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
-              >
-                <option value="">Select…</option>
-                {MARITAL_OPTIONS.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
+          <Field label="City">
+            <Input value={city} onChange={(e) => setCity(e.target.value)} />
+          </Field>
+          <Field label="Province">
+            <Input value={province} onChange={(e) => setProvince(e.target.value)} />
+          </Field>
+          <Field label="Postal">
+            <Input value={postal} onChange={(e) => setPostal(e.target.value)} />
+          </Field>
+          <Field label="Date of birth">
+            <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+          </Field>
+          <Field label="Marital status">
+            <select
+              value={marital}
+              onChange={(e) => setMarital(e.target.value)}
+              className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+            >
+              <option value="">Select…</option>
+              {MARITAL_OPTIONS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field label="Highest education">
             <Input value={education} onChange={(e) => setEducation(e.target.value)} placeholder="e.g. Bachelor's" />
           </Field>
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Language test">
-              <select
-                value={languageTest}
-                onChange={(e) => setLanguageTest(e.target.value)}
-                className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
-              >
-                <option value="">Select…</option>
-                {LANGUAGE_TESTS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Test scores">
-              <Input value={languageScore} onChange={(e) => setLanguageScore(e.target.value)} placeholder="e.g. 7 each" />
-            </Field>
-          </div>
+          <Field label="Language test">
+            <select
+              value={languageTest}
+              onChange={(e) => setLanguageTest(e.target.value)}
+              className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+            >
+              <option value="">Select…</option>
+              {LANGUAGE_TESTS.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Test scores">
+            <Input value={languageScore} onChange={(e) => setLanguageScore(e.target.value)} placeholder="e.g. 7 each" />
+          </Field>
           <Field label="Current occupation">
             <Input value={occupation} onChange={(e) => setOccupation(e.target.value)} />
           </Field>
@@ -608,7 +602,7 @@ export function NewAppointmentDialog({
             </Field>
           )}
 
-          <div className="sm:col-span-2">
+          <div className="sm:col-span-2 lg:col-span-3">
             <Label className="text-xs font-semibold uppercase tracking-wider text-stone-500">
               Reason
             </Label>
@@ -621,7 +615,7 @@ export function NewAppointmentDialog({
             />
           </div>
 
-          <div className="sm:col-span-2">
+          <div className="sm:col-span-2 lg:col-span-3">
             <Label className="text-xs font-semibold uppercase tracking-wider text-stone-500">
               Staff notes (internal, optional)
             </Label>
@@ -634,7 +628,7 @@ export function NewAppointmentDialog({
           </div>
 
           {!isPaid && (
-            <label className="sm:col-span-2 inline-flex items-center gap-2 text-sm text-stone-700">
+            <label className="sm:col-span-2 lg:col-span-3 inline-flex items-center gap-2 text-sm text-stone-700">
               <input
                 type="checkbox"
                 checked={sendEmail}
