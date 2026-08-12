@@ -350,10 +350,6 @@ export function AppointmentDetailDialog({
                 </RailBlock>
               )}
 
-              {/* Booking intake — what the client entered on the form */}
-              {appointment.client && (
-                <ClientIntakeRail client={appointment.client} />
-              )}
 
               {/* Location */}
               <RailBlock label="Location">
@@ -438,8 +434,14 @@ export function AppointmentDetailDialog({
               )}
             </div>
 
-            {/* Right column: reason + staff notes + prepare panel */}
-            <div className="bg-stone-50/60 px-6 py-5 space-y-5">
+            {/* Right column: profile + reason + staff notes + prepare panel.
+                Scrolls independently when the content runs long. */}
+            <div className="bg-stone-50/60 px-6 py-5 space-y-5 sm:max-h-[65vh] sm:overflow-y-auto">
+              {/* Booking intake profile */}
+              {appointment.client && (
+                <ClientProfilePanel client={appointment.client} />
+              )}
+
               {/* Reason */}
               <div>
                 <div className="text-[11px] font-medium uppercase tracking-wider text-stone-400">
@@ -603,11 +605,9 @@ function RailBlock({ label, children, last }: { label: string; children: React.R
 
 // Booking-form intake captured on the client (address, DOB, marital status,
 // education, language test/score, occupation) so staff can size up the profile.
-function ClientIntakeRail({
-  client,
-}: {
-  client: NonNullable<AppointmentRow["client"]>;
-}) {
+function clientIntakeRows(
+  client: NonNullable<AppointmentRow["client"]>,
+): [string, string][] {
   const address = [
     client.address_line1,
     [client.city, client.province_state].filter(Boolean).join(", "),
@@ -636,19 +636,30 @@ function ClientIntakeRail({
     ["Test scores", intake.language_score ?? null],
     ["Occupation", intake.occupation ?? null],
   ];
-  const filled = rows.filter(([, v]) => v);
-  if (filled.length === 0) return null;
+  return rows.filter((r): r is [string, string] => Boolean(r[1]));
+}
+
+function ClientProfilePanel({
+  client,
+}: {
+  client: NonNullable<AppointmentRow["client"]>;
+}) {
+  const rows = clientIntakeRows(client);
+  if (rows.length === 0) return null;
   return (
-    <RailBlock label="Profile">
-      <dl className="space-y-1 text-xs">
-        {filled.map(([label, value]) => (
-          <div key={label} className="flex justify-between gap-3">
-            <dt className="shrink-0 text-stone-400">{label}</dt>
-            <dd className="text-right text-stone-700">{value}</dd>
+    <div>
+      <div className="text-[11px] font-medium uppercase tracking-wider text-stone-400">
+        Profile
+      </div>
+      <dl className="mt-1.5 space-y-1 text-sm">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex gap-3">
+            <dt className="w-32 shrink-0 text-stone-400">{label}</dt>
+            <dd className="text-stone-700">{value}</dd>
           </div>
         ))}
       </dl>
-    </RailBlock>
+    </div>
   );
 }
 
