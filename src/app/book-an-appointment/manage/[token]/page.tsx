@@ -28,6 +28,7 @@ export default async function ManagePage({
         id, starts_at, ends_at, timezone, location_type, online_link,
         onsite_address, status, reason, management_token_expires_at,
         appointment_type_id, fee_cad_at_booking,
+        consultation_agreement_token, consultation_agreement_signed_at,
         appointment_type:appointment_types!appointments_appointment_type_id_fkey(
           name, duration_minutes
         )
@@ -38,6 +39,14 @@ export default async function ManagePage({
     .maybeSingle();
 
   if (!appt) return <TokenInvalid />;
+
+  // If this booking still needs the consultation agreement signed, the sign
+  // link surfaces after payment and on the awaiting-review screen so it is
+  // never missed.
+  const consultationSignUrl =
+    appt.consultation_agreement_token && !appt.consultation_agreement_signed_at
+      ? `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/sign/consultation/${appt.consultation_agreement_token}`
+      : null;
 
   const now = new Date();
   if (
@@ -79,12 +88,13 @@ export default async function ManagePage({
         durationMinutes={appt.appointment_type?.duration_minutes ?? 30}
         feeCad={fee}
         referenceCode={appt.id.slice(0, 8)}
+        signUrl={consultationSignUrl}
       />
     );
   }
 
   if (appt.status === "awaiting_review") {
-    return <AwaitingReview />;
+    return <AwaitingReview signUrl={consultationSignUrl} />;
   }
 
   if (appt.status !== "confirmed") {
@@ -110,7 +120,7 @@ export default async function ManagePage({
   );
 }
 
-function AwaitingReview() {
+function AwaitingReview({ signUrl }: { signUrl: string | null }) {
   return (
     <div className="rounded-md border border-stone-200 bg-white px-6 py-12 text-center shadow-sm">
       <h1 className="text-xl font-semibold text-stone-900">
@@ -120,6 +130,19 @@ function AwaitingReview() {
         Our team is reviewing it now and will confirm your appointment by email
         as soon as it&apos;s verified.
       </p>
+      {signUrl && (
+        <div className="mx-auto mt-5 max-w-md border-t border-stone-100 pt-5">
+          <p className="text-sm font-semibold text-stone-900">
+            One more step — sign your consultation agreement
+          </p>
+          <a
+            href={signUrl}
+            className="mt-2 inline-flex h-9 items-center bg-[var(--navy)] px-4 text-sm font-medium text-white hover:bg-[var(--navy)]/90"
+          >
+            Sign now
+          </a>
+        </div>
+      )}
     </div>
   );
 }

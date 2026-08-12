@@ -73,7 +73,9 @@ export default async function AppointmentsPage({
           id, name, duration_minutes, default_location_type, preparation_notes
         ),
         client:clients!appointments_client_id_fkey(
-          id, given_names, family_name, email
+          id, given_names, family_name, email,
+          address_line1, city, province_state, postal_code,
+          date_of_birth, marital_status, background_responses
         ),
         case:cases!appointments_case_id_fkey(id, case_number),
         assigned_staff:staff!appointments_assigned_staff_id_fkey(

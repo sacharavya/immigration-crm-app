@@ -86,6 +86,15 @@ export type AppointmentRow = {
     given_names: string | null;
     family_name: string | null;
     email: string;
+    // Booking intake — only selected on the appointments page query; optional
+    // so other AppointmentRow queries (case page, dashboard) still compile.
+    address_line1?: string | null;
+    city?: string | null;
+    province_state?: string | null;
+    postal_code?: string | null;
+    date_of_birth?: string | null;
+    marital_status?: string | null;
+    background_responses?: Record<string, unknown> | null;
   } | null;
   case: { id: string; case_number: string } | null;
   assigned_staff: {

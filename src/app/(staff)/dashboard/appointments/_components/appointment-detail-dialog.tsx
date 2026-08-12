@@ -350,6 +350,11 @@ export function AppointmentDetailDialog({
                 </RailBlock>
               )}
 
+              {/* Booking intake — what the client entered on the form */}
+              {appointment.client && (
+                <ClientIntakeRail client={appointment.client} />
+              )}
+
               {/* Location */}
               <RailBlock label="Location">
                 {appointment.location_type === "online" ? (
@@ -594,6 +599,71 @@ function RailBlock({ label, children, last }: { label: string; children: React.R
       <div className="mt-1.5">{children}</div>
     </div>
   );
+}
+
+// Booking-form intake captured on the client (address, DOB, marital status,
+// education, language test/score, occupation) so staff can size up the profile.
+function ClientIntakeRail({
+  client,
+}: {
+  client: NonNullable<AppointmentRow["client"]>;
+}) {
+  const address = [
+    client.address_line1,
+    [client.city, client.province_state].filter(Boolean).join(", "),
+    client.postal_code,
+  ]
+    .filter((x) => x && x.trim() !== "")
+    .join(", ");
+  const intake = (client.background_responses?.consultation_intake ?? {}) as {
+    highest_education?: string | null;
+    occupation?: string | null;
+    language_test?: string | null;
+    language_score?: string | null;
+  };
+  const age = client.date_of_birth ? ageFrom(client.date_of_birth) : null;
+  const rows: [string, string | null][] = [
+    ["Address", address || null],
+    [
+      "Date of birth",
+      client.date_of_birth
+        ? `${client.date_of_birth}${age != null ? ` · ${age} yrs` : ""}`
+        : null,
+    ],
+    ["Marital status", client.marital_status ? titleCase(client.marital_status) : null],
+    ["Education", intake.highest_education ?? null],
+    ["Language test", intake.language_test ?? null],
+    ["Test scores", intake.language_score ?? null],
+    ["Occupation", intake.occupation ?? null],
+  ];
+  const filled = rows.filter(([, v]) => v);
+  if (filled.length === 0) return null;
+  return (
+    <RailBlock label="Profile">
+      <dl className="space-y-1 text-xs">
+        {filled.map(([label, value]) => (
+          <div key={label} className="flex justify-between gap-3">
+            <dt className="shrink-0 text-stone-400">{label}</dt>
+            <dd className="text-right text-stone-700">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </RailBlock>
+  );
+}
+
+function ageFrom(dob: string): number | null {
+  const d = new Date(dob);
+  if (Number.isNaN(d.getTime())) return null;
+  const now = new Date();
+  let a = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) a--;
+  return a;
+}
+
+function titleCase(s: string): string {
+  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // ---------------------------------------------------------------------------

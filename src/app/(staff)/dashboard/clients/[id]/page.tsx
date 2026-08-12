@@ -492,7 +492,24 @@ export default async function ClientDetailPage({ params }: Props) {
       }),
     },
   ];
-  const filledFields = profileFields.filter((f) => f.value);
+  // Consultation-booking intake (JSONB). Shown only when present — never listed
+  // as "pending", since clients who didn't book a consultation won't have it.
+  const consultIntake = ((clientRow.background_responses as Record<
+    string,
+    unknown
+  > | null)?.consultation_intake ?? {}) as {
+    highest_education?: string | null;
+    occupation?: string | null;
+    language_test?: string | null;
+    language_score?: string | null;
+  };
+  const intakeFields: Array<{ label: string; value: string | null }> = [
+    { label: "Highest education", value: consultIntake.highest_education ?? null },
+    { label: "Language test", value: consultIntake.language_test ?? null },
+    { label: "Test scores", value: consultIntake.language_score ?? null },
+    { label: "Occupation", value: consultIntake.occupation ?? null },
+  ];
+  const filledFields = [...profileFields, ...intakeFields].filter((f) => f.value);
   const pendingLabels = profileFields
     .filter((f) => !f.value)
     .map((f) => f.label.toLowerCase());
