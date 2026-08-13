@@ -187,11 +187,25 @@ export async function bookAppointment(
   let clientId: string;
   if (existingClient) {
     clientId = existingClient.id;
-    // Fill in the fresh details they just provided (fills blanks / updates).
+    // Fill in the fresh details they just provided. Merge the intake JSONB so
+    // a re-booking updates language test / education / occupation without
+    // clobbering other background_responses keys.
+    const { data: cur } = await supabase
+      .schema("crm")
+      .from("clients")
+      .select("background_responses")
+      .eq("id", clientId)
+      .maybeSingle();
     await supabase
       .schema("crm")
       .from("clients")
-      .update(consultationIntakeScalars(data))
+      .update({
+        ...consultationIntakeScalars(data),
+        background_responses: {
+          ...((cur?.background_responses as Record<string, unknown>) ?? {}),
+          ...consultationIntakeJsonb(data),
+        },
+      })
       .eq("id", clientId);
   } else {
     // crm.generate_client_number() returns the next "BB-C-YYYY-NNNN" string.

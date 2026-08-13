@@ -209,12 +209,26 @@ export async function createAppointment(
   }
 
   // Store the intake on the resolved client (linked or found) too, so the
-  // profile + agreement reflect what staff entered.
+  // profile + agreement reflect what staff entered. Merge the intake JSONB so
+  // it updates (language test / education / occupation) without clobbering
+  // other background_responses keys.
   if (resolvedClientId) {
+    const { data: cur } = await supabase
+      .schema("crm")
+      .from("clients")
+      .select("background_responses")
+      .eq("id", resolvedClientId)
+      .maybeSingle();
     await supabase
       .schema("crm")
       .from("clients")
-      .update(consultationIntakeScalars(input))
+      .update({
+        ...consultationIntakeScalars(input),
+        background_responses: {
+          ...((cur?.background_responses as Record<string, unknown>) ?? {}),
+          ...consultationIntakeJsonb(input),
+        },
+      })
       .eq("id", resolvedClientId);
   }
 
