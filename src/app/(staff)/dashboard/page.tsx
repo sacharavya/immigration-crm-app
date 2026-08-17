@@ -9,6 +9,8 @@ import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { SuccessRadar } from "@/components/dashboard/success-radar-lazy";
 import { buttonVariants } from "@/components/ui/button";
 import { staffCan } from "@/lib/auth/permissions";
+import { NewAppointmentDialog } from "./appointments/_components/new-appointment-dialog";
+import { loadNewAppointmentDialogData } from "./appointments/new-appointment-data";
 import { getStaff } from "@/lib/auth/staff";
 import { loadActiveBoardCards, type EnrichedCard } from "@/lib/dashboard/boardCards";
 import { getKpis } from "@/lib/dashboard/getKpis";
@@ -68,6 +70,11 @@ export default async function DashboardPage() {
     (k) => k.key !== "outstanding_fees" || canFinancials,
   );
 
+  // Only load the appointment dialog's data when the button will render.
+  const apptDialogData = canAppointments
+    ? await loadNewAppointmentDialogData()
+    : null;
+
   return (
     <main className="space-y-6 px-6 py-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -79,8 +86,17 @@ export default async function DashboardPage() {
             Here is how the firm is tracking right now.
           </p>
         </div>
-        {(canCreateCases || canCreateClients) && (
+        {(canCreateCases || canCreateClients || canAppointments) && (
           <div className="flex shrink-0 items-center gap-2">
+            {apptDialogData && (
+              <NewAppointmentDialog
+                types={apptDialogData.types}
+                officeAddress={apptDialogData.officeAddress}
+                rcicOptions={apptDialogData.rcicOptions}
+                triggerLabel="+ New appointment"
+                triggerVariant="outline"
+              />
+            )}
             {canCreateClients && (
               <Link
                 href="/dashboard/clients/new"

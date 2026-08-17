@@ -8,11 +8,10 @@ import { AppointmentFilters } from "./_components/appointment-filters";
 import { AppointmentsCalendar } from "./_components/appointments-calendar";
 import { AppointmentsList } from "./_components/appointments-list";
 import { NewAppointmentDialog } from "./_components/new-appointment-dialog";
+import { loadNewAppointmentDialogData } from "./new-appointment-data";
 import type {
   AppointmentRow,
   AppointmentTypeOption,
-  LocationType,
-  StaffOption,
 } from "./_components/types";
 
 export const dynamic = "force-dynamic";
@@ -144,50 +143,8 @@ export default async function AppointmentsPage({
     .eq("status", "awaiting_review")
     .is("deleted_at", null);
 
-  const { data: typeRows } = await supabase
-    .schema("crm")
-    .from("appointment_types")
-    .select(
-      "id, name, code, duration_minutes, requires_case, default_location_type, fee_cad",
-    )
-    .eq("active", true)
-    .is("deleted_at", null)
-    .order("display_order");
-  const types = (typeRows ?? []).map((t) => ({
-    id: t.id,
-    name: t.name,
-    code: t.code,
-    duration_minutes: t.duration_minutes,
-    requires_case: t.requires_case,
-    default_location_type: t.default_location_type as LocationType,
-    fee_cad: t.fee_cad,
-  }));
-
-  const { data: staffRows } = await supabase
-    .schema("crm")
-    .from("staff")
-    .select("id, first_name, last_name, is_rcic")
-    .eq("is_active", true)
-    .is("deleted_at", null)
-    .order("first_name");
-  const staffList: StaffOption[] = (staffRows ?? []).map((s) => ({
-    id: s.id,
-    first_name: s.first_name,
-    last_name: s.last_name,
-  }));
-  const rcicOptions = (staffRows ?? [])
-    .filter((s) => s.is_rcic)
-    .map((s) => ({ id: s.id, name: `${s.first_name} ${s.last_name}`.trim() }));
-
-  // Office address for the new appointment dialog default
-  const { data: settings } = await supabase
-    .schema("crm")
-    .from("appointment_settings")
-    .select("office_address")
-    .single();
-  const officeAddress =
-    settings?.office_address ??
-    "211-2390 Eglinton Avenue East, Toronto, ON M1K 2P5";
+  const { types, staffList, rcicOptions, officeAddress } =
+    await loadNewAppointmentDialogData();
 
   return (
     <div className="space-y-4 p-6">
