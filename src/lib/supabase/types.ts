@@ -2032,6 +2032,119 @@ export type Database = {
           },
         ]
       }
+      package_items: {
+        Row: {
+          display_name: string
+          id: string
+          package_id: string
+          size_bytes: number | null
+          sort_order: number
+          source_onedrive_item_id: string
+        }
+        Insert: {
+          display_name: string
+          id?: string
+          package_id: string
+          size_bytes?: number | null
+          sort_order: number
+          source_onedrive_item_id: string
+        }
+        Update: {
+          display_name?: string
+          id?: string
+          package_id?: string
+          size_bytes?: number | null
+          sort_order?: number
+          source_onedrive_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_items_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      packages: {
+        Row: {
+          attempts: number
+          case_id: string
+          created_at: string
+          created_by: string | null
+          failure_reason: string | null
+          id: string
+          name: string
+          output_onedrive_item_id: string | null
+          preset_key: string
+          status: Database["crm"]["Enums"]["package_status"]
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          failure_reason?: string | null
+          id?: string
+          name: string
+          output_onedrive_item_id?: string | null
+          preset_key: string
+          status?: Database["crm"]["Enums"]["package_status"]
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          failure_reason?: string | null
+          id?: string
+          name?: string
+          output_onedrive_item_id?: string | null
+          preset_key?: string
+          status?: Database["crm"]["Enums"]["package_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packages_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "agent_case_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packages_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packages_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "v_case_chip_inputs"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "packages_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packages_preset_key_fkey"
+            columns: ["preset_key"]
+            isOneToOne: false
+            referencedRelation: "size_presets"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_cad: number
@@ -2437,6 +2550,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      size_presets: {
+        Row: {
+          active: boolean
+          ceiling_bytes: number | null
+          display_order: number
+          key: string
+          label: string
+          target_bytes: number | null
+        }
+        Insert: {
+          active?: boolean
+          ceiling_bytes?: number | null
+          display_order?: number
+          key: string
+          label: string
+          target_bytes?: number | null
+        }
+        Update: {
+          active?: boolean
+          ceiling_bytes?: number | null
+          display_order?: number
+          key?: string
+          label?: string
+          target_bytes?: number | null
+        }
+        Relationships: []
       }
       staff: {
         Row: {
@@ -2878,6 +3018,13 @@ export type Database = {
         | "task_assigned"
         | "appointment_booked"
         | "new_lead"
+      package_status:
+        | "draft"
+        | "queued"
+        | "processing"
+        | "complete"
+        | "needs_attention"
+        | "failed"
       participant_role:
         | "principal"
         | "spouse"
@@ -3769,6 +3916,14 @@ export const Constants = {
         "task_assigned",
         "appointment_booked",
         "new_lead",
+      ],
+      package_status: [
+        "draft",
+        "queued",
+        "processing",
+        "complete",
+        "needs_attention",
+        "failed",
       ],
       participant_role: [
         "principal",
