@@ -1,12 +1,12 @@
 // ============================================================================
-// PdfEngine — typed API surface for the browser-based PDF processing module.
+// PdfEngine - typed API surface for the browser-based PDF processing module.
 //
 // ARCHITECTURE: all processing runs client-side inside a Web Worker. The
 // worker OWNS every ArrayBuffer; the main thread holds only these lightweight
 // handles and models. Input bytes cross the boundary once via Comlink.transfer
 // (zero-copy) and never come back except as the final build output.
 //
-// This file is pure types — no imports, no runtime code — so both the worker
+// This file is pure types - no imports, no runtime code - so both the worker
 // implementation and the UI depend on it without pulling in each other.
 // ============================================================================
 
@@ -27,7 +27,7 @@ export type SupportedMime = "application/pdf" | "image/jpeg" | "image/png";
 export interface DocumentInput {
   name: string;
   mime: SupportedMime;
-  /** Transferred to the worker with Comlink.transfer — do not reuse after. */
+  /** Transferred to the worker with Comlink.transfer - do not reuse after. */
   bytes: ArrayBuffer;
 }
 
@@ -55,7 +55,7 @@ export interface PageRef {
 
 export interface PageModel {
   pages: PageRef[];
-  /** Sum of loaded source sizes — drives the 300 MB warning in the UI. */
+  /** Sum of loaded source sizes - drives the 300 MB warning in the UI. */
   totalSourceBytes: number;
 }
 
@@ -116,7 +116,7 @@ export interface PageNumberOptions {
 }
 
 // ---------------------------------------------------------------------------
-// Compression — content-aware. Pages are classified per content; only
+// Compression - content-aware. Pages are classified per content; only
 // image-dominant pages (scans) are rasterized + recompressed. Text/vector
 // pages pass through untouched: rasterizing them would destroy selectable
 // text, form fields, and annotations that IRCC officers rely on.
@@ -131,7 +131,7 @@ export interface CompressionRequest {
   targetBytes: number | null;
   /**
    * Legibility floor. Never rasterize below this even if the target is
-   * missed — visa officers must be able to read the result. Default 150.
+   * missed - visa officers must be able to read the result. Default 150.
    */
   floorDpi?: number;
   /** Last lever after the DPI floor; opt-in. */
@@ -149,7 +149,7 @@ export interface PageCompressionOutcome {
 export interface CompressionResult {
   reachedTarget: boolean;
   outputBytes: number;
-  /** What compression actually achieved — reported when the target is missed. */
+  /** What compression actually achieved - reported when the target is missed. */
   achievableMinimumBytes: number;
   pagesRecompressed: number;
   pagesPassedThrough: number;
