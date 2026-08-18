@@ -112,10 +112,14 @@ export async function renderPagePng(
   return { width, height, data: await encode(width, height, rgba, "image/png") };
 }
 
+// `grayscale` is unused by the current pipeline (the engine always passes
+// false) but kept for future use.
 export async function renderPageJpeg(
   pdfBytes: Uint8Array,
   pageIndex: number,
   dpi: number,
+  /** JPEG quality on the 0-100 scale used by the compression pipeline. */
+  quality: number,
   grayscale: boolean,
 ): Promise<RenderedPage> {
   const { width, height, rgba } = await renderRgba(pdfBytes, pageIndex, (w, h) =>
@@ -125,6 +129,6 @@ export async function renderPageJpeg(
   return {
     width,
     height,
-    data: await encode(width, height, rgba, "image/jpeg", 0.8),
+    data: await encode(width, height, rgba, "image/jpeg", quality / 100),
   };
 }

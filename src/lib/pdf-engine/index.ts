@@ -46,6 +46,10 @@ export function createPdfEngineClient(): PdfEngineClient {
       remote.preflightCompression(options),
     build: (options: BuildOptions, onProgress?: ProgressCallback) =>
       remote.build(options, proxied(onProgress)),
+    renderComparison: (pageId: PageId, maxEdgePx: number) =>
+      remote.renderComparison(pageId, maxEdgePx),
+    takeOutput: () => remote.takeOutput(),
+    discardOutput: () => remote.discardOutput(),
     reset: () => remote.reset(),
     terminate: () => worker.terminate(),
   };

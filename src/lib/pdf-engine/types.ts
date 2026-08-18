@@ -116,10 +116,14 @@ export interface PageNumberOptions {
 }
 
 // ---------------------------------------------------------------------------
-// Compression - content-aware. Pages are classified per content; only
-// image-dominant pages (scans) are rasterized + recompressed. Text/vector
-// pages pass through untouched: rasterizing them would destroy selectable
-// text, form fields, and annotations that IRCC officers rely on.
+// Compression - content-aware and quality-first. Pages are classified per
+// content; only image-dominant pages (scans) are rasterized + recompressed.
+// Text/vector pages pass through untouched: rasterizing them would destroy
+// selectable text, form fields, and annotations that IRCC officers rely on.
+//
+// Recompression is staged per page, largest byte contributor first, and stops
+// the moment the target is met: DPI steps startDpi then 150 (hard floor),
+// then JPEG quality by binary search from 85 down to a hard floor of 55.
 // ---------------------------------------------------------------------------
 export type PageContentClass =
   | "image-dominant"
@@ -130,20 +134,27 @@ export interface CompressionRequest {
   /** null = merge only, no recompression. */
   targetBytes: number | null;
   /**
-   * Legibility floor. Never rasterize below this even if the target is
-   * missed - visa officers must be able to read the result. Default 150.
+   * First DPI stage for recompressed pages (default 200). The pipeline steps
+   * startDpi then 150 and never rasterizes below the hard 150 DPI floor.
    */
-  floorDpi?: number;
-  /** Last lever after the DPI floor; opt-in. */
-  allowGrayscale?: boolean;
+  startDpi?: number;
 }
 
 export interface PageCompressionOutcome {
   pageId: PageId;
   classification: PageContentClass;
   action: "recompressed" | "passed-through";
+  /**
+   * Approximate bytes this page contributed before compression (measured by
+   * saving the page alone; overstates pages that share resources).
+   */
+  originalBytes: number;
+  /** Bytes after the build; equals originalBytes for passed-through pages. */
+  finalBytes: number;
+  /** Set only when recompressed. */
   appliedDpi?: number;
-  grayscale?: boolean;
+  /** JPEG quality on the 0-100 scale; set only when recompressed. */
+  appliedQuality?: number;
 }
 
 export interface CompressionResult {
@@ -153,6 +164,8 @@ export interface CompressionResult {
   achievableMinimumBytes: number;
   pagesRecompressed: number;
   pagesPassedThrough: number;
+  /** True on a miss: the package should be split into multiple submissions. */
+  suggestSplit: boolean;
   perPage: PageCompressionOutcome[];
   warnings: string[];
 }
@@ -187,14 +200,35 @@ export interface BuildOptions {
   metadata?: PdfMetadata;
 }
 
-export interface BuildResult {
-  /** Final PDF, transferred to the main thread. */
-  bytes: Uint8Array;
+/**
+ * What build() returns. The finished bytes stay HELD in the worker session
+ * for the verification gate (renderComparison) and only cross the boundary
+ * via takeOutput().
+ */
+export interface BuildReport {
   outputSize: number;
   /** Present when compression was requested. */
   compression: CompressionResult | null;
   /** Session-level warnings (e.g. an input that needed repair on load). */
   warnings: string[];
+  /**
+   * Recompressed pages sorted most-aggressive first: lowest quality, then
+   * lowest DPI, then largest byte reduction. Empty when no compression ran.
+   */
+  worstPages: PageId[];
+}
+
+/** Side-by-side verification render of one page from the held build. */
+export interface ComparisonPair {
+  pageId: PageId;
+  /** The page as loaded, before any recompression. */
+  original: Thumbnail;
+  /** The same page inside the built output, at the same pixel scale. */
+  compressed: Thumbnail;
+  /** null when the page was passed through untouched. */
+  appliedDpi: number | null;
+  /** null when the page was passed through untouched. */
+  appliedQuality: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -221,10 +255,29 @@ export interface PdfEngine {
   /** Classify pages + estimate output for the given options; no mutation. */
   preflightCompression(options: BuildOptions): Promise<CompressionPreflight>;
 
+  /**
+   * Merge + compress + finalize. The finished bytes are HELD in the worker
+   * session for verification; fetch them with takeOutput().
+   */
   build(
     options: BuildOptions,
     onProgress?: ProgressCallback,
-  ): Promise<BuildResult>;
+  ): Promise<BuildReport>;
+
+  /**
+   * Render the source page and the built page at the same pixel scale for a
+   * 100 percent zoom comparison. Throws if no build is held.
+   */
+  renderComparison(pageId: PageId, maxEdgePx: number): Promise<ComparisonPair>;
+
+  /**
+   * Transfer the held build to the caller and clear it. Throws if no build
+   * is held (never built, already taken, or discarded).
+   */
+  takeOutput(): Promise<{ bytes: Uint8Array; sizeBytes: number }>;
+
+  /** Clear the held build without returning it. */
+  discardOutput(): Promise<void>;
 
   /** Free every buffer and WASM handle. The session is unusable after. */
   reset(): Promise<void>;

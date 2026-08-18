@@ -68,6 +68,21 @@ async function makeImagePdf(): Promise<ArrayBuffer> {
   return toArrayBuffer(await doc.save());
 }
 
+/** Valid JPEG padded to a target byte size; padding after EOI is inert. */
+function paddedJpeg(size: number): Uint8Array {
+  const out = new Uint8Array(Math.max(size, JPEG_1PX.length));
+  out.set(JPEG_1PX);
+  return out;
+}
+
+/** One image-dominant page whose byte contribution is roughly `size`. */
+async function makeJpegPdf(size: number): Promise<ArrayBuffer> {
+  const doc = await PDFDocument.create();
+  const jpg = await doc.embedJpg(paddedJpeg(size));
+  doc.addPage([100, 100]).drawImage(jpg, { x: 0, y: 0, width: 100, height: 100 });
+  return toArrayBuffer(await doc.save());
+}
+
 function makeInputs(a: ArrayBuffer, b: ArrayBuffer): DocumentInput[] {
   return [
     { name: "blank.pdf", mime: "application/pdf", bytes: a },
@@ -261,20 +276,26 @@ test("preflightCompression: no target means nothing gets recompressed", async ()
   assert.equal(preflight.pagesToPassThrough, 3);
 });
 
-test("build without compression: loadable merged PDF with correct page count", async () => {
+test("build without compression: holds a loadable merged PDF, returns a report", async () => {
   const { engine, calls } = await loadedEngine();
   const events: ProgressEvent[] = [];
-  const result = await engine.build(
+  const report = await engine.build(
     { metadata: { title: "Bundle" } },
     (e) => events.push(e),
   );
 
-  assert.equal(result.compression, null);
-  assert.equal(result.outputSize, result.bytes.length);
-  assert.deepEqual(result.warnings, []);
+  assert.equal(report.compression, null);
+  assert.deepEqual(report.worstPages, []);
+  assert.deepEqual(report.warnings, []);
+  assert.ok(report.outputSize > 0);
+  // The report never carries the bytes; they stay held in the session.
+  assert.ok(!("bytes" in report));
   assert.equal(calls.length, 0);
 
-  const merged = await PDFDocument.load(result.bytes);
+  const { bytes, sizeBytes } = await engine.takeOutput();
+  assert.equal(sizeBytes, report.outputSize);
+  assert.equal(bytes.length, sizeBytes);
+  const merged = await PDFDocument.load(bytes);
   assert.equal(merged.getPageCount(), 3);
   assert.equal(merged.getTitle(), "Bundle");
 
@@ -283,28 +304,44 @@ test("build without compression: loadable merged PDF with correct page count", a
   assert.ok(phases.has("finalizing"));
 });
 
-test("build with an impossible target: reachedTarget false, per-page outcomes", async () => {
+test("build with an impossible target: reachedTarget false, floors applied, suggestSplit", async () => {
   const { engine, calls, model, documents } = await loadedEngine();
-  const result = await engine.build({
+  const report = await engine.build({
     compression: { targetBytes: 10 },
   });
 
-  const compression = result.compression;
+  const compression = report.compression;
   assert.ok(compression);
   assert.equal(compression.reachedTarget, false);
+  assert.equal(compression.suggestSplit, true);
+  assert.ok(compression.warnings.some((w) => /split/i.test(w)));
   assert.equal(compression.pagesRecompressed, 1);
   assert.equal(compression.pagesPassedThrough, 2);
   assert.equal(compression.perPage.length, 3);
+
+  const imagePageId = model.pages.find(
+    (p) => p.documentId === documents[1].id,
+  )?.id;
+  assert.ok(imagePageId);
+  assert.deepEqual(report.worstPages, [imagePageId]);
 
   const byId = new Map(compression.perPage.map((p) => [p.pageId, p]));
   for (const page of model.pages) {
     const outcome = byId.get(page.id);
     assert.ok(outcome);
+    assert.ok(outcome.originalBytes > 0);
     if (page.documentId === documents[1].id) {
       assert.equal(outcome.action, "recompressed");
       assert.equal(outcome.classification, "image-dominant");
+      // Exhausted at both hard floors.
+      assert.equal(outcome.appliedDpi, 150);
+      assert.equal(outcome.appliedQuality, 55);
+      assert.equal(outcome.finalBytes, JPEG_1PX.length);
     } else {
       assert.equal(outcome.action, "passed-through");
+      assert.equal(outcome.finalBytes, outcome.originalBytes);
+      assert.equal(outcome.appliedDpi, undefined);
+      assert.equal(outcome.appliedQuality, undefined);
     }
   }
 
@@ -312,15 +349,88 @@ test("build with an impossible target: reachedTarget false, per-page outcomes", 
   assert.ok(calls.some((c) => c.kind === "jpeg"));
   assert.equal(compression.outputBytes, compression.achievableMinimumBytes);
 
-  const merged = await PDFDocument.load(result.bytes);
+  const { bytes } = await engine.takeOutput();
+  const merged = await PDFDocument.load(bytes);
   assert.equal(merged.getPageCount(), 3);
 });
 
-test("reset: empties model, documents, and warnings", async () => {
+test("worstPages: equal quality and DPI fall back to largest byte reduction first", async () => {
+  const { renderer } = makeFakeRenderer();
+  const engine = new PdfEngineImpl(renderer);
+  const { model } = await engine.loadDocuments([
+    { name: "small.pdf", mime: "application/pdf", bytes: await makeJpegPdf(5_000) },
+    { name: "big.pdf", mime: "application/pdf", bytes: await makeJpegPdf(50_000) },
+  ]);
+  const report = await engine.build({ compression: { targetBytes: 10 } });
+  assert.ok(report.compression);
+  assert.equal(report.compression.pagesRecompressed, 2);
+  // Both pages end at (150, 55) with identical finalBytes (the constant fake
+  // jpeg), so the bigger page shed more bytes and ranks worst.
+  assert.deepEqual(report.worstPages, [model.pages[1].id, model.pages[0].id]);
+});
+
+// ---------------------------------------------------------------------------
+// Verification gate: renderComparison / takeOutput / discardOutput
+// ---------------------------------------------------------------------------
+
+test("renderComparison: throws before any build is held", async () => {
+  const { engine, model } = await loadedEngine();
+  await assert.rejects(
+    engine.renderComparison(model.pages[0].id, 64),
+    /build/i,
+  );
+});
+
+test("build holds output; renderComparison renders source and built page; takeOutput transfers once", async () => {
+  const { engine, calls, model, documents, sizes } = await loadedEngine();
+  const imagePage = model.pages.find((p) => p.documentId === documents[1].id);
+  assert.ok(imagePage);
+  const report = await engine.build({ compression: { targetBytes: 10 } });
+
+  const pair = await engine.renderComparison(imagePage.id, 128);
+  assert.equal(pair.pageId, imagePage.id);
+  assert.equal(pair.appliedDpi, 150);
+  assert.equal(pair.appliedQuality, 55);
+  assert.deepEqual(pair.original.png, PNG_1PX);
+  assert.deepEqual(pair.compressed.png, PNG_1PX);
+
+  // Source render comes from the source document; the compressed render
+  // comes from the held build, at the page's position in the built output.
+  const pngCalls = calls.filter((c) => c.kind === "png");
+  assert.equal(pngCalls.length, 2);
+  assert.equal(pngCalls[0].bytes.length, sizes.b);
+  assert.equal(pngCalls[0].pageIndex, 0);
+  assert.equal(pngCalls[1].bytes.length, report.outputSize);
+  assert.equal(pngCalls[1].pageIndex, 2);
+
+  // A passed-through page compares too, with no applied settings.
+  const blankPair = await engine.renderComparison(model.pages[0].id, 128);
+  assert.equal(blankPair.appliedDpi, null);
+  assert.equal(blankPair.appliedQuality, null);
+
+  const { bytes, sizeBytes } = await engine.takeOutput();
+  assert.equal(sizeBytes, report.outputSize);
+  assert.equal(bytes.length, sizeBytes);
+
+  // Taking clears the held build: both gates are shut afterwards.
+  await assert.rejects(engine.takeOutput(), /build/i);
+  await assert.rejects(engine.renderComparison(imagePage.id, 64), /build/i);
+});
+
+test("discardOutput: clears the held build without returning it", async () => {
   const { engine } = await loadedEngine();
+  await engine.build({});
+  await engine.discardOutput();
+  await assert.rejects(engine.takeOutput(), /build/i);
+});
+
+test("reset: empties model, documents, warnings, and any held build", async () => {
+  const { engine } = await loadedEngine();
+  await engine.build({});
   await engine.reset();
   const model = await engine.getModel();
   assert.deepEqual(model, { pages: [], totalSourceBytes: 0 });
   const docs = (engine as unknown as { docs: Map<string, unknown> }).docs;
   assert.equal(docs.size, 0);
+  await assert.rejects(engine.takeOutput(), /build/i);
 });

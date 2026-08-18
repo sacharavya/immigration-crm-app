@@ -6,7 +6,8 @@ import * as Comlink from "comlink";
 import type { PDFDocument } from "pdf-lib";
 import type {
   BuildOptions,
-  BuildResult,
+  BuildReport,
+  ComparisonPair,
   CompressionPreflight,
   CompressionResult,
   DocumentId,
@@ -43,20 +44,24 @@ export interface EngineRenderer {
     pdfBytes: Uint8Array,
     pageIndex: number,
     dpi: number,
-    grayscale: boolean,
+    /** JPEG quality on the 0-100 scale. */
+    quality: number,
   ): Promise<RenderedPage>;
 }
 
-// Dynamic import keeps WASM/OffscreenCanvas out of Node test runs.
+// Dynamic import keeps WASM/OffscreenCanvas out of Node test runs. The
+// engine never produces grayscale output in this version, so renderPageJpeg
+// always gets grayscale false.
 const lazyPdfiumRenderer: EngineRenderer = {
   renderPng: async (pdfBytes, pageIndex, maxEdgePx) =>
     (await import("./pdfium/render")).renderPagePng(pdfBytes, pageIndex, maxEdgePx),
-  renderJpeg: async (pdfBytes, pageIndex, dpi, grayscale) =>
+  renderJpeg: async (pdfBytes, pageIndex, dpi, quality) =>
     (await import("./pdfium/render")).renderPageJpeg(
       pdfBytes,
       pageIndex,
       dpi,
-      grayscale,
+      quality,
+      false,
     ),
 };
 
@@ -68,11 +73,27 @@ interface SessionDoc {
   pageCount: number;
 }
 
+// Snapshot of a page at build time, so renderComparison survives later model
+// mutations and document evictions.
+interface HeldPage {
+  builtIndex: number;
+  sourceBytes: Uint8Array;
+  sourcePageIndex: number;
+  appliedDpi: number | null;
+  appliedQuality: number | null;
+}
+
+interface HeldBuild {
+  bytes: Uint8Array;
+  pages: Map<PageId, HeldPage>;
+}
+
 export class PdfEngineImpl implements PdfEngine {
   private readonly renderer: EngineRenderer;
   private readonly docs = new Map<DocumentId, SessionDoc>();
   private model: PageModel = { pages: [], totalSourceBytes: 0 };
   private warnings: string[] = [];
+  private held: HeldBuild | null = null;
 
   constructor(renderer: EngineRenderer = lazyPdfiumRenderer) {
     this.renderer = renderer;
@@ -229,7 +250,7 @@ export class PdfEngineImpl implements PdfEngine {
   async build(
     options: BuildOptions,
     onProgress?: ProgressCallback,
-  ): Promise<BuildResult> {
+  ): Promise<BuildReport> {
     const taskId = crypto.randomUUID();
     const items: MergeInput[] = this.model.pages.map((ref) => ({
       doc: this.resolvePage(ref.id).doc.doc,
@@ -244,12 +265,12 @@ export class PdfEngineImpl implements PdfEngine {
     let compression: CompressionResult | null = null;
     if (options.compression) {
       const rasterizer: PageRasterizer = {
-        rasterize: async ({ pdfBytes, pageIndex, dpi, grayscale }) => {
+        rasterize: async ({ pdfBytes, pageIndex, dpi, quality }) => {
           const r = await this.renderer.renderJpeg(
             pdfBytes,
             pageIndex,
             dpi,
-            grayscale,
+            quality,
           );
           return { jpeg: r.data, widthPx: r.width, heightPx: r.height };
         },
@@ -283,21 +304,116 @@ export class PdfEngineImpl implements PdfEngine {
     const bytes = await doc.save({ useObjectStreams: true });
     onProgress?.({ taskId, phase: "finalizing", completed: 1, total: 1 });
 
-    const result: BuildResult = {
-      bytes,
+    // Hold the finished bytes for the verification gate. Snapshot per-page
+    // source info so renderComparison is immune to later model mutations.
+    const appliedByPage = new Map(
+      (compression?.perPage ?? []).map((p) => [
+        p.pageId,
+        { dpi: p.appliedDpi ?? null, quality: p.appliedQuality ?? null },
+      ]),
+    );
+    const pages = new Map<PageId, HeldPage>();
+    this.model.pages.forEach((ref, i) => {
+      const { doc: source } = this.resolvePage(ref.id);
+      const applied = appliedByPage.get(ref.id);
+      pages.set(ref.id, {
+        builtIndex: i,
+        sourceBytes: source.bytes,
+        sourcePageIndex: ref.sourcePageIndex,
+        appliedDpi: applied?.dpi ?? null,
+        appliedQuality: applied?.quality ?? null,
+      });
+    });
+    this.held = { bytes, pages };
+
+    // Most-aggressive first: lowest quality, then lowest DPI, then largest
+    // byte reduction. Recompressed pages always carry applied settings; the
+    // ?? fallbacks only satisfy the optional types.
+    const worstPages: PageId[] = compression
+      ? compression.perPage
+          .filter((p) => p.action === "recompressed")
+          .sort(
+            (a, b) =>
+              (a.appliedQuality ?? Number.MAX_SAFE_INTEGER) -
+                (b.appliedQuality ?? Number.MAX_SAFE_INTEGER) ||
+              (a.appliedDpi ?? Number.MAX_SAFE_INTEGER) -
+                (b.appliedDpi ?? Number.MAX_SAFE_INTEGER) ||
+              b.originalBytes - b.finalBytes - (a.originalBytes - a.finalBytes),
+          )
+          .map((p) => p.pageId)
+      : [];
+
+    return {
       outputSize: bytes.length,
       compression,
       warnings: [...this.warnings, ...(compression?.warnings ?? [])],
+      worstPages,
     };
+  }
+
+  async renderComparison(
+    pageId: PageId,
+    maxEdgePx: number,
+  ): Promise<ComparisonPair> {
+    const held = this.held;
+    if (!held) {
+      throw new Error(
+        "No built output is held. Call build() before renderComparison().",
+      );
+    }
+    const page = held.pages.get(pageId);
+    if (!page) {
+      throw new Error(`Page "${pageId}" is not part of the held build`);
+    }
+    // Same maxEdgePx on pages of identical dimensions = same pixel scale.
+    const [original, compressed] = await Promise.all([
+      this.renderer.renderPng(page.sourceBytes, page.sourcePageIndex, maxEdgePx),
+      this.renderer.renderPng(held.bytes, page.builtIndex, maxEdgePx),
+    ]);
+    return {
+      pageId,
+      original: {
+        pageId,
+        width: original.width,
+        height: original.height,
+        png: original.data,
+      },
+      compressed: {
+        pageId,
+        width: compressed.width,
+        height: compressed.height,
+        png: compressed.data,
+      },
+      appliedDpi: page.appliedDpi,
+      appliedQuality: page.appliedQuality,
+    };
+  }
+
+  async takeOutput(): Promise<{ bytes: Uint8Array; sizeBytes: number }> {
+    if (!this.held) {
+      throw new Error(
+        "No built output to take. Call build() first; the output can only be taken once.",
+      );
+    }
+    const bytes = this.held.bytes;
+    this.held = null;
     // Zero-copy handoff of the final PDF; the worker never reuses these bytes.
     // Outside Comlink (Node tests) this is just a WeakMap record, a no-op.
-    return Comlink.transfer(result, [bytes.buffer as ArrayBuffer]);
+    return Comlink.transfer(
+      { bytes, sizeBytes: bytes.length },
+      [bytes.buffer as ArrayBuffer],
+    );
+  }
+
+  async discardOutput(): Promise<void> {
+    this.held = null;
   }
 
   async reset(): Promise<void> {
     this.docs.clear();
     this.model = { pages: [], totalSourceBytes: 0 };
     this.warnings = [];
+    this.held = null;
   }
 
   private resolvePage(pageId: PageId): {
