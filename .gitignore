@@ -55,3 +55,4 @@ supabase/.branches/
 .claude/
 CLAUDE.md
 AGENTS.md
+public/pdfium/
