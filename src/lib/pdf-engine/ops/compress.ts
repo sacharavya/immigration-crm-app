@@ -228,7 +228,9 @@ export async function compressToTarget(args: {
   for (const step of ladder) {
     const rebuilt = await PDFDocument.create();
     const copied = await rebuilt.copyPages(doc, nonCandidates);
+    const stepNote = `Recompressing at ${step.dpi} DPI${step.grayscale ? " (grayscale)" : ""}`;
     let c = 0;
+    let rasterized = 0;
     for (let i = 0; i < total; i++) {
       if (candidateSet.has(i)) {
         const { jpeg } = await rasterizer.rasterize({
@@ -237,6 +239,9 @@ export async function compressToTarget(args: {
           dpi: step.dpi,
           grayscale: step.grayscale,
         });
+        // The ladder dominates build time; report per page so the UI bar
+        // moves during the heavy phase (counter restarts per DPI step).
+        onProgress?.(++rasterized, candidateSet.size, stepNote);
         const image = await rebuilt.embedJpg(jpeg);
         const { width, height } = doc.getPage(i).getSize();
         rebuilt.addPage([width, height]).drawImage(image, {

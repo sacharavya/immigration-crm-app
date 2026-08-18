@@ -6,6 +6,11 @@ export interface LoadedSource {
   doc: PDFDocument;
   pageCount: number;
   kind: "pdf" | "image";
+  /**
+   * Bytes PDFium can open directly: the input bytes for PDFs, the wrapped
+   * single-page PDF for images. Renderers must use these, never the raw image.
+   */
+  bytes: Uint8Array;
 }
 
 /**
@@ -29,10 +34,10 @@ export async function loadSource(input: {
         `Could not load PDF: the file is encrypted or not a valid PDF. (${detail})`,
       );
     }
-    return { doc, pageCount: doc.getPageCount(), kind: "pdf" };
+    return { doc, pageCount: doc.getPageCount(), kind: "pdf", bytes: input.bytes };
   }
 
   const pdfBytes = await imageToPdf(input.bytes, input.mime);
   const doc = await PDFDocument.load(pdfBytes, { updateMetadata: false });
-  return { doc, pageCount: doc.getPageCount(), kind: "image" };
+  return { doc, pageCount: doc.getPageCount(), kind: "image", bytes: pdfBytes };
 }
