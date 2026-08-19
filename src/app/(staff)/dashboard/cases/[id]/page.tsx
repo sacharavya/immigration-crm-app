@@ -1372,6 +1372,16 @@ export default async function CasePage({ params, searchParams }: Props) {
           )
         ) : tab === "documents" ? (
           <div className="space-y-4">
+            {/* Assemble the client's uploads into a merged, compressed
+                submission package (opens the browser-side PDF tool). */}
+            <div className="flex justify-end">
+              <Link
+                href={`/dashboard/pdf-tool?case=${caseRow.id}`}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-[var(--navy)] px-3 text-sm font-medium text-white hover:bg-[var(--navy-800)]"
+              >
+                Build submission package
+              </Link>
+            </div>
             <ChecklistBoard
               caseId={caseRow.id}
               templateDocs={templateDocs}

@@ -9,6 +9,10 @@ import type {
   PageNumberOptions,
 } from "@/lib/pdf-engine/types";
 
+import {
+  CaseDocumentsPanel,
+  type CaseDocumentItem,
+} from "./case-documents-panel";
 import { CompressPanel } from "./compress-panel";
 import { ExportBar } from "./export-bar";
 import { defaultFileName, SIZE_PRESETS } from "./presets";
@@ -30,7 +34,18 @@ const DEFAULT_PAGE_NUMBERS: PageNumberOptions = {
 /** How long model/preset changes settle before re-running preflight. */
 const PREFLIGHT_DEBOUNCE_MS = 500;
 
-export function PdfTool() {
+export function PdfTool({
+  caseDocuments,
+  getDownloadUrl,
+}: {
+  // When opened from a case: its uploaded documents + a staff-gated server
+  // action minting short-lived OneDrive download URLs. Bytes flow
+  // browser-to-Microsoft directly; our server only hands out URLs.
+  caseDocuments?: CaseDocumentItem[];
+  getDownloadUrl?: (
+    documentId: string,
+  ) => Promise<{ url: string } | { error: string }>;
+}) {
   const {
     documents,
     model,
@@ -127,6 +142,41 @@ export function PdfTool() {
   };
 
   const editing = busy.active;
+  // Pull case documents into the session: mint a fresh download URL per file,
+  // fetch bytes directly from Microsoft, and feed them through loadFiles.
+  const [caseError, setCaseError] = useState<string | null>(null);
+  async function addCaseDocuments(items: CaseDocumentItem[]) {
+    if (!getDownloadUrl) return;
+    setCaseError(null);
+    const files: File[] = [];
+    const failed: string[] = [];
+    for (const item of items) {
+      try {
+        const res = await getDownloadUrl(item.id);
+        if ("error" in res) {
+          failed.push(item.name);
+          continue;
+        }
+        const resp = await fetch(res.url);
+        if (!resp.ok) {
+          failed.push(item.name);
+          continue;
+        }
+        const buf = await resp.arrayBuffer();
+        const mime = item.mime === "image/jpg" ? "image/jpeg" : item.mime;
+        files.push(new File([buf], item.name, { type: mime }));
+      } catch {
+        failed.push(item.name);
+      }
+    }
+    if (files.length > 0) await loadFiles(files);
+    if (failed.length > 0) {
+      setCaseError(
+        `Could not fetch ${failed.length} document${failed.length === 1 ? "" : "s"} from OneDrive: ${failed.join(", ")}`,
+      );
+    }
+  }
+
   const canBuild = !!model && model.pages.length > 0;
   const canDownload =
     !!lastBuild && effectiveGate === "passed" && downloadedSize === null;
@@ -138,14 +188,28 @@ export function PdfTool() {
           {error}
         </p>
       )}
+      {caseError && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {caseError}
+        </p>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
-        <UploadZone
-          documents={documents}
-          inputWarning={inputWarning}
-          disabled={editing}
-          onFiles={(files) => void loadFiles(files)}
-        />
+        <div className="flex flex-col gap-4">
+          {caseDocuments && caseDocuments.length > 0 && getDownloadUrl && (
+            <CaseDocumentsPanel
+              items={caseDocuments}
+              disabled={editing}
+              onAdd={(items) => addCaseDocuments(items)}
+            />
+          )}
+          <UploadZone
+            documents={documents}
+            inputWarning={inputWarning}
+            disabled={editing}
+            onFiles={(files) => void loadFiles(files)}
+          />
+        </div>
         <ThumbnailGrid
           model={model}
           documents={documents}
