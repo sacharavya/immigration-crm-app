@@ -9,6 +9,7 @@ import {
   toGrayscaleRgba,
   type PixelSize,
 } from "./raster-math";
+import type { Rotation } from "../types";
 
 export interface RenderedPage {
   width: number;
@@ -32,6 +33,7 @@ async function renderRgba(
   pdfBytes: Uint8Array,
   pageIndex: number,
   sizeFor: (widthPt: number, heightPt: number) => PixelSize,
+  rotation: Rotation = 0,
 ): Promise<{ width: number; height: number; rgba: Uint8ClampedArray<ArrayBuffer> }> {
   const mod = await getPdfium();
   const { malloc, free } = mod.pdfium.wasmExports;
@@ -50,10 +52,13 @@ async function renderRgba(
     page = mod.FPDF_LoadPage(doc, pageIndex);
     if (!page) throw new Error(`PDFium could not load page ${pageIndex}`);
 
-    const { width, height } = sizeFor(
-      mod.FPDF_GetPageWidthF(page),
-      mod.FPDF_GetPageHeightF(page),
-    );
+    // GetPageWidthF/HeightF already account for the page's own /Rotate; for
+    // an EXTRA 90/270 the output bitmap has swapped dims, so feed the scale
+    // math the displayed orientation.
+    const pageW = mod.FPDF_GetPageWidthF(page);
+    const pageH = mod.FPDF_GetPageHeightF(page);
+    const swap = rotation === 90 || rotation === 270;
+    const { width, height } = swap ? sizeFor(pageH, pageW) : sizeFor(pageW, pageH);
     bitmap = mod.FPDFBitmap_Create(width, height, 1);
     if (!bitmap) throw new Error("PDFium could not allocate a page bitmap");
     mod.FPDFBitmap_FillRect(bitmap, 0, 0, width, height, WHITE);
@@ -64,7 +69,7 @@ async function renderRgba(
       0,
       width,
       height,
-      0,
+      rotation / 90, // fpdfview.h rotate: 0, 1, 2, 3 = 0/90/180/270 clockwise
       FPDF_ANNOT | FPDF_REVERSE_BYTE_ORDER,
     );
 
@@ -105,9 +110,14 @@ export async function renderPagePng(
   pdfBytes: Uint8Array,
   pageIndex: number,
   maxEdgePx: number,
+  /** Extra rotation applied on top of the page's own /Rotate (default 0). */
+  rotation: Rotation = 0,
 ): Promise<RenderedPage> {
-  const { width, height, rgba } = await renderRgba(pdfBytes, pageIndex, (w, h) =>
-    scaleForMaxEdge(w, h, maxEdgePx),
+  const { width, height, rgba } = await renderRgba(
+    pdfBytes,
+    pageIndex,
+    (w, h) => scaleForMaxEdge(w, h, maxEdgePx),
+    rotation,
   );
   return { width, height, data: await encode(width, height, rgba, "image/png") };
 }

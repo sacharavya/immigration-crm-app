@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PDFDocument, StandardFonts } from "pdf-lib";
+import { PDFDocument, StandardFonts, degrees } from "pdf-lib";
 import {
   analyzePage,
   compressToTarget,
@@ -303,6 +303,59 @@ test("compressToTarget: startDpi is configurable and clamps to the 150 floor", a
   });
   assert.equal(lowStart.calls[0].dpi, DPI_FLOOR);
   assert.ok(lowStart.calls.every((c) => c.dpi === DPI_FLOOR));
+});
+
+test("compressToTarget: renders that inflate the document are reverted, never kept", async () => {
+  // A 10 KB source scan whose every re-render is LARGER (weight 2: even the
+  // both-floors render is 2 * 150 * 55 = 16,500 bytes). Realistic stand-in
+  // for low-DPI or bilevel CCITT sources that inflate as JPEG.
+  const doc = await imageOnlyDoc(10_000);
+  const originalSize = (await doc.save()).length;
+  const rasterizer = new FakeRasterizer({ 0: 2 });
+  const { doc: out, result } = await compressToTarget({
+    doc,
+    pageIds: [pid("p0")],
+    request: request(9_000),
+    rasterizer,
+  });
+
+  // Every stage was tried, and every one was rolled back.
+  assert.ok(rasterizer.calls.length > 0);
+  assert.equal(out, doc);
+  assert.equal(result.reachedTarget, false);
+  assert.equal(result.suggestSplit, true);
+  // Output never exceeds the input, and the reported achievable minimum is
+  // the passthrough size, not an inflated one.
+  assert.equal(result.outputBytes, originalSize);
+  assert.equal(result.achievableMinimumBytes, originalSize);
+  assert.equal(result.pagesRecompressed, 0);
+  assert.equal(result.pagesPassedThrough, 1);
+  assert.equal(result.perPage[0].action, "passed-through");
+  assert.equal(result.perPage[0].finalBytes, result.perPage[0].originalBytes);
+});
+
+test("compressToTarget: rotated page is rebuilt with swapped dims and rotation baked in", async () => {
+  const doc = await PDFDocument.create();
+  const image = await doc.embedJpg(paddedJpeg(40_000));
+  const page = doc.addPage([612, 792]);
+  page.drawImage(image, { x: 0, y: 0, width: 612, height: 792 });
+  page.setRotation(degrees(90));
+  const rotated = await roundTrip(doc);
+
+  const rasterizer = new FakeRasterizer({ 0: 1 });
+  const { doc: out, result } = await compressToTarget({
+    doc: rotated,
+    pageIds: [pid("p0")],
+    request: request(30_000),
+    rasterizer,
+  });
+  assert.equal(result.perPage[0].action, "recompressed");
+
+  // The raster was rendered with /Rotate applied (landscape), so the rebuilt
+  // page must be landscape too, with the rotation baked in rather than kept.
+  const rebuilt = out.getPage(0);
+  assert.deepEqual(rebuilt.getSize(), { width: 792, height: 612 });
+  assert.equal(rebuilt.getRotation().angle, 0);
 });
 
 test("compressToTarget: text-only doc with missed target warns and suggests splitting", async () => {

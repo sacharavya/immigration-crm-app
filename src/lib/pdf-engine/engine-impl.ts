@@ -30,6 +30,7 @@ import { applyMetadata } from "./ops/metadata";
 import {
   analyzePage,
   compressToTarget,
+  SPLIT_SUGGESTION,
   type PageRasterizer,
 } from "./ops/compress";
 import type { RenderedPage } from "./pdfium/render";
@@ -39,6 +40,8 @@ export interface EngineRenderer {
     pdfBytes: Uint8Array,
     pageIndex: number,
     maxEdgePx: number,
+    /** Extra rotation applied on top of the page's own /Rotate (default 0). */
+    rotation?: Rotation,
   ): Promise<RenderedPage>;
   renderJpeg(
     pdfBytes: Uint8Array,
@@ -53,8 +56,13 @@ export interface EngineRenderer {
 // engine never produces grayscale output in this version, so renderPageJpeg
 // always gets grayscale false.
 const lazyPdfiumRenderer: EngineRenderer = {
-  renderPng: async (pdfBytes, pageIndex, maxEdgePx) =>
-    (await import("./pdfium/render")).renderPagePng(pdfBytes, pageIndex, maxEdgePx),
+  renderPng: async (pdfBytes, pageIndex, maxEdgePx, rotation) =>
+    (await import("./pdfium/render")).renderPagePng(
+      pdfBytes,
+      pageIndex,
+      maxEdgePx,
+      rotation,
+    ),
   renderJpeg: async (pdfBytes, pageIndex, dpi, quality) =>
     (await import("./pdfium/render")).renderPageJpeg(
       pdfBytes,
@@ -79,6 +87,8 @@ interface HeldPage {
   builtIndex: number;
   sourceBytes: Uint8Array;
   sourcePageIndex: number;
+  /** User rotation baked into the built page; the source bytes lack it. */
+  rotation: Rotation;
   appliedDpi: number | null;
   appliedQuality: number | null;
 }
@@ -304,6 +314,30 @@ export class PdfEngineImpl implements PdfEngine {
     const bytes = await doc.save({ useObjectStreams: true });
     onProgress?.({ taskId, phase: "finalizing", completed: 1, total: 1 });
 
+    // The compression stage measured its own plain save; THESE bytes (object
+    // streams, page numbers, metadata) are what staff upload. Re-anchor the
+    // verdict so reachedTarget matches the real file.
+    const target = options.compression?.targetBytes ?? null;
+    if (compression && target !== null) {
+      const reached = bytes.length <= target;
+      compression = {
+        ...compression,
+        reachedTarget: reached,
+        outputBytes: bytes.length,
+        achievableMinimumBytes: bytes.length,
+        suggestSplit: !reached,
+        warnings: reached
+          ? compression.warnings.filter((w) => !/not reached|splitting/i.test(w))
+          : compression.warnings.includes(SPLIT_SUGGESTION)
+            ? compression.warnings
+            : [
+                ...compression.warnings,
+                "Target size not reached: finishing steps (page numbers, metadata) pushed the file over the target.",
+                SPLIT_SUGGESTION,
+              ],
+      };
+    }
+
     // Hold the finished bytes for the verification gate. Snapshot per-page
     // source info so renderComparison is immune to later model mutations.
     const appliedByPage = new Map(
@@ -320,6 +354,7 @@ export class PdfEngineImpl implements PdfEngine {
         builtIndex: i,
         sourceBytes: source.bytes,
         sourcePageIndex: ref.sourcePageIndex,
+        rotation: ref.rotation,
         appliedDpi: applied?.dpi ?? null,
         appliedQuality: applied?.quality ?? null,
       });
@@ -366,8 +401,15 @@ export class PdfEngineImpl implements PdfEngine {
       throw new Error(`Page "${pageId}" is not part of the held build`);
     }
     // Same maxEdgePx on pages of identical dimensions = same pixel scale.
+    // The original render applies the user rotation the build baked in, so
+    // both thumbnails come back in the same orientation.
     const [original, compressed] = await Promise.all([
-      this.renderer.renderPng(page.sourceBytes, page.sourcePageIndex, maxEdgePx),
+      this.renderer.renderPng(
+        page.sourceBytes,
+        page.sourcePageIndex,
+        maxEdgePx,
+        page.rotation,
+      ),
       this.renderer.renderPng(held.bytes, page.builtIndex, maxEdgePx),
     ]);
     return {

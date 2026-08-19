@@ -141,7 +141,7 @@ export const DPI_FLOOR = 150;
 export const QUALITY_START = 85;
 export const QUALITY_FLOOR = 55;
 
-const SPLIT_SUGGESTION =
+export const SPLIT_SUGGESTION =
   "Consider splitting the package into multiple submissions to stay under the size limit.";
 
 // Approximate per-page byte contribution: save the page alone in a fresh doc.
@@ -175,10 +175,16 @@ async function rebuildWith(
     const jpeg = jpegs.get(i);
     if (jpeg) {
       const image = await rebuilt.embedJpg(jpeg);
-      const { width, height } = source.getPage(i).getSize();
+      const page = source.getPage(i);
+      const { width, height } = page.getSize();
+      // getSize() is the unrotated MediaBox, but the raster was rendered with
+      // /Rotate applied (PDFium swaps dims for 90/270). Swap to match, and
+      // leave the new page's rotation at 0: it is baked into the raster.
+      const angle = ((page.getRotation().angle % 360) + 360) % 360;
+      const [w, h] = angle % 180 === 0 ? [width, height] : [height, width];
       rebuilt
-        .addPage([width, height])
-        .drawImage(image, { x: 0, y: 0, width, height });
+        .addPage([w, h])
+        .drawImage(image, { x: 0, y: 0, width: w, height: h });
     } else {
       rebuilt.addPage(copied[c]);
       c += 1;
@@ -335,15 +341,27 @@ export async function compressToTarget(args: {
     if (next.stage < dpiStages.length) {
       const dpi = dpiStages[next.stage];
       next.stage += 1;
+      const prior = { jpeg: jpegs.get(next.index), doc: currentDoc, size: currentSize };
       const jpeg = await render(next.index, dpi, QUALITY_START);
       jpegs.set(next.index, jpeg);
-      next.currentBytes = jpeg.length;
-      next.appliedDpi = dpi;
-      next.appliedQuality = QUALITY_START;
       await measure();
+      if (currentSize > prior.size) {
+        // The render INFLATED the document (low-DPI or bilevel source pages
+        // re-encode larger as JPEG). Keep the smaller prior state; the stage
+        // still advances, so the loop terminates.
+        if (prior.jpeg) jpegs.set(next.index, prior.jpeg);
+        else jpegs.delete(next.index);
+        currentDoc = prior.doc;
+        currentSize = prior.size;
+      } else {
+        next.currentBytes = jpeg.length;
+        next.appliedDpi = dpi;
+        next.appliedQuality = QUALITY_START;
+      }
     } else {
       // Binary search for the highest quality that meets the target. 85 was
       // already measured by the DPI floor stage, so the search starts at 84.
+      const prior = { jpeg: jpegs.get(next.index), doc: currentDoc, size: currentSize };
       let lo = QUALITY_FLOOR;
       let hi = QUALITY_START - 1;
       let best: {
@@ -369,14 +387,24 @@ export async function compressToTarget(args: {
         jpegs.set(next.index, best.jpeg);
         currentDoc = best.doc;
         currentSize = best.size;
+        next.appliedDpi = DPI_FLOOR;
         next.appliedQuality = best.quality;
         next.currentBytes = best.jpeg.length;
-      } else {
-        // Every probe failed; the search always ends on the quality floor,
-        // so the floor jpeg is what the maps and measures already hold.
+      } else if (currentSize <= prior.size) {
+        // Every probe missed the target; the search always ends on the
+        // quality floor, so the floor jpeg is what the maps and measures
+        // already hold. Keep it: it still shrank the document.
+        next.appliedDpi = DPI_FLOOR;
         next.appliedQuality = QUALITY_FLOOR;
         const atFloor = jpegs.get(next.index);
         if (atFloor) next.currentBytes = atFloor.length;
+      } else {
+        // Even the floor render INFLATED the document; revert to the state
+        // before the search so the page is never made worse than passthrough.
+        if (prior.jpeg) jpegs.set(next.index, prior.jpeg);
+        else jpegs.delete(next.index);
+        currentDoc = prior.doc;
+        currentSize = prior.size;
       }
       next.exhausted = true;
     }

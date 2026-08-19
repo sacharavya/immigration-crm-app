@@ -6,6 +6,7 @@ import type {
   DocumentInput,
   PageId,
   ProgressEvent,
+  Rotation,
   Thumbnail,
 } from "../types";
 
@@ -31,13 +32,14 @@ interface RenderCall {
   kind: "png" | "jpeg";
   bytes: Uint8Array;
   pageIndex: number;
+  rotation?: Rotation;
 }
 
 function makeFakeRenderer(): { renderer: EngineRenderer; calls: RenderCall[] } {
   const calls: RenderCall[] = [];
   const renderer: EngineRenderer = {
-    async renderPng(bytes, pageIndex) {
-      calls.push({ kind: "png", bytes, pageIndex });
+    async renderPng(bytes, pageIndex, _maxEdgePx, rotation) {
+      calls.push({ kind: "png", bytes, pageIndex, rotation });
       return { width: 1, height: 1, data: PNG_1PX };
     },
     async renderJpeg(bytes, pageIndex) {
@@ -60,12 +62,13 @@ async function makeBlankPdf(): Promise<ArrayBuffer> {
   return toArrayBuffer(await doc.save());
 }
 
-/** One page that is just an image: classified image-dominant. */
+/**
+ * One page that is just an image: classified image-dominant. Big enough
+ * (5 KB) that the fake renderer's tiny JPEG always SHRINKS the document,
+ * so recompression keeps its renders instead of reverting them.
+ */
 async function makeImagePdf(): Promise<ArrayBuffer> {
-  const doc = await PDFDocument.create();
-  const png = await doc.embedPng(PNG_1PX);
-  doc.addPage([100, 100]).drawImage(png, { x: 0, y: 0, width: 100, height: 100 });
-  return toArrayBuffer(await doc.save());
+  return makeJpegPdf(5_000);
 }
 
 /** Valid JPEG padded to a target byte size; padding after EOI is inert. */
@@ -415,6 +418,29 @@ test("build holds output; renderComparison renders source and built page; takeOu
   // Taking clears the held build: both gates are shut afterwards.
   await assert.rejects(engine.takeOutput(), /build/i);
   await assert.rejects(engine.renderComparison(imagePage.id, 64), /build/i);
+});
+
+test("renderComparison: original render carries the user rotation baked into the build", async () => {
+  const { engine, calls, model, documents } = await loadedEngine();
+  const imagePage = model.pages.find((p) => p.documentId === documents[1].id);
+  assert.ok(imagePage);
+  await engine.rotate(imagePage.id, 90);
+  await engine.build({});
+  calls.length = 0;
+
+  await engine.renderComparison(imagePage.id, 64);
+  const pngCalls = calls.filter((c) => c.kind === "png");
+  assert.equal(pngCalls.length, 2);
+  // Source render gets the snapshotted rotation; the built page already
+  // carries it in its /Rotate, so that render gets none.
+  assert.equal(pngCalls[0].rotation, 90);
+  assert.equal(pngCalls[1].rotation, undefined);
+
+  // The snapshot survives later model mutations.
+  await engine.rotate(imagePage.id, 180);
+  calls.length = 0;
+  await engine.renderComparison(imagePage.id, 64);
+  assert.equal(calls.filter((c) => c.kind === "png")[0].rotation, 90);
 });
 
 test("discardOutput: clears the held build without returning it", async () => {
