@@ -176,10 +176,13 @@ export class PdfEngineImpl implements PdfEngine {
 
   async renderThumbnail(pageId: PageId, maxEdgePx: number): Promise<Thumbnail> {
     const { ref, doc } = this.resolvePage(pageId);
+    // Apply the model's user rotation so the grid always matches what build()
+    // will produce; without it the Rotate button appears to do nothing.
     const rendered = await this.renderer.renderPng(
       doc.bytes,
       ref.sourcePageIndex,
       maxEdgePx,
+      ref.rotation,
     );
     return {
       pageId,

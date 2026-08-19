@@ -45,6 +45,12 @@ export interface UsePdfEngine {
   /** PageId -> object URL of a rendered PNG thumbnail. */
   thumbnails: ReadonlyMap<PageId, string>;
   busy: BusyState;
+  /**
+   * True the moment a user action starts, unlike busy.active which waits for
+   * the overlay delay. Drive disabled props from this so a second click is
+   * never silently dropped by the run guard.
+   */
+  acting: boolean;
   error: string | null;
   inputWarning: string | null;
   /** Report of the build currently held in the worker (null after discard). */
@@ -71,6 +77,7 @@ export function usePdfEngine(): UsePdfEngine {
     new Map(),
   );
   const [busy, setBusy] = useState<BusyState>(IDLE);
+  const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastBuild, setLastBuild] = useState<BuildReport | null>(null);
 
@@ -79,10 +86,14 @@ export function usePdfEngine(): UsePdfEngine {
   const modelRef = useRef<PageModel | null>(null);
   /** True while the worker holds finished build bytes. */
   const heldOutputRef = useRef(false);
+  /** Latest-wins sequence for background preflight calls. */
+  const preflightSeqRef = useRef(0);
 
   const thumbsRef = useRef<Map<PageId, string>>(new Map());
   const queueRef = useRef<PageId[]>([]);
   const queuedRef = useRef<Set<PageId>>(new Set());
+  /** Bumped by invalidateThumbnail so an in-flight render's result is dropped. */
+  const thumbGenRef = useRef<Map<PageId, number>>(new Map());
   const inFlightRef = useRef(0);
 
   const getEngine = useCallback((): PdfEngineClient => {
@@ -105,11 +116,14 @@ export function usePdfEngine(): UsePdfEngine {
           continue;
         }
         inFlightRef.current += 1;
+        const gen = thumbGenRef.current.get(pageId) ?? 0;
         getEngine()
           .renderThumbnail(pageId, THUMBNAIL_EDGE_PX)
           .then((thumb) => {
-            // The page may have been deleted while the render was in flight.
+            // The page may have been deleted, or invalidated (rotated),
+            // while the render was in flight.
             if (!modelRef.current?.pages.some((p) => p.id === pageId)) return;
+            if ((thumbGenRef.current.get(pageId) ?? 0) !== gen) return;
             const url = URL.createObjectURL(
               new Blob([thumb.png as BlobPart], { type: "image/png" }),
             );
@@ -122,7 +136,11 @@ export function usePdfEngine(): UsePdfEngine {
             // Deleted mid-render or the engine was reset; nothing to show.
           })
           .finally(() => {
-            queuedRef.current.delete(pageId);
+            // If an invalidation re-queued this id mid-render, its marker
+            // belongs to the fresh entry; leave it alone.
+            if ((thumbGenRef.current.get(pageId) ?? 0) === gen) {
+              queuedRef.current.delete(pageId);
+            }
             inFlightRef.current -= 1;
             pump();
           });
@@ -144,11 +162,19 @@ export function usePdfEngine(): UsePdfEngine {
   /** Drop the cached render for a page (rotation changed) and re-queue it. */
   const invalidateThumbnail = useCallback(
     (pageId: PageId) => {
+      // Bump the generation so an in-flight render's stale raster is dropped.
+      thumbGenRef.current.set(
+        pageId,
+        (thumbGenRef.current.get(pageId) ?? 0) + 1,
+      );
       const url = thumbsRef.current.get(pageId);
       if (url) {
         URL.revokeObjectURL(url);
         thumbsRef.current.delete(pageId);
       }
+      // Clear the queued marker: the id may be mid-render, and enqueue would
+      // otherwise no-op, leaving the page stuck on the old rotation.
+      queuedRef.current.delete(pageId);
       enqueueThumbnail(pageId);
     },
     [enqueueThumbnail],
@@ -182,6 +208,10 @@ export function usePdfEngine(): UsePdfEngine {
     ): Promise<T | null> => {
       if (runningRef.current) return null;
       runningRef.current = true;
+      // Flip acting immediately so the UI disables now, not at the 300 ms
+      // overlay mark; otherwise a second click in that window is dropped
+      // silently by the guard above.
+      setActing(true);
       setError(null);
       const timer = window.setTimeout(() => {
         setBusy((b) => ({ ...b, active: true }));
@@ -194,6 +224,7 @@ export function usePdfEngine(): UsePdfEngine {
       } finally {
         window.clearTimeout(timer);
         runningRef.current = false;
+        setActing(false);
         setBusy(IDLE);
       }
     },
@@ -276,10 +307,20 @@ export function usePdfEngine(): UsePdfEngine {
     [run, dropHeldBuild, applyModel],
   );
 
+  // Background/advisory, so it bypasses run(): it must never block user
+  // actions, pop the overlay, or be dropped by the mutex (the worker
+  // serializes calls anyway). Latest-wins: a superseded result returns null.
   const preflight = useCallback(
-    (options: BuildOptions) =>
-      run((engine) => engine.preflightCompression(options)),
-    [run],
+    async (options: BuildOptions): Promise<CompressionPreflight | null> => {
+      const seq = ++preflightSeqRef.current;
+      try {
+        const result = await getEngine().preflightCompression(options);
+        return seq === preflightSeqRef.current ? result : null;
+      } catch {
+        return null;
+      }
+    },
+    [getEngine],
   );
 
   const build = useCallback(
@@ -294,10 +335,21 @@ export function usePdfEngine(): UsePdfEngine {
     [run, dropHeldBuild, onProgress],
   );
 
+  // Quiet path for the verification dialog, which shows its own progress
+  // state: no run() mutex (Cancel's discard must not be starved) and no
+  // overlay timer strobing above the dialog.
   const renderComparison = useCallback(
-    (pageId: PageId, maxEdgePx: number) =>
-      run((engine) => engine.renderComparison(pageId, maxEdgePx)),
-    [run],
+    async (
+      pageId: PageId,
+      maxEdgePx: number,
+    ): Promise<ComparisonPair | null> => {
+      try {
+        return await getEngine().renderComparison(pageId, maxEdgePx);
+      } catch {
+        return null;
+      }
+    },
+    [getEngine],
   );
 
   const takeOutput = useCallback(
@@ -310,17 +362,19 @@ export function usePdfEngine(): UsePdfEngine {
     [run],
   );
 
+  // Not routed through run(): cancelling the verification dialog must always
+  // discard, even while a comparison render is in flight. State clears
+  // synchronously; the worker serializes the actual discard.
   const discardOutput = useCallback(async () => {
-    await run(async (engine) => {
-      heldOutputRef.current = false;
-      setLastBuild(null);
-      await engine.discardOutput();
-    });
-  }, [run]);
+    heldOutputRef.current = false;
+    setLastBuild(null);
+    await engineRef.current?.discardOutput().catch(() => {});
+  }, []);
 
   const resetAll = useCallback(async () => {
     if (runningRef.current) return;
     runningRef.current = true;
+    setActing(true);
     try {
       const engine = engineRef.current;
       engineRef.current = null;
@@ -334,6 +388,7 @@ export function usePdfEngine(): UsePdfEngine {
     heldOutputRef.current = false;
     queueRef.current = [];
     queuedRef.current.clear();
+    thumbGenRef.current.clear();
     inFlightRef.current = 0;
     for (const url of thumbsRef.current.values()) URL.revokeObjectURL(url);
     thumbsRef.current.clear();
@@ -344,6 +399,7 @@ export function usePdfEngine(): UsePdfEngine {
     setLastBuild(null);
     setError(null);
     setBusy(IDLE);
+    setActing(false);
   }, []);
 
   // Teardown on unmount: kill the worker, free every object URL.
@@ -367,6 +423,7 @@ export function usePdfEngine(): UsePdfEngine {
     model,
     thumbnails,
     busy,
+    acting,
     error,
     inputWarning,
     lastBuild,

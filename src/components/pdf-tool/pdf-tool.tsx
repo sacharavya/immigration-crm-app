@@ -51,6 +51,7 @@ export function PdfTool({
     model,
     thumbnails,
     busy,
+    acting,
     error,
     inputWarning,
     lastBuild,
@@ -141,7 +142,9 @@ export function PdfTool({
     setFileName(defaultFileName(new Date()));
   };
 
-  const editing = busy.active;
+  // acting flips synchronously at action start; busy.active waits 300 ms for
+  // the overlay. Disabling on acting keeps clicks from being silently dropped.
+  const editing = acting;
   // Pull case documents into the session: mint a fresh download URL per file,
   // fetch bytes directly from Microsoft, and feed them through loadFiles.
   const [caseError, setCaseError] = useState<string | null>(null);

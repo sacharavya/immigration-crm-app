@@ -62,6 +62,7 @@ function VerificationGateBody({
   onCancel,
 }: Omit<VerificationDialogProps, "open">) {
   const [views, setViews] = useState<ComparisonView[] | null>(null);
+  const [renderFailed, setRenderFailed] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const urlsRef = useRef<string[]>([]);
 
@@ -73,10 +74,14 @@ function VerificationGateBody({
 
     void (async () => {
       const next: ComparisonView[] = [];
+      let failed = false;
       for (const pageId of worstPages.slice(0, MAX_PAGES_SHOWN)) {
         const pair = await renderComparison(pageId, COMPARISON_EDGE_PX);
         if (cancelled) return;
-        if (!pair) continue;
+        if (!pair) {
+          failed = true;
+          continue;
+        }
         const originalUrl = toUrl(pair.original.png);
         const compressedUrl = toUrl(pair.compressed.png);
         urlsRef.current.push(originalUrl, compressedUrl);
@@ -91,7 +96,10 @@ function VerificationGateBody({
           appliedQuality: pair.appliedQuality,
         });
       }
-      if (!cancelled) setViews(next);
+      if (!cancelled) {
+        setViews(next);
+        setRenderFailed(failed);
+      }
     })();
 
     const urls = urlsRef.current;
@@ -102,6 +110,10 @@ function VerificationGateBody({
     };
   }, [worstPages, model, renderComparison]);
 
+  // Fail closed: the gate only opens after at least one comparison rendered
+  // and none failed. A renderer error must never unlock the download.
+  const gateBlocked = views === null || views.length === 0 || renderFailed;
+
   return (
     <>
       <div className="flex max-h-[55vh] flex-col gap-4 overflow-y-auto pr-1">
@@ -110,8 +122,9 @@ function VerificationGateBody({
             Rendering comparisons...
           </p>
         ) : views.length === 0 ? (
-          <p className="py-8 text-center text-sm text-stone-500">
-            No comparison pages available.
+          <p className="py-8 text-center text-sm text-red-700">
+            Comparison pages could not be rendered, so the output cannot be
+            verified. Cancel and rebuild.
           </p>
         ) : (
           views.map((view) => (
@@ -160,12 +173,19 @@ function VerificationGateBody({
         )}
       </div>
 
+      {renderFailed && views !== null && views.length > 0 && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          Some pages could not be rendered for comparison, so the output
+          cannot be verified. Cancel and rebuild.
+        </p>
+      )}
+
       <label className="flex items-center gap-2 text-sm font-medium select-none">
         <input
           type="checkbox"
           className="size-4 accent-[var(--primary)]"
           checked={confirmed}
-          disabled={views === null}
+          disabled={gateBlocked}
           onChange={(e) => setConfirmed(e.target.checked)}
         />
         I confirm every page shown is legible
@@ -175,7 +195,7 @@ function VerificationGateBody({
         <Button variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button onClick={onDownload} disabled={!confirmed || views === null}>
+        <Button onClick={onDownload} disabled={!confirmed || gateBlocked}>
           <DownloadIcon data-icon="inline-start" />
           Download
         </Button>
