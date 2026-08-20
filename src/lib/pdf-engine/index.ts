@@ -42,6 +42,7 @@ export function createPdfEngineClient(): PdfEngineClient {
     rotate: (pageId: PageId, rotation: Rotation) =>
       remote.rotate(pageId, rotation),
     deletePages: (pageIds: readonly PageId[]) => remote.deletePages(pageIds),
+    applyModel: (pages) => remote.applyModel(pages),
     preflightCompression: (options: BuildOptions) =>
       remote.preflightCompression(options),
     build: (options: BuildOptions, onProgress?: ProgressCallback) =>

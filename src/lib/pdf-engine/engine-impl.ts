@@ -15,6 +15,7 @@ import type {
   LoadedDocument,
   PageId,
   PageModel,
+  PageRef,
   PdfEngine,
   ProgressCallback,
   Rotation,
@@ -208,18 +209,47 @@ export class PdfEngineImpl implements PdfEngine {
   }
 
   async deletePages(pageIds: readonly PageId[]): Promise<PageModel> {
+    // NON-EVICTING: document bytes stay in the session until reset() so the
+    // editor's undo can restore deleted pages via applyModel. The 300 MB
+    // accounting keeps counting held docs, which is honest to real memory.
     this.model = deleteFromModel(this.model, pageIds);
-    // Evict documents with no surviving pages so their bytes can be GC'd.
-    const alive = new Set(this.model.pages.map((p) => p.documentId));
-    for (const id of this.docs.keys()) {
-      if (!alive.has(id)) this.docs.delete(id);
+    return structuredClone(this.model);
+  }
+
+  async applyModel(pages: readonly PageRef[]): Promise<PageModel> {
+    // Wholesale model replacement for undo/redo and split: any subset and
+    // order of pages from documents still held in the session, with any
+    // rotations. Validates every ref before mutating so a bad snapshot
+    // cannot corrupt the session.
+    const seen = new Set<string>();
+    for (const ref of pages) {
+      const doc = this.docs.get(ref.documentId);
+      if (!doc) {
+        throw new Error(
+          `applyModel: unknown document ${ref.documentId} (was the session reset?)`,
+        );
+      }
+      if (
+        !Number.isInteger(ref.sourcePageIndex) ||
+        ref.sourcePageIndex < 0 ||
+        ref.sourcePageIndex >= doc.pageCount
+      ) {
+        throw new Error(
+          `applyModel: page index ${ref.sourcePageIndex} out of range for document ${ref.documentId}`,
+        );
+      }
+      if (![0, 90, 180, 270].includes(ref.rotation)) {
+        throw new Error(`applyModel: invalid rotation ${ref.rotation}`);
+      }
+      if (seen.has(ref.id)) {
+        throw new Error(`applyModel: duplicate page id ${ref.id}`);
+      }
+      seen.add(ref.id);
     }
-    // Freed buffers must leave the accounting too, or the 300 MB UI warning
-    // keeps firing for memory that no longer exists.
-    this.model.totalSourceBytes = [...this.docs.values()].reduce(
-      (n, d) => n + d.bytes.length,
-      0,
-    );
+    this.model = {
+      pages: pages.map((p) => ({ ...p })),
+      totalSourceBytes: this.model.totalSourceBytes,
+    };
     return structuredClone(this.model);
   }
 

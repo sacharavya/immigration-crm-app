@@ -250,7 +250,19 @@ export interface PdfEngine {
   /** Must contain exactly the current page ids, in the new order. */
   reorder(orderedPageIds: readonly PageId[]): Promise<PageModel>;
   rotate(pageId: PageId, rotation: Rotation): Promise<PageModel>;
+  /**
+   * Delete pages from the model. Non-evicting: source documents stay held
+   * until reset() so a later applyModel can restore their pages (undo).
+   */
   deletePages(pageIds: readonly PageId[]): Promise<PageModel>;
+
+  /**
+   * Replace the model wholesale with any subset/order/rotations of pages
+   * from documents still held in the session. Powers undo/redo and split.
+   * Throws (without mutating) on unknown documents, out-of-range indexes,
+   * invalid rotations, or duplicate page ids.
+   */
+  applyModel(pages: readonly PageRef[]): Promise<PageModel>;
 
   /** Classify pages + estimate output for the given options; no mutation. */
   preflightCompression(options: BuildOptions): Promise<CompressionPreflight>;

@@ -202,7 +202,7 @@ test("reorder, rotate, delete flow", async () => {
   );
 });
 
-test("deletePages: evicts a document once all of its pages are gone", async () => {
+test("deletePages: non-evicting, applyModel can restore the deleted pages", async () => {
   const { engine, model, documents } = await loadedEngine();
   const blankPages = model.pages
     .filter((p) => p.documentId === documents[0].id)
@@ -214,12 +214,51 @@ test("deletePages: evicts a document once all of its pages are gone", async () =
 
   const after = await engine.deletePages(blankPages);
   assert.equal(after.pages.length, 1);
-  assert.equal(docs.size, 1);
+  // Documents stay held until reset() so undo can bring pages back.
+  assert.equal(docs.size, 2);
+  assert.equal(after.totalSourceBytes, model.totalSourceBytes);
 
   // The surviving page still renders from its own source document.
   const thumb: Thumbnail = await engine.renderThumbnail(after.pages[0].id, 64);
   assert.equal(thumb.pageId, after.pages[0].id);
   assert.deepEqual(thumb.png, PNG_1PX);
+
+  // Undo: restore the pre-delete snapshot wholesale.
+  const restored = await engine.applyModel(model.pages);
+  assert.equal(restored.pages.length, model.pages.length);
+  const restoredThumb = await engine.renderThumbnail(model.pages[0].id, 64);
+  assert.equal(restoredThumb.pageId, model.pages[0].id);
+});
+
+test("applyModel: validates refs and does not mutate on failure", async () => {
+  const { engine, model } = await loadedEngine();
+
+  // Unknown document.
+  await assert.rejects(
+    engine.applyModel([
+      { ...model.pages[0], documentId: "ghost" as never },
+    ]),
+    /unknown document/,
+  );
+  // Out-of-range page index.
+  await assert.rejects(
+    engine.applyModel([{ ...model.pages[0], sourcePageIndex: 99 }]),
+    /out of range/,
+  );
+  // Duplicate page id.
+  await assert.rejects(
+    engine.applyModel([model.pages[0], model.pages[0]]),
+    /duplicate page id/,
+  );
+  // Failed calls left the model untouched.
+  const current = await engine.getModel();
+  assert.equal(current.pages.length, model.pages.length);
+
+  // Subset + reorder + rotation change applies cleanly (split scenario).
+  const subset = [{ ...model.pages[1], rotation: 90 as const }];
+  const applied = await engine.applyModel(subset);
+  assert.equal(applied.pages.length, 1);
+  assert.equal(applied.pages[0].rotation, 90);
 });
 
 test("renderThumbnail: unknown page id throws", async () => {
