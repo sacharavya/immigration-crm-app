@@ -76,6 +76,7 @@ export function BookingFlow({
     phone: string;
     reason: string;
     location_type: LocationType;
+    pay_in_office: boolean;
     address: string;
     city: string;
     province: string;

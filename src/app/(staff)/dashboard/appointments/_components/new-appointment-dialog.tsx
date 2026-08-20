@@ -146,6 +146,7 @@ export function NewAppointmentDialog({
   const feeRaw = selectedType?.fee_cad == null ? null : Number(selectedType.fee_cad);
   const isPaid = feeRaw !== null && feeRaw > 0;
   const [proBono, setProBono] = useState(false);
+  const [payInOffice, setPayInOffice] = useState(false);
 
   // When the type changes, snap duration/location defaults.
   useEffect(() => {
@@ -154,6 +155,7 @@ export function NewAppointmentDialog({
       setLocationType(selectedType.default_location_type);
       setSelectedSlot(null);
       setProBono(false);
+      setPayInOffice(false);
     });
   }, [selectedType]);
 
@@ -247,6 +249,7 @@ export function NewAppointmentDialog({
         staff_notes: staffNotes.trim() || null,
         send_confirmation_email: sendEmail,
         pro_bono: proBono,
+        pay_in_office: payInOffice && locationType === "onsite",
         address: address.trim(),
         city: city.trim(),
         province: province.trim(),
@@ -364,6 +367,26 @@ export function NewAppointmentDialog({
                 <span className="block text-xs text-stone-500">
                   The firm does this consultation for free. No payment is
                   requested and the appointment is confirmed immediately.
+                </span>
+              </span>
+            </label>
+          )}
+
+          {isPaid && !proBono && locationType === "onsite" && (
+            <label className="sm:col-span-2 lg:col-span-3 flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={payInOffice}
+                onChange={(e) => setPayInOffice(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-stone-300"
+              />
+              <span>
+                <span className="font-medium text-stone-700">
+                  Pay in office (cash)
+                </span>
+                <span className="block text-xs text-stone-500">
+                  Client pays at the office. No e-transfer request is sent and
+                  the appointment is confirmed immediately.
                 </span>
               </span>
             </label>

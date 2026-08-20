@@ -41,6 +41,9 @@ const bookSchema = z.object({
   location_type: z.enum(["online", "onsite"]),
   consent: z.literal(true),
   client_timezone: z.string().max(100).optional(),
+  // Onsite paid bookings may pay cash at the office: skips the e-transfer
+  // flow entirely and confirms immediately.
+  pay_in_office: z.boolean().optional().default(false),
   // Core intake (address is required; the rest help staff prepare).
   address: z.string().min(1).max(300),
   city: z.string().max(120).optional().default(""),
@@ -115,9 +118,13 @@ export async function bookAppointment(
   // client. Status, sync, and confirmation email all branch on this.
   const feeRaw = type.fee_cad === null ? null : Number(type.fee_cad);
   const isPaid = feeRaw !== null && feeRaw > 0;
-  const initialStatus: "confirmed" | "pending_payment" = isPaid
-    ? "pending_payment"
-    : "confirmed";
+  // Pay in Office: onsite paid bookings may pay cash at the office. The fee
+  // stays snapshotted so staff collect it in person; the booking confirms
+  // immediately. Online paid bookings keep the mandatory e-transfer flow.
+  const payInOffice =
+    isPaid && data.pay_in_office && data.location_type === "onsite";
+  const initialStatus: "confirmed" | "pending_payment" =
+    isPaid && !payInOffice ? "pending_payment" : "confirmed";
   const feeAtBooking = isPaid ? feeRaw : null;
 
   // 3. Compute ends_at from type duration.
@@ -279,10 +286,11 @@ export async function bookAppointment(
       staff_notes: null,
       status: initialStatus,
       fee_cad_at_booking: feeAtBooking,
+      pay_in_office: payInOffice,
       booking_source: "public_portal",
       management_token: managementToken,
       management_token_expires_at: managementTokenExpiresAt,
-      graph_sync_status: isPaid ? null : "pending",
+      graph_sync_status: initialStatus === "pending_payment" ? null : "pending",
     })
     .select("id")
     .single();
@@ -290,8 +298,9 @@ export async function bookAppointment(
     return { ok: false, error: "booking_failed" };
   }
 
-  // 12. Side effects branch on paid vs free.
-  if (isPaid) {
+  // 12. Side effects: only ONLINE paid bookings wait for the e-transfer.
+  // Free and pay-in-office bookings confirm immediately.
+  if (initialStatus === "pending_payment") {
     // APPT-8: paid flow. The "Action needed" email gives the prospect a
     // management URL backup if they close the tab — they finish the
     // upload from there. No calendar event, no Teams, no confirmation.
@@ -329,7 +338,7 @@ export async function bookAppointment(
     online_link: onlineLink,
     duration_minutes: type.duration_minutes,
     type_name: type.name,
-    payment_required: isPaid,
+    payment_required: initialStatus === "pending_payment",
     fee_cad: feeAtBooking,
     appointment_short_id: appt.id.slice(0, 8),
     consultation_sign_url: consultationSignUrl,
@@ -355,7 +364,7 @@ const ALLOWED_PROOF_MIME = new Set([
 const MAX_PROOF_BYTES = 5 * 1024 * 1024;
 
 export type UploadProofResult =
-  | { ok: true; status: "awaiting_review" }
+  | { ok: true; status: "confirmed" }
   | { ok: false; error: string };
 
 export async function uploadPaymentProof(
@@ -378,7 +387,7 @@ export async function uploadPaymentProof(
   const { data: appt } = await supabase
     .schema("crm")
     .from("appointments")
-    .select("id, client_id, status, starts_at, snapshot_client_name")
+    .select("id, client_id, status, starts_at, snapshot_client_name, fee_cad_at_booking")
     .eq("management_token", token)
     .is("deleted_at", null)
     .maybeSingle();
@@ -460,17 +469,20 @@ export async function uploadPaymentProof(
     return { ok: false, error: "doc_insert_failed" };
   }
 
-  // Atomic guard: only flip to awaiting_review if the row is still in
-  // pending_payment. If a concurrent upload already claimed it, this
-  // UPDATE matches zero rows and we return an error — prevents the
-  // TOCTOU race where two simultaneous uploads both succeed.
+  // Atomic guard: only confirm if the row is still in pending_payment. If a
+  // concurrent upload already claimed it, this UPDATE matches zero rows and
+  // we return an error - prevents the TOCTOU race where two simultaneous
+  // uploads both succeed. The staff review step is REMOVED: a proof upload
+  // confirms the booking immediately; staff see the proof on the appointment
+  // and can cancel if something is wrong.
   const { data: flipped, error: updErr } = await supabase
     .schema("crm")
     .from("appointments")
     .update({
       payment_screenshot_id: docRow.id,
       payment_uploaded_at: new Date().toISOString(),
-      status: "awaiting_review",
+      status: "confirmed",
+      graph_sync_status: "pending",
     })
     .eq("id", appt.id)
     .eq("status", "pending_payment")
@@ -488,10 +500,53 @@ export async function uploadPaymentProof(
     return { ok: false, error: "not_pending_payment" };
   }
 
-  // Notify the assigned RCIC (or info@ fallback) that a proof is waiting.
+  // The review step used to create the crm.payments money record on accept;
+  // with auto-confirm that responsibility moves here so the ledger stays
+  // complete. Nature starts pending_decision (deposit vs consultation fee is
+  // decided later on the Payments page).
+  const fee = Number(appt.fee_cad_at_booking ?? 0);
+  if (fee > 0 && appt.client_id) {
+    const { data: payment } = await supabase
+      .schema("crm")
+      .from("payments")
+      .insert({
+        client_id: appt.client_id,
+        case_id: null,
+        amount_cad: fee,
+        method: "e_transfer",
+        received_date: new Date().toISOString().slice(0, 10),
+        reference: `appt:${appt.id.slice(0, 8)}`,
+        notes: `Consultation payment for appointment ${appt.id.slice(0, 8)}`,
+        proof_document_id: docRow.id,
+        consultation_payment_nature: "pending_decision",
+        recorded_by: null,
+        is_refund: false,
+      })
+      .select("id")
+      .single();
+    if (payment) {
+      await supabase
+        .schema("crm")
+        .from("appointments")
+        .update({ linked_payment_id: payment.id })
+        .eq("id", appt.id);
+    }
+  }
+
+  // Confirmed now: calendar sync + confirmation email fire immediately.
+  await syncAppointmentCreate(supabase, appt.id);
+  const confRes = await sendAppointmentConfirmation(supabase, appt.id);
+  if (confRes.ok) {
+    await supabase
+      .schema("crm")
+      .from("appointments")
+      .update({ confirmation_email_sent_at: new Date().toISOString() })
+      .eq("id", appt.id);
+  }
+  // FYI to staff that a proof arrived (no action required anymore).
   await sendPaymentStaffNotification(supabase, appt.id);
 
-  return { ok: true, status: "awaiting_review" };
+  return { ok: true, status: "confirmed" };
 }
 
 function mimeToExtension(mime: string): string {

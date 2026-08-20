@@ -37,12 +37,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import {
-  acceptAppointmentPayment,
   assignAppointment,
   cancelAppointment,
   markCompleted,
   markNoShow,
-  rejectAppointmentPayment,
+  markAppointmentProBono,
   rescheduleAppointment,
   retryCalendarSync,
   updateAppointmentNotes,
@@ -50,7 +49,7 @@ import {
 
 import { STATUS_LABEL, STATUS_TONE, type AppointmentRow, type StaffOption } from "./types";
 
-type Mode = "view" | "reschedule" | "cancel" | "notes" | "reject_payment";
+type Mode = "view" | "reschedule" | "cancel" | "notes";
 
 const TORONTO_TZ = "America/Toronto";
 
@@ -270,6 +269,20 @@ export function AppointmentDetailDialog({
                   <RefreshCw className="h-3 w-3" /> Synced to Outlook
                 </span>
               )}
+              {appointment.fee_cad_at_booking !== null &&
+                Number(appointment.fee_cad_at_booking) > 0 &&
+                !appointment.is_pro_bono &&
+                appointment.status !== "cancelled" &&
+                mode === "view" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleResult(markAppointmentProBono(appointment.id))}
+                    disabled={pending}
+                  >
+                    Make pro bono
+                  </Button>
+                )}
               {appointment.graph_sync_status === "failed" && (
                 <span className="inline-flex items-center gap-1 text-[11px] text-amber-600" title={appointment.graph_sync_error ?? "Calendar sync failed"}>
                   <AlertTriangle className="h-3 w-3" /> Sync failed
@@ -287,20 +300,22 @@ export function AppointmentDetailDialog({
           </button>
         </div>
 
-        {/* ── APPT-8 payment sections (above body) ──────── */}
-        {mode === "view" && appointment.status === "awaiting_review" && (
-          <div className="border-b border-stone-200 px-6 py-4">
-            <PaymentReviewSection
-              appointment={appointment}
-              pending={pending}
-              onAccept={() => handleResult(acceptAppointmentPayment(appointment.id))}
-              onReject={() => setMode("reject_payment")}
-            />
-          </div>
-        )}
+        {/* Payment info (review step removed: proof auto-confirms) */}
         {mode === "view" && appointment.status === "pending_payment" && (
           <div className="border-b border-stone-200 px-6 py-4">
             <PendingPaymentSection appointment={appointment} />
+          </div>
+        )}
+        {mode === "view" && appointment.payment_screenshot_url && (
+          <div className="border-b border-stone-200 px-6 py-3 text-sm">
+            <a
+              href={appointment.payment_screenshot_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[var(--navy)] hover:underline"
+            >
+              View payment proof
+            </a>
           </div>
         )}
 
@@ -514,15 +529,6 @@ export function AppointmentDetailDialog({
             />
           </div>
         )}
-        {mode === "reject_payment" && (
-          <div className="px-6 py-5">
-            <RejectPaymentMode
-              pending={pending}
-              onBack={() => setMode("view")}
-              onSubmit={(reason) => handleResult(rejectAppointmentPayment({ id: appointment.id, reason }))}
-            />
-          </div>
-        )}
 
         {/* ── Error ─────────────────────────────────────────── */}
         {error && (
@@ -536,7 +542,7 @@ export function AppointmentDetailDialog({
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 px-6 py-3">
             {/* Left zone: lower emphasis */}
             <div className="flex flex-wrap items-center gap-2">
-              {editable && (
+              {appointment.status !== "cancelled" && mode === "view" && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -842,42 +848,6 @@ function formatUploadedAgo(iso: string | null): string {
   return days === 1 ? "1 day ago" : `${days} days ago`;
 }
 
-function PaymentReviewSection({
-  appointment, pending, onAccept, onReject,
-}: {
-  appointment: AppointmentRow;
-  pending: boolean;
-  onAccept: () => void;
-  onReject: () => void;
-}) {
-  const ref = appointment.id.slice(0, 8);
-  return (
-    <div className="space-y-3 border border-purple-200 bg-purple-50/40 p-4">
-      <div className="text-xs font-medium uppercase tracking-wider text-purple-700">Payment review</div>
-      <dl className="grid grid-cols-2 gap-y-1 text-sm text-stone-800">
-        <dt className="text-stone-500">Fee</dt>
-        <dd className="font-medium tabular-nums">{formatFeeCad(appointment.fee_cad_at_booking)}</dd>
-        <dt className="text-stone-500">Uploaded</dt>
-        <dd>{formatUploadedAgo(appointment.payment_uploaded_at)} by client</dd>
-        <dt className="text-stone-500">Expected sender</dt>
-        <dd className="break-all">{appointment.snapshot_client_email}</dd>
-        <dt className="text-stone-500">Reference</dt>
-        <dd className="font-mono text-xs">{ref}</dd>
-      </dl>
-      {appointment.payment_screenshot_url ? (
-        <a href={appointment.payment_screenshot_url} target="_blank" rel="noreferrer" className="inline-flex items-center border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100">
-          Open screenshot
-        </a>
-      ) : (
-        <p className="text-[11px] text-stone-500">Screenshot URL not loaded. Open from /dashboard/appointments to view it.</p>
-      )}
-      <div className="flex flex-wrap gap-2 pt-1">
-        <Button size="sm" onClick={onAccept} disabled={pending} className="bg-emerald-600 hover:bg-emerald-700">Accept payment</Button>
-        <Button size="sm" variant="destructive" onClick={onReject} disabled={pending}>Reject payment</Button>
-      </div>
-    </div>
-  );
-}
 
 function PendingPaymentSection({ appointment }: { appointment: AppointmentRow }) {
   return (
@@ -892,30 +862,3 @@ function PendingPaymentSection({ appointment }: { appointment: AppointmentRow })
   );
 }
 
-function RejectPaymentMode({ pending, onBack, onSubmit }: { pending: boolean; onBack: () => void; onSubmit: (reason: string) => void }) {
-  const COMMON_REASONS = ["Amount does not match", "Wrong recipient", "Cannot verify transfer", "Other"];
-  const [reason, setReason] = useState<string>(COMMON_REASONS[0]);
-  const [otherText, setOtherText] = useState("");
-  const effective = reason === "Other" ? otherText.trim() : reason;
-
-  return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-medium text-stone-800">Reject payment</h3>
-      <div>
-        <Label className="text-xs font-medium text-stone-600">Reason for rejection</Label>
-        <select value={reason} onChange={(e) => setReason(e.target.value)} disabled={pending} className="mt-1 h-9 w-full border border-stone-200 bg-white px-3 text-sm">
-          {COMMON_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
-        </select>
-      </div>
-      {reason === "Other" && (
-        <textarea value={otherText} onChange={(e) => setOtherText(e.target.value)} rows={3} disabled={pending} placeholder="Tell the client what went wrong." className="w-full border border-stone-200 bg-white px-3 py-2 text-sm" />
-      )}
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onBack} disabled={pending}>Back</Button>
-        <Button variant="destructive" onClick={() => onSubmit(effective)} disabled={pending || !effective}>
-          {pending ? <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Rejecting...</> : "Confirm rejection"}
-        </Button>
-      </div>
-    </div>
-  );
-}

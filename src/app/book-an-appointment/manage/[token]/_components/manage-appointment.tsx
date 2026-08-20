@@ -245,8 +245,12 @@ function ReschedulePane({
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setLoadError(null);
+    // Deferred: setState directly in an effect body triggers cascading renders.
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setLoading(true);
+      setLoadError(null);
+    });
     fetch(
       `/api/public/slots?type_id=${encodeURIComponent(appointment.appointment_type_id)}&date=${encodeURIComponent(date)}`,
       { cache: "no-store" },

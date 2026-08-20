@@ -66,6 +66,8 @@ export type AppointmentRow = {
   // appointments page populates it. On case/client/dashboard surfaces this
   // stays null and the screenshot link is just hidden.
   fee_cad_at_booking: string | number | null;
+  is_pro_bono: boolean;
+  pay_in_office: boolean;
   payment_uploaded_at: string | null;
   payment_screenshot_id: string | null;
   payment_screenshot_url: string | null;

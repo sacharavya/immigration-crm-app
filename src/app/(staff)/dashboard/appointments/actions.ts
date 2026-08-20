@@ -25,7 +25,6 @@ import {
   sendAppointmentReschedule,
   sendInternalNotification,
   sendPaymentPending,
-  sendPaymentRejected,
 } from "@/lib/email/appointments";
 import { createClient } from "@/lib/supabase/server";
 
@@ -56,6 +55,8 @@ const createSchema = z.object({
   send_confirmation_email: z.boolean().default(true),
   // Staff waive the fee on a paid type — the firm does it for free.
   pro_bono: z.boolean().default(false),
+  // Onsite paid appointments may be paid in cash at the office (confirms now).
+  pay_in_office: z.boolean().default(false),
   // Core intake (same as the public booking form), all optional here.
   address: z.string().max(300).optional().default(""),
   city: z.string().max(120).optional().default(""),
@@ -156,7 +157,9 @@ export async function createAppointment(
   // appointment follows the free/confirmed path (no payment) but records the
   // waiver (is_pro_bono) and a $0 fee_cad_at_booking.
   const proBono = isPaid && input.pro_bono;
-  const effectivePaid = isPaid && !proBono;
+  const payInOffice =
+    isPaid && !proBono && input.pay_in_office && input.location_type === "onsite";
+  const effectivePaid = isPaid && !proBono && !payInOffice;
 
   // Paid consultations need a client_id downstream (payment row +
   // files.documents CHECK). If staff didn't link one, find-or-create a
@@ -278,6 +281,7 @@ export async function createAppointment(
       status: effectivePaid ? "pending_payment" : "confirmed",
       fee_cad_at_booking: proBono ? 0 : isPaid ? fee : null,
       is_pro_bono: proBono,
+      pay_in_office: payInOffice,
       graph_sync_status: effectivePaid ? null : "pending",
       management_token: managementToken,
       management_token_expires_at: managementTokenExpiresAt,
@@ -667,154 +671,56 @@ export async function getAvailableSlots(
 // for audit.
 // ---------------------------------------------------------------------------
 
-async function requireReviewPayments(): Promise<
-  { ok: true; staffId: string } | { ok: false; error: string }
-> {
-  const staff = await getStaff();
-  if (!staff) return { ok: false, error: "Not authenticated" };
-  if (!staffCan(staff, "review_payments")) {
-    return { ok: false, error: "Not authorized" };
-  }
-  return { ok: true, staffId: staff.id };
-}
 
-export async function acceptAppointmentPayment(
+export async function markAppointmentProBono(
   appointmentId: string,
 ): Promise<MutateResult> {
-  const auth = await requireReviewPayments();
+  const auth = await requirePermission();
   if (!auth.ok) return { error: auth.error };
   if (!uuid.safeParse(appointmentId).success) return { error: "Invalid id" };
 
   const admin = adminClient();
-
   const { data: appt } = await admin
     .schema("crm")
     .from("appointments")
-    .select(
-      "id, status, client_id, case_id, fee_cad_at_booking, payment_screenshot_id",
-    )
+    .select("id, status, case_id, client_id, is_pro_bono")
     .eq("id", appointmentId)
     .is("deleted_at", null)
     .maybeSingle();
   if (!appt) return { error: "Appointment not found." };
-  if (appt.status !== "awaiting_review") {
-    return { error: "Only appointments awaiting review can be accepted." };
-  }
-  if (!appt.client_id) {
-    return { error: "Appointment is missing a client_id." };
-  }
-  const fee = Number(appt.fee_cad_at_booking ?? 0);
-  if (fee <= 0) {
-    return { error: "Appointment has no fee snapshot to charge against." };
+  if (appt.is_pro_bono) return { ok: true };
+  if (appt.status === "cancelled") {
+    return { error: "Cancelled appointments cannot be made pro bono." };
   }
 
-  // 1. Insert the payment row. consultation_payment_nature starts as
-  // pending_decision; staff flips it on the Payments page once the client
-  // either retains the firm (applied_as_deposit) or doesn't
-  // (kept_as_consultation_fee).
-  const { data: payment, error: payErr } = await admin
-    .schema("crm")
-    .from("payments")
-    .insert({
-      client_id: appt.client_id,
-      case_id: null,
-      amount_cad: fee,
-      method: "e_transfer",
-      received_date: new Date().toISOString().slice(0, 10),
-      reference: `appt:${appt.id.slice(0, 8)}`,
-      notes: `Consultation payment for appointment ${appt.id.slice(0, 8)}`,
-      proof_document_id: appt.payment_screenshot_id,
-      consultation_payment_nature: "pending_decision",
-      recorded_by: auth.staffId,
-      is_refund: false,
-    })
-    .select("id")
-    .single();
-  if (payErr || !payment) {
-    return { error: payErr?.message ?? "Could not create payment row." };
-  }
+  const wasWaitingOnPayment =
+    appt.status === "pending_payment" || appt.status === "awaiting_review";
 
-  // 2. Flip the appointment to confirmed + record reviewer + link payment.
   const { error: updErr } = await admin
     .schema("crm")
     .from("appointments")
     .update({
-      status: "confirmed",
-      payment_reviewed_by: auth.staffId,
-      payment_reviewed_at: new Date().toISOString(),
-      linked_payment_id: payment.id,
-      graph_sync_status: "pending",
+      is_pro_bono: true,
+      fee_cad_at_booking: 0,
+      ...(wasWaitingOnPayment
+        ? { status: "confirmed" as const, graph_sync_status: "pending" as const }
+        : {}),
     })
     .eq("id", appointmentId);
   if (updErr) return { error: updErr.message };
 
-  // 3. Graph sync (calendar event + Teams meeting if enabled) — first time
-  // for paid bookings since we deferred it at booking time.
-  await syncAppointmentCreate(admin, appointmentId);
-
-  // 4. Confirmation email (also first time for this appointment).
-  const confRes = await sendAppointmentConfirmation(admin, appointmentId);
-  if (confRes.ok) {
-    await admin
-      .schema("crm")
-      .from("appointments")
-      .update({ confirmation_email_sent_at: new Date().toISOString() })
-      .eq("id", appointmentId);
+  // A booking that was blocked on payment confirms now: calendar + email.
+  if (wasWaitingOnPayment) {
+    await syncAppointmentCreate(admin, appointmentId);
+    const confRes = await sendAppointmentConfirmation(admin, appointmentId);
+    if (confRes.ok) {
+      await admin
+        .schema("crm")
+        .from("appointments")
+        .update({ confirmation_email_sent_at: new Date().toISOString() })
+        .eq("id", appointmentId);
+    }
   }
-
-  revalidatePath("/dashboard/appointments");
-  revalidatePath("/dashboard/payments");
-  if (appt.case_id) revalidatePath(`/dashboard/cases/${appt.case_id}`);
-  if (appt.client_id) revalidatePath(`/dashboard/clients/${appt.client_id}`);
-  revalidatePath("/dashboard");
-  return { ok: true };
-}
-
-const rejectPaymentSchema = z.object({
-  id: uuid,
-  reason: z.string().min(1).max(500),
-});
-
-export async function rejectAppointmentPayment(
-  raw: unknown,
-): Promise<MutateResult> {
-  const auth = await requireReviewPayments();
-  if (!auth.ok) return { error: auth.error };
-  const parsed = rejectPaymentSchema.safeParse(raw);
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
-  }
-  const { id, reason } = parsed.data;
-
-  const admin = adminClient();
-  const { data: appt } = await admin
-    .schema("crm")
-    .from("appointments")
-    .select("id, status, case_id, client_id")
-    .eq("id", id)
-    .is("deleted_at", null)
-    .maybeSingle();
-  if (!appt) return { error: "Appointment not found." };
-  if (appt.status !== "awaiting_review") {
-    return { error: "Only appointments awaiting review can be rejected." };
-  }
-
-  const { error: updErr } = await admin
-    .schema("crm")
-    .from("appointments")
-    .update({
-      status: "cancelled",
-      cancellation_reason: reason,
-      cancelled_by: auth.staffId,
-      cancelled_at: new Date().toISOString(),
-      payment_reviewed_by: auth.staffId,
-      payment_reviewed_at: new Date().toISOString(),
-      payment_rejection_reason: reason,
-    })
-    .eq("id", id);
-  if (updErr) return { error: updErr.message };
-
-  await sendPaymentRejected(admin, id, reason);
 
   revalidatePath("/dashboard/appointments");
   if (appt.case_id) revalidatePath(`/dashboard/cases/${appt.case_id}`);
@@ -822,3 +728,4 @@ export async function rejectAppointmentPayment(
   revalidatePath("/dashboard");
   return { ok: true };
 }
+

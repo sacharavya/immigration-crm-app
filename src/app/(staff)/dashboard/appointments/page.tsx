@@ -64,7 +64,7 @@ export default async function AppointmentsPage({
       `
         id, starts_at, ends_at, timezone, location_type, online_link,
         onsite_address, teams_join_url, status, reason, staff_notes, graph_sync_status,
-        fee_cad_at_booking, payment_uploaded_at, payment_screenshot_id,
+        fee_cad_at_booking, is_pro_bono, pay_in_office, payment_uploaded_at, payment_screenshot_id,
         payment_reviewed_at, payment_rejection_reason, linked_payment_id,
         graph_sync_error, cancellation_reason, snapshot_client_name,
         snapshot_client_email, snapshot_client_phone,
@@ -133,16 +133,6 @@ export default async function AppointmentsPage({
       : null,
   }));
 
-  // APPT-8: standing banner when there are payment proofs awaiting review.
-  // We count regardless of the current filter so staff sees the work
-  // queue even while browsing confirmed bookings.
-  const { count: awaitingReviewCount } = await supabase
-    .schema("crm")
-    .from("appointments")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "awaiting_review")
-    .is("deleted_at", null);
-
   const { types, staffList, rcicOptions, officeAddress } =
     await loadNewAppointmentDialogData();
 
@@ -165,23 +155,6 @@ export default async function AppointmentsPage({
         />
       </header>
 
-      {!!awaitingReviewCount && awaitingReviewCount > 0 && (
-        <a
-          href="/dashboard/appointments?status=awaiting_review"
-          className="flex items-center justify-between gap-3 rounded-md border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900 hover:bg-purple-100"
-        >
-          <span>
-            <strong>
-              {awaitingReviewCount} payment proof
-              {awaitingReviewCount === 1 ? "" : "s"} awaiting your review
-            </strong>
-            <span className="ml-2 text-xs text-purple-700">
-              Accept or reject from the appointment detail
-            </span>
-          </span>
-          <span className="text-xs font-medium">Review now →</span>
-        </a>
-      )}
 
       <AppointmentFilters
         currentView={view}

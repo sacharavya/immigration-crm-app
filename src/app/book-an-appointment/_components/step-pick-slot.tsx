@@ -103,8 +103,12 @@ export function StepPickSlot({
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+    // Deferred: setState directly in an effect body triggers cascading renders.
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setLoading(true);
+      setError(null);
+    });
     fetch(`/api/public/slots?type_id=${encodeURIComponent(type.id)}`, {
       cache: "no-store",
     })

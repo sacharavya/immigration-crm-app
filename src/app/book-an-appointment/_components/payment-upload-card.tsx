@@ -101,11 +101,11 @@ export function PaymentUploadCard({
     return (
       <div className="space-y-3 border border-emerald-200 bg-white p-6">
         <h1 className="text-xl font-semibold text-stone-900">
-          Got it. We&apos;ve received your payment proof.
+          Payment received. You&apos;re booked!
         </h1>
         <p className="text-sm text-stone-600">
-          Our team will verify it shortly and confirm your appointment by
-          email.
+          Your appointment is confirmed. A confirmation email with the meeting
+          details is on its way.
         </p>
         {signUrl && (
           <div className="mt-2 border-t border-stone-100 pt-3">
@@ -156,9 +156,8 @@ export function PaymentUploadCard({
         >
           {FIRM_EMAIL}
         </a>{" "}
-        and upload your screenshot of the payment or payment receipt here. Our
-        staff will verify the payment and secure your appointment before the
-        end of the day.
+        and upload your screenshot of the payment or payment receipt here. Your
+        appointment is confirmed the moment your proof is submitted.
       </p>
 
       <div className="rounded-md border border-stone-200 bg-stone-50 p-3">

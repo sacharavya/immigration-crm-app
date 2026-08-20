@@ -46,6 +46,7 @@ export function StepDetails({
     phone: string;
     reason: string;
     location_type: LocationType;
+    pay_in_office: boolean;
     address: string;
     city: string;
     province: string;
@@ -75,8 +76,13 @@ export function StepDetails({
   const [languageTest, setLanguageTest] = useState("");
   const [languageScore, setLanguageScore] = useState("");
   const [occupation, setOccupation] = useState("");
+  const [payInOffice, setPayInOffice] = useState(false);
   const [consent, setConsent] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+
+  const isPaidType = type.fee_cad !== null && type.fee_cad > 0;
+  // The cash option only exists for in-person meetings.
+  const showPayInOffice = isPaidType && locationType === "onsite";
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -103,6 +109,7 @@ export function StepDetails({
       phone: phone.trim(),
       reason: reason.trim(),
       location_type: locationType,
+      pay_in_office: showPayInOffice && payInOffice,
       address: address.trim(),
       city: city.trim(),
       province: province.trim(),
@@ -199,6 +206,25 @@ export function StepDetails({
                   ))}
                 </div>
               </FormField>
+
+              {showPayInOffice && (
+                <label className="flex items-start gap-2 text-sm text-stone-700">
+                  <input
+                    type="checkbox"
+                    checked={payInOffice}
+                    onChange={(e) => setPayInOffice(e.target.checked)}
+                    disabled={submitting}
+                    className="mt-1 h-4 w-4 border-stone-300"
+                  />
+                  <span>
+                    <span className="font-medium">Pay in office</span>
+                    <span className="block text-xs text-stone-500">
+                      Pay cash when you arrive. Your appointment is confirmed
+                      right away, no e-transfer needed.
+                    </span>
+                  </span>
+                </label>
+              )}
 
               <FormField label="What would you like to discuss?" required>
                 <textarea

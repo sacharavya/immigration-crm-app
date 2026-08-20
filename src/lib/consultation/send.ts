@@ -64,13 +64,8 @@ export async function maybeSendConsultationAgreement(
       return null; // already signed or already sent
     }
 
-    const { data: type } = await supabase
-      .schema("crm")
-      .from("appointment_types")
-      .select("requires_consultation_agreement")
-      .eq("id", appt.appointment_type_id)
-      .maybeSingle();
-    if (!type?.requires_consultation_agreement) return null;
+    // The agreement is part of EVERY booking flow (user decision 2026-08-20):
+    // the per-type opt-out is gone. Retained clients still skip below.
 
     if (await clientHasSignedRetainer(supabase, appt.snapshot_client_email)) {
       return null; // existing client — already agreed to terms via a retainer
