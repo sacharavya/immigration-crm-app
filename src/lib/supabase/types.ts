@@ -244,6 +244,7 @@ export type Database = {
           management_token_expires_at: string | null
           online_link: string | null
           onsite_address: string | null
+          pay_in_office: boolean
           payment_rejection_reason: string | null
           payment_reviewed_at: string | null
           payment_reviewed_by: string | null
@@ -299,6 +300,7 @@ export type Database = {
           management_token_expires_at?: string | null
           online_link?: string | null
           onsite_address?: string | null
+          pay_in_office?: boolean
           payment_rejection_reason?: string | null
           payment_reviewed_at?: string | null
           payment_reviewed_by?: string | null
@@ -354,6 +356,7 @@ export type Database = {
           management_token_expires_at?: string | null
           online_link?: string | null
           onsite_address?: string | null
+          pay_in_office?: boolean
           payment_rejection_reason?: string | null
           payment_reviewed_at?: string | null
           payment_reviewed_by?: string | null
