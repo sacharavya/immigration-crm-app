@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import type { CaseDocumentItem } from "@/components/pdf-tool/case-documents-panel";
-import { PdfTool } from "@/components/pdf-tool/pdf-tool";
+import { EditorShell } from "@/components/pdf-tool/editor/editor-shell";
 import { getStaff } from "@/lib/auth/staff";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,7 +26,6 @@ export default async function PdfToolPage({
 
   const { case: caseId } = await searchParams;
 
-  let caseLabel: string | null = null;
   let caseDocuments: CaseDocumentItem[] = [];
 
   if (caseId) {
@@ -41,7 +39,6 @@ export default async function PdfToolPage({
       .maybeSingle();
 
     if (caseRow) {
-      caseLabel = caseRow.case_number;
       const { data: docs } = await supabase
         .schema("files")
         .from("documents")
@@ -66,34 +63,11 @@ export default async function PdfToolPage({
     }
   }
 
+  // Full-bleed: the editor brings its own chrome. The staff layout's scroll
+  // container adds pb-8, hence the 2rem in the height calc.
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-stone-900">
-          Submission package builder
-          {caseLabel && (
-            <span className="ml-2 font-mono text-base text-stone-500">
-              {caseLabel}
-            </span>
-          )}
-        </h1>
-        <p className="text-sm text-stone-500">
-          Merge PDFs and images, reorder and rotate pages, and compress to a
-          portal size limit - all in the browser, nothing leaves this device.
-        </p>
-        {caseLabel && caseId && (
-          <p className="mt-1 text-sm text-stone-500">
-            Working on case documents.{" "}
-            <Link
-              href={`/dashboard/cases/${caseId}`}
-              className="text-[var(--navy)] hover:underline"
-            >
-              Back to case
-            </Link>
-          </p>
-        )}
-      </div>
-      <PdfTool
+    <div className="h-[calc(100dvh-2rem)]">
+      <EditorShell
         caseDocuments={caseDocuments}
         getDownloadUrl={getCaseDocumentDownloadUrl}
       />

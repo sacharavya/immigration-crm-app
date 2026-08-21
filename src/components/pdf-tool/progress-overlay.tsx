@@ -4,7 +4,7 @@ import type { ProgressPhase } from "@/lib/pdf-engine/types";
 
 import type { BusyState } from "./use-pdf-engine";
 
-const PHASE_LABELS: Record<ProgressPhase, string> = {
+export const PHASE_LABELS: Record<ProgressPhase, string> = {
   loading: "Loading documents",
   rendering: "Rendering pages",
   merging: "Merging pages",

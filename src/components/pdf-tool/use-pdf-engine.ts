@@ -4,11 +4,19 @@
 // the working model, a small thumbnail render queue, busy/progress state, and
 // typed actions. All heavy work happens in the worker; this hook only moves
 // handles and object URLs.
+//
+// Every mutation (reorder / rotate-via-applyModel / delete / load) resolves
+// with the model BEFORE and AFTER the worker confirmed it, so the editor
+// store can push the previous snapshot onto its undo stack. Undo/redo call
+// applyModel with a snapshot; the hook adopts the confirmed result.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { createPdfEngineClient, type PdfEngineClient } from "@/lib/pdf-engine";
-import { LocalFileSource } from "@/lib/pdf-engine/sources/local";
+import {
+  LocalDownloadSink,
+  LocalFileSource,
+} from "@/lib/pdf-engine/sources/local";
 import type {
   BuildOptions,
   BuildReport,
@@ -17,17 +25,21 @@ import type {
   LoadedDocument,
   PageId,
   PageModel,
+  PageRef,
   ProgressEvent,
   ProgressPhase,
-  Rotation,
+  Thumbnail,
 } from "@/lib/pdf-engine/types";
 
 const THUMBNAIL_EDGE_PX = 320;
 const THUMBNAIL_CONCURRENCY = 2;
+const PREVIEW_CONCURRENCY = 2;
 /** Above this total input size the UI shows a slow/memory warning. */
 export const INPUT_WARNING_BYTES = 300_000_000;
-/** Operations shorter than this never show the progress overlay. */
+/** Operations shorter than this never show progress UI. */
 const OVERLAY_DELAY_MS = 300;
+
+const EMPTY_MODEL: PageModel = { pages: [], totalSourceBytes: 0 };
 
 export interface BusyState {
   active: boolean;
@@ -39,11 +51,50 @@ export interface BusyState {
 
 const IDLE: BusyState = { active: false, phase: null, completed: 0, total: 0 };
 
+/** A cached thumbnail render: object URL plus raster dimensions. */
+export interface PageThumb {
+  url: string;
+  width: number;
+  height: number;
+}
+
+/** Worker-confirmed models around a mutation, for the undo stack. */
+export interface MutationResult {
+  previous: PageModel;
+  next: PageModel;
+}
+
+/** A queued canvas preview render awaiting the worker. */
+interface PreviewJob {
+  pageId: PageId;
+  maxEdgePx: number;
+  signal: AbortSignal | undefined;
+  resolve: (thumb: Thumbnail | null) => void;
+}
+
+/**
+ * Names of submitted inputs that did not come back from the loader, counting
+ * duplicates (two "scan.pdf" in, one out = one missing "scan.pdf").
+ */
+export function missingInputNames(
+  submitted: readonly string[],
+  loaded: readonly string[],
+): string[] {
+  const counts = new Map<string, number>();
+  for (const name of loaded) counts.set(name, (counts.get(name) ?? 0) + 1);
+  return submitted.filter((name) => {
+    const remaining = counts.get(name) ?? 0;
+    if (remaining === 0) return true;
+    counts.set(name, remaining - 1);
+    return false;
+  });
+}
+
 export interface UsePdfEngine {
   documents: LoadedDocument[];
   model: PageModel | null;
-  /** PageId -> object URL of a rendered PNG thumbnail. */
-  thumbnails: ReadonlyMap<PageId, string>;
+  /** PageId -> rendered PNG thumbnail (object URL + dimensions). */
+  thumbnails: ReadonlyMap<PageId, PageThumb>;
   busy: BusyState;
   /**
    * True the moment a user action starts, unlike busy.active which waits for
@@ -55,10 +106,23 @@ export interface UsePdfEngine {
   inputWarning: string | null;
   /** Report of the build currently held in the worker (null after discard). */
   lastBuild: BuildReport | null;
-  loadFiles: (files: File[]) => Promise<void>;
-  reorder: (orderedPageIds: readonly PageId[]) => Promise<void>;
-  rotateBy90: (pageId: PageId) => Promise<void>;
-  deletePages: (pageIds: readonly PageId[]) => Promise<void>;
+  loadFiles: (files: File[]) => Promise<MutationResult | null>;
+  reorder: (
+    orderedPageIds: readonly PageId[],
+  ) => Promise<MutationResult | null>;
+  deletePages: (pageIds: readonly PageId[]) => Promise<MutationResult | null>;
+  /**
+   * Replace the model wholesale (rotation changes, undo, redo). Thumbnails of
+   * pages whose rotation changed are invalidated automatically.
+   */
+  applyModel: (pages: readonly PageRef[]) => Promise<MutationResult | null>;
+  /** Quiet preview render for the canvas; null on failure, abort, or stale page. */
+  renderPreview: (
+    pageId: PageId,
+    maxEdgePx: number,
+    /** Aborting skips the render if it has not reached the worker yet. */
+    signal?: AbortSignal,
+  ) => Promise<Thumbnail | null>;
   preflight: (options: BuildOptions) => Promise<CompressionPreflight | null>;
   build: (options: BuildOptions) => Promise<BuildReport | null>;
   renderComparison: (
@@ -67,13 +131,22 @@ export interface UsePdfEngine {
   ) => Promise<ComparisonPair | null>;
   takeOutput: () => Promise<{ bytes: Uint8Array; sizeBytes: number } | null>;
   discardOutput: () => Promise<void>;
+  /**
+   * Split export: apply the given page range, build merge-only, download as
+   * fileName, then restore the full model in a finally block so a failure
+   * cannot strand the session. Atomic under the action mutex.
+   */
+  exportRange: (
+    pages: readonly PageRef[],
+    fileName: string,
+  ) => Promise<boolean | null>;
   resetAll: () => Promise<void>;
 }
 
 export function usePdfEngine(): UsePdfEngine {
   const [documents, setDocuments] = useState<LoadedDocument[]>([]);
   const [model, setModel] = useState<PageModel | null>(null);
-  const [thumbnails, setThumbnails] = useState<ReadonlyMap<PageId, string>>(
+  const [thumbnails, setThumbnails] = useState<ReadonlyMap<PageId, PageThumb>>(
     new Map(),
   );
   const [busy, setBusy] = useState<BusyState>(IDLE);
@@ -89,7 +162,9 @@ export function usePdfEngine(): UsePdfEngine {
   /** Latest-wins sequence for background preflight calls. */
   const preflightSeqRef = useRef(0);
 
-  const thumbsRef = useRef<Map<PageId, string>>(new Map());
+  const thumbsRef = useRef<Map<PageId, PageThumb>>(new Map());
+  const previewQueueRef = useRef<PreviewJob[]>([]);
+  const previewInFlightRef = useRef(0);
   const queueRef = useRef<PageId[]>([]);
   const queuedRef = useRef<Set<PageId>>(new Set());
   /** Bumped by invalidateThumbnail so an in-flight render's result is dropped. */
@@ -128,8 +203,12 @@ export function usePdfEngine(): UsePdfEngine {
               new Blob([thumb.png as BlobPart], { type: "image/png" }),
             );
             const previous = thumbsRef.current.get(pageId);
-            if (previous) URL.revokeObjectURL(previous);
-            thumbsRef.current.set(pageId, url);
+            if (previous) URL.revokeObjectURL(previous.url);
+            thumbsRef.current.set(pageId, {
+              url,
+              width: thumb.width,
+              height: thumb.height,
+            });
             setThumbnails(new Map(thumbsRef.current));
           })
           .catch(() => {
@@ -149,15 +228,11 @@ export function usePdfEngine(): UsePdfEngine {
     pump();
   }, [getEngine]);
 
-  const enqueueThumbnail = useCallback(
-    (pageId: PageId) => {
-      if (thumbsRef.current.has(pageId) || queuedRef.current.has(pageId))
-        return;
-      queuedRef.current.add(pageId);
-      queueRef.current.push(pageId);
-    },
-    [],
-  );
+  const enqueueThumbnail = useCallback((pageId: PageId) => {
+    if (thumbsRef.current.has(pageId) || queuedRef.current.has(pageId)) return;
+    queuedRef.current.add(pageId);
+    queueRef.current.push(pageId);
+  }, []);
 
   /** Drop the cached render for a page (rotation changed) and re-queue it. */
   const invalidateThumbnail = useCallback(
@@ -167,9 +242,9 @@ export function usePdfEngine(): UsePdfEngine {
         pageId,
         (thumbGenRef.current.get(pageId) ?? 0) + 1,
       );
-      const url = thumbsRef.current.get(pageId);
-      if (url) {
-        URL.revokeObjectURL(url);
+      const thumb = thumbsRef.current.get(pageId);
+      if (thumb) {
+        URL.revokeObjectURL(thumb.url);
         thumbsRef.current.delete(pageId);
       }
       // Clear the queued marker: the id may be mid-render, and enqueue would
@@ -181,14 +256,14 @@ export function usePdfEngine(): UsePdfEngine {
   );
 
   /** Adopt a new model: prune dead cache entries, queue missing renders. */
-  const applyModel = useCallback(
+  const adoptModel = useCallback(
     (next: PageModel) => {
       modelRef.current = next;
       setModel(next);
       const live = new Set(next.pages.map((p) => p.id));
-      for (const [pageId, url] of thumbsRef.current) {
+      for (const [pageId, thumb] of thumbsRef.current) {
         if (!live.has(pageId)) {
-          URL.revokeObjectURL(url);
+          URL.revokeObjectURL(thumb.url);
           thumbsRef.current.delete(pageId);
         }
       }
@@ -200,7 +275,7 @@ export function usePdfEngine(): UsePdfEngine {
   );
 
   // -------------------------------------------------------------------------
-  // Action runner: re-entry guard + delayed progress overlay + error capture.
+  // Action runner: re-entry guard + delayed progress state + error capture.
   // -------------------------------------------------------------------------
   const run = useCallback(
     async <T,>(
@@ -209,7 +284,7 @@ export function usePdfEngine(): UsePdfEngine {
       if (runningRef.current) return null;
       runningRef.current = true;
       // Flip acting immediately so the UI disables now, not at the 300 ms
-      // overlay mark; otherwise a second click in that window is dropped
+      // progress mark; otherwise a second click in that window is dropped
       // silently by the guard above.
       setActing(true);
       setError(null);
@@ -242,73 +317,148 @@ export function usePdfEngine(): UsePdfEngine {
   }, []);
 
   /** Editing after a build invalidates the held output and its report. */
-  const dropHeldBuild = useCallback(
-    async (engine: PdfEngineClient) => {
-      setLastBuild(null);
-      if (!heldOutputRef.current) return;
-      heldOutputRef.current = false;
-      await engine.discardOutput().catch(() => {});
-    },
-    [],
-  );
+  const dropHeldBuild = useCallback(async (engine: PdfEngineClient) => {
+    setLastBuild(null);
+    if (!heldOutputRef.current) return;
+    heldOutputRef.current = false;
+    await engine.discardOutput().catch(() => {});
+  }, []);
 
   // -------------------------------------------------------------------------
   // Actions
   // -------------------------------------------------------------------------
   const loadFiles = useCallback(
-    async (files: File[]) => {
-      if (files.length === 0) return;
-      await run(async (engine) => {
+    async (files: File[]): Promise<MutationResult | null> => {
+      if (files.length === 0) return null;
+      return run(async (engine) => {
+        const previous = modelRef.current ?? EMPTY_MODEL;
         await dropHeldBuild(engine);
         const source = new LocalFileSource(files);
         const items = await source.list();
         const inputs = await Promise.all(items.map((i) => source.fetch(i)));
         const result = await engine.loadDocuments(inputs, onProgress);
         setDocuments((prev) => [...prev, ...result.documents]);
-        applyModel(result.model);
+        adoptModel(result.model);
+        // The worker only throws when EVERY input fails; a corrupt file among
+        // several is silently dropped into worker-side warnings. Name the
+        // files that did not come back so a submission package is never
+        // silently incomplete.
+        if (result.documents.length < inputs.length) {
+          const missing = missingInputNames(
+            inputs.map((i) => i.name),
+            result.documents.map((d) => d.name),
+          );
+          setError(
+            `Could not load: ${missing.join(", ")}. The other files were added.`,
+          );
+        }
+        return { previous, next: result.model };
       });
     },
-    [run, dropHeldBuild, onProgress, applyModel],
+    [run, dropHeldBuild, onProgress, adoptModel],
   );
 
   const reorder = useCallback(
-    async (orderedPageIds: readonly PageId[]) => {
-      await run(async (engine) => {
+    (orderedPageIds: readonly PageId[]) =>
+      run(async (engine): Promise<MutationResult | null> => {
+        const previous = modelRef.current;
+        if (!previous) return null;
         await dropHeldBuild(engine);
-        applyModel(await engine.reorder(orderedPageIds));
-      });
-    },
-    [run, dropHeldBuild, applyModel],
-  );
-
-  const rotateBy90 = useCallback(
-    async (pageId: PageId) => {
-      await run(async (engine) => {
-        const page = modelRef.current?.pages.find((p) => p.id === pageId);
-        if (!page) return;
-        const next = ((page.rotation + 90) % 360) as Rotation;
-        await dropHeldBuild(engine);
-        const nextModel = await engine.rotate(pageId, next);
-        invalidateThumbnail(pageId);
-        applyModel(nextModel);
-      });
-    },
-    [run, dropHeldBuild, invalidateThumbnail, applyModel],
+        const next = await engine.reorder(orderedPageIds);
+        adoptModel(next);
+        return { previous, next };
+      }).then((r) => r ?? null),
+    [run, dropHeldBuild, adoptModel],
   );
 
   const deletePages = useCallback(
-    async (pageIds: readonly PageId[]) => {
-      if (pageIds.length === 0) return;
-      await run(async (engine) => {
-        await dropHeldBuild(engine);
-        applyModel(await engine.deletePages(pageIds));
-      });
+    async (pageIds: readonly PageId[]): Promise<MutationResult | null> => {
+      if (pageIds.length === 0) return null;
+      const result = await run(
+        async (engine): Promise<MutationResult | null> => {
+          const previous = modelRef.current;
+          if (!previous) return null;
+          await dropHeldBuild(engine);
+          const next = await engine.deletePages(pageIds);
+          adoptModel(next);
+          return { previous, next };
+        },
+      );
+      return result ?? null;
     },
-    [run, dropHeldBuild, applyModel],
+    [run, dropHeldBuild, adoptModel],
+  );
+
+  const applyModel = useCallback(
+    (pages: readonly PageRef[]) =>
+      run(async (engine): Promise<MutationResult | null> => {
+        const previous = modelRef.current;
+        if (!previous) return null;
+        await dropHeldBuild(engine);
+        const next = await engine.applyModel(pages);
+        // Invalidate thumbnails whose rotation changed under them.
+        const prevRotation = new Map(
+          previous.pages.map((p) => [p.id, p.rotation]),
+        );
+        for (const page of next.pages) {
+          const before = prevRotation.get(page.id);
+          if (before !== undefined && before !== page.rotation) {
+            invalidateThumbnail(page.id);
+          }
+        }
+        adoptModel(next);
+        return { previous, next };
+      }).then((r) => r ?? null),
+    [run, dropHeldBuild, invalidateThumbnail, adoptModel],
+  );
+
+  // Quiet path for the canvas: no run() mutex and no progress UI, but bounded
+  // like the thumbnail queue. Unbounded, a fast scroll through a large
+  // package posts one uncancellable raster per page crossed and the next
+  // user action queues behind all of them in the single-threaded worker.
+  // Aborted (scrolled-past) or deleted pages are skipped at pump time so
+  // they never reach the worker.
+  const pumpPreviews = useCallback(() => {
+    const pump = (): void => {
+      while (previewInFlightRef.current < PREVIEW_CONCURRENCY) {
+        const job = previewQueueRef.current.shift();
+        if (!job) return;
+        if (
+          job.signal?.aborted ||
+          !modelRef.current?.pages.some((p) => p.id === job.pageId)
+        ) {
+          job.resolve(null);
+          continue;
+        }
+        previewInFlightRef.current += 1;
+        getEngine()
+          .renderPreview(job.pageId, job.maxEdgePx)
+          .then((thumb) => job.resolve(job.signal?.aborted ? null : thumb))
+          .catch(() => job.resolve(null))
+          .finally(() => {
+            previewInFlightRef.current -= 1;
+            pump();
+          });
+      }
+    };
+    pump();
+  }, [getEngine]);
+
+  const renderPreview = useCallback(
+    (
+      pageId: PageId,
+      maxEdgePx: number,
+      signal?: AbortSignal,
+    ): Promise<Thumbnail | null> =>
+      new Promise((resolve) => {
+        previewQueueRef.current.push({ pageId, maxEdgePx, signal, resolve });
+        pumpPreviews();
+      }),
+    [pumpPreviews],
   );
 
   // Background/advisory, so it bypasses run(): it must never block user
-  // actions, pop the overlay, or be dropped by the mutex (the worker
+  // actions, pop progress UI, or be dropped by the mutex (the worker
   // serializes calls anyway). Latest-wins: a superseded result returns null.
   const preflight = useCallback(
     async (options: BuildOptions): Promise<CompressionPreflight | null> => {
@@ -371,6 +521,34 @@ export function usePdfEngine(): UsePdfEngine {
     await engineRef.current?.discardOutput().catch(() => {});
   }, []);
 
+  const exportRange = useCallback(
+    (pages: readonly PageRef[], fileName: string) =>
+      run(async (engine): Promise<boolean | null> => {
+        const snapshot = modelRef.current;
+        if (!snapshot || pages.length === 0) return null;
+        await dropHeldBuild(engine);
+        await engine.applyModel(pages);
+        try {
+          await engine.build(
+            { compression: { targetBytes: null } },
+            onProgress,
+          );
+          const out = await engine.takeOutput();
+          await new LocalDownloadSink().save({
+            name: fileName,
+            bytes: out.bytes,
+          });
+          return true;
+        } finally {
+          // Restore the full session no matter what failed above; also drop
+          // any half-built output so nothing stays held.
+          await engine.discardOutput().catch(() => {});
+          adoptModel(await engine.applyModel(snapshot.pages));
+        }
+      }),
+    [run, dropHeldBuild, onProgress, adoptModel],
+  );
+
   const resetAll = useCallback(async () => {
     if (runningRef.current) return;
     runningRef.current = true;
@@ -386,11 +564,15 @@ export function usePdfEngine(): UsePdfEngine {
       runningRef.current = false;
     }
     heldOutputRef.current = false;
+    for (const job of previewQueueRef.current) job.resolve(null);
+    previewQueueRef.current = [];
     queueRef.current = [];
     queuedRef.current.clear();
     thumbGenRef.current.clear();
     inFlightRef.current = 0;
-    for (const url of thumbsRef.current.values()) URL.revokeObjectURL(url);
+    for (const thumb of thumbsRef.current.values()) {
+      URL.revokeObjectURL(thumb.url);
+    }
     thumbsRef.current.clear();
     modelRef.current = null;
     setDocuments([]);
@@ -408,7 +590,7 @@ export function usePdfEngine(): UsePdfEngine {
     return () => {
       engineRef.current?.terminate();
       engineRef.current = null;
-      for (const url of thumbs.values()) URL.revokeObjectURL(url);
+      for (const thumb of thumbs.values()) URL.revokeObjectURL(thumb.url);
       thumbs.clear();
     };
   }, []);
@@ -429,13 +611,15 @@ export function usePdfEngine(): UsePdfEngine {
     lastBuild,
     loadFiles,
     reorder,
-    rotateBy90,
     deletePages,
+    applyModel,
+    renderPreview,
     preflight,
     build,
     renderComparison,
     takeOutput,
     discardOutput,
+    exportRange,
     resetAll,
   };
 }
