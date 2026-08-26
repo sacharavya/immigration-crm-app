@@ -333,14 +333,30 @@ function EditorBody({
   // -------------------------------------------------------------------------
   // Export flow
   // -------------------------------------------------------------------------
+  // Hard stop before delivering an over-target file: floors can make the
+  // target genuinely unreachable, but shipping an over-limit package to a
+  // portal must be an explicit decision, never a silent default.
+  const confirmOverTarget = useCallback((): boolean => {
+    const c = pdf.lastBuild?.compression;
+    if (!c || c.reachedTarget) return true;
+    const mb = (n: number) => (n / 1_000_000).toFixed(2);
+    const target = compressTarget;
+    return window.confirm(
+      `This file is ${mb(c.outputBytes)} MB${
+        target ? `, over the ${mb(target)} MB target` : ""
+      }. The portal may reject it. Consider splitting the package (Split tool). Export anyway?`,
+    );
+  }, [pdf.lastBuild, compressTarget]);
+
   const saveOutput = useCallback(async () => {
+    if (!confirmOverTarget()) return;
     const out = await pdf.takeOutput();
     if (!out) return;
     const base = state.title.trim() || "Submission_Package";
     const name = base.toLowerCase().endsWith(".pdf") ? base : `${base}.pdf`;
     await new LocalDownloadSink().save({ name, bytes: out.bytes });
     setGatePassed(false);
-  }, [pdf, state.title]);
+  }, [pdf, state.title, confirmOverTarget]);
 
   const handleDownload = useCallback(async () => {
     if (!pdf.model || pdf.model.pages.length === 0) return;
@@ -352,7 +368,7 @@ function EditorBody({
     setExporting(true);
     try {
       const options: BuildOptions = {
-        compression: { targetBytes: compressTargetRef.current },
+        compression: { targetBytes: compressTarget },
       };
       if (state.pageNumbers) options.pageNumbers = state.pageNumbers;
       const report = await pdf.build(options);
@@ -366,7 +382,7 @@ function EditorBody({
     } finally {
       setExporting(false);
     }
-  }, [pdf, gatePassed, state.pageNumbers, saveOutput]);
+  }, [pdf, gatePassed, state.pageNumbers, saveOutput, compressTarget]);
 
   // Save-to-OneDrive: same pipeline as download, different sink. The bytes
   // are PUT directly to Microsoft via a pre-authenticated upload session.
@@ -377,7 +393,7 @@ function EditorBody({
   // Last compression target staff chose; fresh export builds re-apply it so
   // "compress, download, then save" cannot silently produce an uncompressed
   // file (review finding). Sticky for the session.
-  const compressTargetRef = useRef<number | null>(null);
+  const [compressTarget, setCompressTarget] = useState<number | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   /** Name chosen by the exporter in the save dialog; survives the gate. */
   const [driveFileName, setDriveFileName] = useState("");
@@ -388,6 +404,7 @@ function EditorBody({
     // re-use those exact bytes. Otherwise take the held build.
     let payload = pendingUpload;
     if (!payload) {
+      if (!confirmOverTarget()) return;
       const out = await pdf.takeOutput();
       if (!out) return;
       const base =
@@ -421,7 +438,7 @@ function EditorBody({
     } finally {
       setSavingToDrive(false);
     }
-  }, [caseId, createFinalUpload, pdf, state.title, driveFileName, pendingUpload]);
+  }, [caseId, createFinalUpload, pdf, state.title, driveFileName, pendingUpload, confirmOverTarget]);
 
   const handleSaveToOneDrive = useCallback(async (nameOverride?: string) => {
     if (!pdf.model || pdf.model.pages.length === 0) return;
@@ -432,7 +449,7 @@ function EditorBody({
     setExporting(true);
     try {
       const options: BuildOptions = {
-        compression: { targetBytes: compressTargetRef.current },
+        compression: { targetBytes: compressTarget },
       };
       if (state.pageNumbers) options.pageNumbers = state.pageNumbers;
       const report = await pdf.build(options);
@@ -446,11 +463,11 @@ function EditorBody({
     } finally {
       setExporting(false);
     }
-  }, [pdf, gatePassed, state.pageNumbers, saveToOneDrive, pendingUpload]);
+  }, [pdf, gatePassed, state.pageNumbers, saveToOneDrive, pendingUpload, compressTarget]);
 
   const handleCompress = useCallback(
     async (targetBytes: number) => {
-      compressTargetRef.current = targetBytes;
+      setCompressTarget(targetBytes);
       setGatePassed(false);
       setExporting(true);
       try {

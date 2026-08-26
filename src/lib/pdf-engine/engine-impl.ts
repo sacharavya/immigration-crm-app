@@ -301,9 +301,10 @@ export class PdfEngineImpl implements PdfEngine {
       rotation: ref.rotation,
     }));
 
-    let doc = await mergePages(items, (completed, total) =>
+    const merged = await mergePages(items, (completed, total) =>
       onProgress?.({ taskId, phase: "merging", completed, total }),
     );
+    let doc = merged;
 
     let compression: CompressionResult | null = null;
     if (options.compression) {
@@ -318,18 +319,65 @@ export class PdfEngineImpl implements PdfEngine {
           return { jpeg: r.data, widthPx: r.width, heightPx: r.height };
         },
       };
-      const out = await compressToTarget({
+      const requestedTarget = options.compression.targetBytes;
+      let effectiveTarget = requestedTarget;
+      let out = await compressToTarget({
         doc,
         pageIds: this.model.pages.map((p) => p.id),
-        request: options.compression,
+        request: { ...options.compression, targetBytes: effectiveTarget },
         rasterizer,
         onProgress: (completed, total, note) =>
           onProgress?.({ taskId, phase: "compressing", completed, total, note }),
       });
       doc = out.doc;
       compression = out.result;
+
+      // Corrective pass: finishing (numbers, metadata, packaging) adds bytes
+      // on top of what the compression stage measured. If that overhead
+      // pushes a stage-reached build over the REQUESTED target, re-compress
+      // the merged source against a tightened target so the ceiling is
+      // enforced on the delivered file, not just the intermediate one.
+      if (requestedTarget !== null && compression.reachedTarget) {
+        const finished = await this.finishDocument(doc, options, taskId, onProgress);
+        if (finished.bytes.length <= requestedTarget) {
+          return this.assembleReport(finished, compression, options, taskId, onProgress);
+        }
+        const overhead = finished.bytes.length - compression.outputBytes;
+        effectiveTarget = Math.max(
+          Math.floor(requestedTarget * 0.5),
+          requestedTarget - overhead - Math.ceil(requestedTarget * 0.01),
+        );
+        onProgress?.({
+          taskId,
+          phase: "compressing",
+          completed: 0,
+          total: 1,
+          note: "Finishing overhead pushed the file over target - recompressing",
+        });
+        out = await compressToTarget({
+          doc: merged,
+          pageIds: this.model.pages.map((p) => p.id),
+          request: { ...options.compression, targetBytes: effectiveTarget },
+          rasterizer,
+          onProgress: (completed, total, note) =>
+            onProgress?.({ taskId, phase: "compressing", completed, total, note }),
+        });
+        doc = out.doc;
+        compression = out.result;
+      }
     }
 
+    const finished = await this.finishDocument(doc, options, taskId, onProgress);
+    return this.assembleReport(finished, compression, options, taskId, onProgress);
+  }
+
+  /** Numbering, metadata, and the final packaging save. */
+  private async finishDocument(
+    doc: PDFDocument,
+    options: BuildOptions,
+    taskId: string,
+    onProgress?: ProgressCallback,
+  ): Promise<{ doc: PDFDocument; bytes: Uint8Array }> {
     // Numbering runs AFTER compression: stamping embeds a font into every
     // page's Resources, which analyzePage reads as selectable text and would
     // skip every page. Numbers drawn on recompressed pages stay vector.
@@ -346,6 +394,22 @@ export class PdfEngineImpl implements PdfEngine {
     onProgress?.({ taskId, phase: "finalizing", completed: 0, total: 1 });
     const bytes = await doc.save({ useObjectStreams: true });
     onProgress?.({ taskId, phase: "finalizing", completed: 1, total: 1 });
+    return { doc, bytes };
+  }
+
+  /** Re-anchor the verdict to the delivered bytes, hold them for the gate,
+   *  and produce the report. */
+  private assembleReport(
+    finished: { doc: PDFDocument; bytes: Uint8Array },
+    compressionIn: CompressionResult | null,
+    options: BuildOptions,
+    taskId: string,
+    onProgress?: ProgressCallback,
+  ): BuildReport {
+    void taskId;
+    void onProgress;
+    const bytes = finished.bytes;
+    let compression = compressionIn;
 
     // The compression stage measured its own plain save; THESE bytes (object
     // streams, page numbers, metadata) are what staff upload. Re-anchor the
