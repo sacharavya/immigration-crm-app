@@ -30,8 +30,11 @@ export function SidebarFrame({
   const [width, setWidth] = useState(240);
   const [filesHeight, setFilesHeight] = useState(320);
   useEffect(() => {
-    setWidth(readStored(WIDTH_KEY, 240));
-    setFilesHeight(readStored(SPLIT_KEY, 320));
+    // Deferred: setState directly in an effect body triggers cascading renders.
+    queueMicrotask(() => {
+      setWidth(readStored(WIDTH_KEY, 240));
+      setFilesHeight(readStored(SPLIT_KEY, 320));
+    });
   }, []);
   const frameRef = useRef<HTMLDivElement>(null);
 

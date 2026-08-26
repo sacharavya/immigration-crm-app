@@ -113,13 +113,14 @@ export function CanvasPage({
   // package would otherwise pin hundreds of MB of PNG blobs after one full
   // scroll (review finding). The aspect ratio is remembered below so the
   // placeholder keeps the correct size and re-entry re-renders seamlessly.
-  const lastAspectRef = useRef<number | null>(null);
+  const [aspectHint, setAspectHint] = useState<number | null>(null);
   useEffect(() => {
     if (visible || !rasterRef.current) return;
-    lastAspectRef.current =
+    setAspectHint(
       rasterRef.current.width > 0
         ? rasterRef.current.height / rasterRef.current.width
-        : null;
+        : null,
+    );
     URL.revokeObjectURL(rasterRef.current.url);
     rasterRef.current = null;
     setRaster(null);
@@ -139,7 +140,7 @@ export function CanvasPage({
   const aspect =
     raster && raster.width > 0
       ? raster.height / raster.width
-      : (lastAspectRef.current ?? thumbAspect ?? DEFAULT_ASPECT);
+      : (aspectHint ?? thumbAspect ?? DEFAULT_ASPECT);
   const width = Math.round(DISPLAY_BASE_WIDTH_PX * zoom);
   const height = Math.round(width * aspect);
 

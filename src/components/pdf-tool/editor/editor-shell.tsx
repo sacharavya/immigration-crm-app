@@ -143,6 +143,12 @@ function EditorBody({
   >("download");
   /** Whether the held build cleared (or never needed) the verification gate. */
   const [gatePassed, setGatePassed] = useState(false);
+  // A verified build whose upload failed: kept so retry re-uploads the SAME
+  // bytes instead of forcing a rebuild + re-verification (review finding).
+  const [pendingUpload, setPendingUpload] = useState<{
+    bytes: Uint8Array;
+    name: string;
+  } | null>(null);
 
   // Builds bake state.pageNumbers into the output, but the engine hook only
   // invalidates the held build on MODEL mutations. Changing page-number
@@ -168,7 +174,7 @@ function EditorBody({
     (result: MutationResult | null) => {
       if (!result) return;
       // Model changed: a kept-for-retry upload payload no longer matches.
-      pendingUploadRef.current = null;
+      setPendingUpload(null);
       setVerifyOpen(false);
       dispatch({ type: "history/push", model: result.previous });
       dispatch({
@@ -181,7 +187,7 @@ function EditorBody({
 
   const handleFiles = useCallback(
     async (files: File[]) => {
-      pendingUploadRef.current = null;
+      // commit() clears any kept-for-retry payload.
       commit(await pdf.loadFiles(files));
     },
     [commit, pdf],
@@ -368,11 +374,6 @@ function EditorBody({
   const [savedUrl, setSavedUrl] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  // A verified build whose upload failed: kept so retry re-uploads the SAME
-  // bytes instead of forcing a rebuild + re-verification (review finding).
-  const pendingUploadRef = useRef<{ bytes: Uint8Array; name: string } | null>(
-    null,
-  );
   // Last compression target staff chose; fresh export builds re-apply it so
   // "compress, download, then save" cannot silently produce an uncompressed
   // file (review finding). Sticky for the session.
@@ -385,7 +386,7 @@ function EditorBody({
     if (!caseId || !createFinalUpload) return;
     // Retry path: a previous upload failed after the build was consumed;
     // re-use those exact bytes. Otherwise take the held build.
-    let payload = pendingUploadRef.current;
+    let payload = pendingUpload;
     if (!payload) {
       const out = await pdf.takeOutput();
       if (!out) return;
@@ -396,10 +397,9 @@ function EditorBody({
       const name = base.toLowerCase().endsWith(".pdf") ? base : `${base}.pdf`;
       payload = { bytes: out.bytes, name };
     } else if (nameOverride?.trim()) {
-      payload = { ...payload, name: nameOverride.trim() };
-      if (!payload.name.toLowerCase().endsWith(".pdf")) {
-        payload.name = `${payload.name}.pdf`;
-      }
+      let renamed = nameOverride.trim();
+      if (!renamed.toLowerCase().endsWith(".pdf")) renamed = `${renamed}.pdf`;
+      payload = { bytes: payload.bytes, name: renamed };
     }
     setSavingToDrive(true);
     setSaveError(null);
@@ -408,12 +408,12 @@ function EditorBody({
       const session = await createFinalUpload(caseId, payload.name);
       if ("error" in session) throw new Error(session.error);
       const item = await uploadToGraphSession(session.uploadUrl, payload.bytes);
-      pendingUploadRef.current = null;
+      setPendingUpload(null);
       setSavedUrl(item.webUrl);
       setSaveSuccess(true);
     } catch (err) {
       // Keep the bytes for a retry; the button re-uploads without rebuilding.
-      pendingUploadRef.current = payload;
+      setPendingUpload(payload);
       setSaveSuccess(false);
       setSaveError(
         `${err instanceof Error ? err.message : "OneDrive upload failed."} The built file is kept - click Save to OneDrive to retry.`,
@@ -421,11 +421,11 @@ function EditorBody({
     } finally {
       setSavingToDrive(false);
     }
-  }, [caseId, createFinalUpload, pdf, state.title, driveFileName]);
+  }, [caseId, createFinalUpload, pdf, state.title, driveFileName, pendingUpload]);
 
   const handleSaveToOneDrive = useCallback(async (nameOverride?: string) => {
     if (!pdf.model || pdf.model.pages.length === 0) return;
-    if (pendingUploadRef.current || (pdf.lastBuild && gatePassed)) {
+    if (pendingUpload || (pdf.lastBuild && gatePassed)) {
       await saveToOneDrive(nameOverride);
       return;
     }
@@ -446,7 +446,7 @@ function EditorBody({
     } finally {
       setExporting(false);
     }
-  }, [pdf, gatePassed, state.pageNumbers, saveToOneDrive]);
+  }, [pdf, gatePassed, state.pageNumbers, saveToOneDrive, pendingUpload]);
 
   const handleCompress = useCallback(
     async (targetBytes: number) => {
