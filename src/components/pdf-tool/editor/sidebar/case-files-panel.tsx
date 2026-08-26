@@ -297,12 +297,26 @@ function FileNode({
   const addable = item.mime !== null && ADDABLE.has(item.mime);
   return (
     <li
-      className="group flex items-center gap-1.5 rounded px-2 py-1 text-sm hover:bg-stone-50"
+      className="group flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-stone-50"
       style={{ paddingLeft: `${24 + depth * 14}px` }}
     >
-      <FileText
-        className={`h-4 w-4 shrink-0 ${addable ? "text-stone-500" : "text-stone-300"}`}
-      />
+      {item.thumbnailUrl ? (
+        // Pre-authenticated Microsoft thumbnail; short-lived URL fetched by
+        // the browser directly. next/image cannot optimize these, hence img.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.thumbnailUrl}
+          alt=""
+          loading="lazy"
+          className={`h-10 w-8 shrink-0 rounded border border-stone-200 bg-white object-cover ${addable ? "" : "opacity-50"}`}
+        />
+      ) : (
+        <span
+          className={`flex h-10 w-8 shrink-0 items-center justify-center rounded border border-stone-200 bg-stone-50 ${addable ? "text-stone-400" : "text-stone-300"}`}
+        >
+          <FileText className="h-4 w-4" />
+        </span>
+      )}
       <span
         className={`min-w-0 flex-1 truncate ${addable ? "text-stone-700" : "text-stone-400"}`}
         title={item.name}

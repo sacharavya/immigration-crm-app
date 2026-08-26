@@ -61,6 +61,9 @@ export interface CaseDriveItem {
   mime: string | null;
   sizeBytes: number;
   childCount: number;
+  /** Pre-authenticated Microsoft thumbnail URL (short-lived); null when
+   *  Graph has not generated one. Loaded browser-to-Microsoft directly. */
+  thumbnailUrl: string | null;
 }
 
 type GraphChild = {
@@ -70,6 +73,10 @@ type GraphChild = {
   file?: { mimeType?: string };
   folder?: { childCount?: number };
   parentReference?: { path?: string; driveId?: string };
+  thumbnails?: Array<{
+    small?: { url?: string };
+    medium?: { url?: string };
+  }>;
 };
 
 async function caseFolderContext(
@@ -139,7 +146,7 @@ export async function listCaseFolderChildren(
       }
     }
     const res = await graphFetch<{ value: GraphChild[] }>(
-      `/drives/${ctx.driveId}/items/${targetId}/children?$select=id,name,size,file,folder&$top=200`,
+      `/drives/${ctx.driveId}/items/${targetId}/children?$select=id,name,size,file,folder&$expand=thumbnails($select=small,medium)&$top=200`,
     );
     const items: CaseDriveItem[] = (res.value ?? [])
       .map((c) => ({
@@ -149,6 +156,8 @@ export async function listCaseFolderChildren(
         mime: c.file?.mimeType ?? null,
         sizeBytes: Number(c.size ?? 0),
         childCount: c.folder?.childCount ?? 0,
+        thumbnailUrl:
+          c.thumbnails?.[0]?.medium?.url ?? c.thumbnails?.[0]?.small?.url ?? null,
       }))
       .sort((a, b) =>
         a.kind !== b.kind
