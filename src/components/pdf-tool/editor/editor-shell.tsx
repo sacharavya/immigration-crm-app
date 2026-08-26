@@ -167,6 +167,8 @@ function EditorBody({
   const commit = useCallback(
     (result: MutationResult | null) => {
       if (!result) return;
+      // Model changed: a kept-for-retry upload payload no longer matches.
+      pendingUploadRef.current = null;
       setVerifyOpen(false);
       dispatch({ type: "history/push", model: result.previous });
       dispatch({
@@ -179,6 +181,7 @@ function EditorBody({
 
   const handleFiles = useCallback(
     async (files: File[]) => {
+      pendingUploadRef.current = null;
       commit(await pdf.loadFiles(files));
     },
     [commit, pdf],
@@ -342,7 +345,9 @@ function EditorBody({
     }
     setExporting(true);
     try {
-      const options: BuildOptions = { compression: { targetBytes: null } };
+      const options: BuildOptions = {
+        compression: { targetBytes: compressTargetRef.current },
+      };
       if (state.pageNumbers) options.pageNumbers = state.pageNumbers;
       const report = await pdf.build(options);
       if (!report) return;
@@ -361,31 +366,57 @@ function EditorBody({
   // are PUT directly to Microsoft via a pre-authenticated upload session.
   const [savingToDrive, setSavingToDrive] = useState(false);
   const [savedUrl, setSavedUrl] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // A verified build whose upload failed: kept so retry re-uploads the SAME
+  // bytes instead of forcing a rebuild + re-verification (review finding).
+  const pendingUploadRef = useRef<{ bytes: Uint8Array; name: string } | null>(
+    null,
+  );
+  // Last compression target staff chose; fresh export builds re-apply it so
+  // "compress, download, then save" cannot silently produce an uncompressed
+  // file (review finding). Sticky for the session.
+  const compressTargetRef = useRef<number | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   /** Name chosen by the exporter in the save dialog; survives the gate. */
   const [driveFileName, setDriveFileName] = useState("");
 
   const saveToOneDrive = useCallback(async (nameOverride?: string) => {
     if (!caseId || !createFinalUpload) return;
-    const out = await pdf.takeOutput();
-    if (!out) return;
-    setSavingToDrive(true);
-    setSaveError(null);
-    try {
+    // Retry path: a previous upload failed after the build was consumed;
+    // re-use those exact bytes. Otherwise take the held build.
+    let payload = pendingUploadRef.current;
+    if (!payload) {
+      const out = await pdf.takeOutput();
+      if (!out) return;
       const base =
         (nameOverride ?? driveFileName).trim() ||
         state.title.trim() ||
         "Submission_Package";
       const name = base.toLowerCase().endsWith(".pdf") ? base : `${base}.pdf`;
-      const session = await createFinalUpload(caseId, name);
+      payload = { bytes: out.bytes, name };
+    } else if (nameOverride?.trim()) {
+      payload = { ...payload, name: nameOverride.trim() };
+      if (!payload.name.toLowerCase().endsWith(".pdf")) {
+        payload.name = `${payload.name}.pdf`;
+      }
+    }
+    setSavingToDrive(true);
+    setSaveError(null);
+    setGatePassed(false);
+    try {
+      const session = await createFinalUpload(caseId, payload.name);
       if ("error" in session) throw new Error(session.error);
-      const item = await uploadToGraphSession(session.uploadUrl, out.bytes);
+      const item = await uploadToGraphSession(session.uploadUrl, payload.bytes);
+      pendingUploadRef.current = null;
       setSavedUrl(item.webUrl);
-      setGatePassed(false);
+      setSaveSuccess(true);
     } catch (err) {
+      // Keep the bytes for a retry; the button re-uploads without rebuilding.
+      pendingUploadRef.current = payload;
+      setSaveSuccess(false);
       setSaveError(
-        err instanceof Error ? err.message : "OneDrive upload failed.",
+        `${err instanceof Error ? err.message : "OneDrive upload failed."} The built file is kept - click Save to OneDrive to retry.`,
       );
     } finally {
       setSavingToDrive(false);
@@ -394,13 +425,15 @@ function EditorBody({
 
   const handleSaveToOneDrive = useCallback(async (nameOverride?: string) => {
     if (!pdf.model || pdf.model.pages.length === 0) return;
-    if (pdf.lastBuild && gatePassed) {
+    if (pendingUploadRef.current || (pdf.lastBuild && gatePassed)) {
       await saveToOneDrive(nameOverride);
       return;
     }
     setExporting(true);
     try {
-      const options: BuildOptions = { compression: { targetBytes: null } };
+      const options: BuildOptions = {
+        compression: { targetBytes: compressTargetRef.current },
+      };
       if (state.pageNumbers) options.pageNumbers = state.pageNumbers;
       const report = await pdf.build(options);
       if (!report) return;
@@ -417,6 +450,7 @@ function EditorBody({
 
   const handleCompress = useCallback(
     async (targetBytes: number) => {
+      compressTargetRef.current = targetBytes;
       setGatePassed(false);
       setExporting(true);
       try {
@@ -546,7 +580,7 @@ function EditorBody({
           {saveError}
         </p>
       )}
-      {savedUrl !== null && !saveError && (
+      {saveSuccess && !saveError && (
         <p className="flex items-center justify-between gap-3 border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900">
           <span>
             Saved to the case&apos;s Final folder in OneDrive.
@@ -566,7 +600,10 @@ function EditorBody({
           </span>
           <button
             type="button"
-            onClick={() => setSavedUrl(null)}
+            onClick={() => {
+              setSaveSuccess(false);
+              setSavedUrl(null);
+            }}
             className="text-xs text-emerald-700 hover:underline"
           >
             Dismiss
@@ -586,7 +623,7 @@ function EditorBody({
                     listChildren={listCaseFolder}
                     getFileUrl={getDriveFileUrl}
                     onAddFiles={async (files) => {
-                      await pdf.loadFiles(files);
+                      await handleFiles(files);
                     }}
                     activeFileNames={activeFileNames}
                     disabled={pdf.acting}

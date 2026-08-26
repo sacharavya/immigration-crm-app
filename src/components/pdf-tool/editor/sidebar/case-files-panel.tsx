@@ -45,6 +45,12 @@ export function CaseFilesPanel({
   disabled,
 }: CaseFilesPanelProps) {
   const [root, setRoot] = useState<CaseDriveItem[] | null>(null);
+  // Item ids added THIS session; combined with the live model names so a
+  // different file that happens to share a name is never blocked, and a
+  // deleted file's tile reverts to Add.
+  const [locallyAdded, setLocallyAdded] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
   const [rootError, setRootError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
@@ -74,6 +80,7 @@ export function CaseFilesPanel({
       const buf = await resp.arrayBuffer();
       const mime = item.mime === "image/jpg" ? "image/jpeg" : (item.mime ?? "");
       await onAddFiles([new File([buf], item.name, { type: mime })]);
+      setLocallyAdded((prev) => new Set(prev).add(item.id));
     } catch (err) {
       setAddError(
         `Could not add "${item.name}": ${err instanceof Error ? err.message : "unknown error"}`,
@@ -105,6 +112,7 @@ export function CaseFilesPanel({
               depth={0}
               listChildren={listChildren}
               activeFileNames={activeFileNames}
+              locallyAdded={locallyAdded}
               pendingId={pendingId}
               disabled={disabled}
               onAdd={(item) => void addFile(item)}
@@ -125,6 +133,7 @@ function TreeLevel({
   depth,
   listChildren,
   activeFileNames,
+  locallyAdded,
   pendingId,
   disabled,
   onAdd,
@@ -134,6 +143,7 @@ function TreeLevel({
   depth: number;
   listChildren: CaseFilesPanelProps["listChildren"];
   activeFileNames: ReadonlySet<string>;
+  locallyAdded: ReadonlySet<string>;
   pendingId: string | null;
   disabled: boolean;
   onAdd: (item: CaseDriveItem) => void;
@@ -149,6 +159,7 @@ function TreeLevel({
             depth={depth}
             listChildren={listChildren}
             activeFileNames={activeFileNames}
+            locallyAdded={locallyAdded}
             pendingId={pendingId}
             disabled={disabled}
             onAdd={onAdd}
@@ -158,7 +169,7 @@ function TreeLevel({
             key={item.id}
             item={item}
             depth={depth}
-            added={activeFileNames.has(item.name)}
+            added={locallyAdded.has(item.id) && activeFileNames.has(item.name)}
             pending={pendingId === item.id}
             disabled={disabled || pendingId !== null}
             onAdd={onAdd}
@@ -175,6 +186,7 @@ function FolderNode({
   depth,
   listChildren,
   activeFileNames,
+  locallyAdded,
   pendingId,
   disabled,
   onAdd,
@@ -184,6 +196,7 @@ function FolderNode({
   depth: number;
   listChildren: CaseFilesPanelProps["listChildren"];
   activeFileNames: ReadonlySet<string>;
+  locallyAdded: ReadonlySet<string>;
   pendingId: string | null;
   disabled: boolean;
   onAdd: (item: CaseDriveItem) => void;
@@ -260,6 +273,7 @@ function FolderNode({
               depth={depth + 1}
               listChildren={listChildren}
               activeFileNames={activeFileNames}
+              locallyAdded={locallyAdded}
               pendingId={pendingId}
               disabled={disabled}
               onAdd={onAdd}
@@ -287,13 +301,16 @@ function FileNode({
   onAdd: (item: CaseDriveItem) => void;
 }) {
   const addable = item.mime !== null && ADDABLE.has(item.mime);
+  // Graph thumbnail URLs expire after ~1h; fall back to the icon frame
+  // instead of a broken image in long sessions.
+  const [thumbFailed, setThumbFailed] = useState(false);
   return (
     <li
       className="min-w-0 px-2 py-2"
       style={{ paddingLeft: `${8 + depth * 10}px` }}
     >
       <div className="group relative">
-        {item.thumbnailUrl ? (
+        {item.thumbnailUrl && !thumbFailed ? (
           // Pre-authenticated Microsoft thumbnail; short-lived URL fetched by
           // the browser directly. next/image cannot optimize these, hence img.
           // eslint-disable-next-line @next/next/no-img-element

@@ -67,6 +67,10 @@ export interface CaseDriveItem {
   thumbnailUrl: string | null;
 }
 
+// Graph drive item ids are URL-safe tokens; reject anything else before it
+// is interpolated into a request path (hardening, not a known exploit).
+const DRIVE_ITEM_ID_RE = /^[A-Za-z0-9!_.-]{1,256}$/;
+
 type GraphChild = {
   id: string;
   name: string;
@@ -136,6 +140,9 @@ export async function listCaseFolderChildren(
   if ("error" in ctx) return ctx;
 
   const targetId = folderItemId ?? ctx.folderId;
+  if (folderItemId && !DRIVE_ITEM_ID_RE.test(folderItemId)) {
+    return { error: "Invalid folder id" };
+  }
   try {
     if (targetId !== ctx.folderId) {
       const target = await graphFetch<GraphChild>(
@@ -145,10 +152,19 @@ export async function listCaseFolderChildren(
         return { error: "Folder is outside this case." };
       }
     }
-    const res = await graphFetch<{ value: GraphChild[] }>(
-      `/drives/${ctx.driveId}/items/${targetId}/children?$select=id,name,size,file,folder&$expand=thumbnails($select=c480x640,large,medium,small)&$top=200`,
-    );
-    const items: CaseDriveItem[] = (res.value ?? [])
+    // Follow @odata.nextLink so folders past 200 items are not silently
+    // truncated (review finding). Hard cap keeps a pathological folder from
+    // hanging the panel.
+    const all: GraphChild[] = [];
+    let url: string | null =
+      `/drives/${ctx.driveId}/items/${targetId}/children?$select=id,name,size,file,folder&$expand=thumbnails($select=c480x640,large,medium,small)&$top=200`;
+    while (url && all.length < 1000) {
+      const res: { value?: GraphChild[]; "@odata.nextLink"?: string } =
+        await graphFetch(url);
+      all.push(...(res.value ?? []));
+      url = res["@odata.nextLink"] ?? null;
+    }
+    const items: CaseDriveItem[] = all
       .map((c) => ({
         id: c.id,
         name: c.name,
@@ -181,6 +197,7 @@ export async function getCaseDriveFileDownloadUrl(
   caseId: string,
   itemId: string,
 ): Promise<{ url: string } | { error: string }> {
+  if (!DRIVE_ITEM_ID_RE.test(itemId)) return { error: "Invalid file id" };
   const ctx = await caseFolderContext(caseId);
   if ("error" in ctx) return ctx;
   try {

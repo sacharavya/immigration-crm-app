@@ -507,6 +507,9 @@ export function usePdfEngine(): UsePdfEngine {
       run(async (engine) => {
         const out = await engine.takeOutput();
         heldOutputRef.current = false;
+        // The held build is consumed; keeping lastBuild would let export
+        // paths take again and hit "No built output" (review finding).
+        setLastBuild(null);
         return out;
       }),
     [run],
@@ -570,6 +573,7 @@ export function usePdfEngine(): UsePdfEngine {
     queuedRef.current.clear();
     thumbGenRef.current.clear();
     inFlightRef.current = 0;
+    previewInFlightRef.current = 0;
     for (const thumb of thumbsRef.current.values()) {
       URL.revokeObjectURL(thumb.url);
     }

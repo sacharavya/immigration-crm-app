@@ -109,7 +109,23 @@ export function CanvasPage({
     };
   }, [visible, renderKey, settledZoom, page.id, renderPreview]);
 
-  // Revoke the held raster only on unmount.
+  // Evict the raster when the page leaves the viewport: a 250-page scanned
+  // package would otherwise pin hundreds of MB of PNG blobs after one full
+  // scroll (review finding). The aspect ratio is remembered below so the
+  // placeholder keeps the correct size and re-entry re-renders seamlessly.
+  const lastAspectRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (visible || !rasterRef.current) return;
+    lastAspectRef.current =
+      rasterRef.current.width > 0
+        ? rasterRef.current.height / rasterRef.current.width
+        : null;
+    URL.revokeObjectURL(rasterRef.current.url);
+    rasterRef.current = null;
+    setRaster(null);
+  }, [visible]);
+
+  // Revoke the held raster on unmount.
   useEffect(
     () => () => {
       if (rasterRef.current) {
@@ -123,7 +139,7 @@ export function CanvasPage({
   const aspect =
     raster && raster.width > 0
       ? raster.height / raster.width
-      : (thumbAspect ?? DEFAULT_ASPECT);
+      : (lastAspectRef.current ?? thumbAspect ?? DEFAULT_ASPECT);
   const width = Math.round(DISPLAY_BASE_WIDTH_PX * zoom);
   const height = Math.round(width * aspect);
 

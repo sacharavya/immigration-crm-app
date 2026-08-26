@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const WIDTH_KEY = "pdfTool.sidebarWidth";
 const SPLIT_KEY = "pdfTool.sidebarSplit";
@@ -24,10 +24,15 @@ export function SidebarFrame({
   filesPanel?: React.ReactNode;
   rail: React.ReactNode;
 }) {
-  const [width, setWidth] = useState(() => readStored(WIDTH_KEY, 240));
-  const [filesHeight, setFilesHeight] = useState(() =>
-    readStored(SPLIT_KEY, 320),
-  );
+  // Start with the SSR fallbacks and apply stored values after mount:
+  // reading localStorage in the initializer causes a hydration mismatch on
+  // the style attribute (review finding).
+  const [width, setWidth] = useState(240);
+  const [filesHeight, setFilesHeight] = useState(320);
+  useEffect(() => {
+    setWidth(readStored(WIDTH_KEY, 240));
+    setFilesHeight(readStored(SPLIT_KEY, 320));
+  }, []);
   const frameRef = useRef<HTMLDivElement>(null);
 
   const startWidthDrag = useCallback(
@@ -42,9 +47,14 @@ export function SidebarFrame({
         setWidth(next);
       };
       const up = (ev: PointerEvent) => {
-        el.releasePointerCapture(ev.pointerId);
+        try {
+          el.releasePointerCapture(ev.pointerId);
+        } catch {
+          // capture already auto-released (pointercancel)
+        }
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", up);
         setWidth((w) => {
           window.localStorage.setItem(WIDTH_KEY, String(w));
           return w;
@@ -52,6 +62,7 @@ export function SidebarFrame({
       };
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", up);
+      window.addEventListener("pointercancel", up);
     },
     [width],
   );
@@ -72,9 +83,14 @@ export function SidebarFrame({
         setFilesHeight(next);
       };
       const up = (ev: PointerEvent) => {
-        el.releasePointerCapture(ev.pointerId);
+        try {
+          el.releasePointerCapture(ev.pointerId);
+        } catch {
+          // capture already auto-released (pointercancel)
+        }
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", up);
         setFilesHeight((h) => {
           window.localStorage.setItem(SPLIT_KEY, String(h));
           return h;
@@ -82,6 +98,7 @@ export function SidebarFrame({
       };
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", up);
+      window.addEventListener("pointercancel", up);
     },
     [filesHeight],
   );
