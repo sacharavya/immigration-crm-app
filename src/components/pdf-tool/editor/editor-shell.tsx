@@ -46,6 +46,7 @@ import { CompressDialog } from "./tools/compress-dialog";
 import { MergeDialog } from "./tools/merge-dialog";
 import { PageNumbersPopover } from "./tools/page-numbers-popover";
 import { RearrangeView } from "./tools/rearrange-view";
+import { SaveDriveDialog } from "./tools/save-drive-dialog";
 import { SplitDialog } from "./tools/split-dialog";
 import { useEditorKeyboard } from "./use-editor-keyboard";
 
@@ -361,15 +362,21 @@ function EditorBody({
   const [savingToDrive, setSavingToDrive] = useState(false);
   const [savedUrl, setSavedUrl] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  /** Name chosen by the exporter in the save dialog; survives the gate. */
+  const [driveFileName, setDriveFileName] = useState("");
 
-  const saveToOneDrive = useCallback(async () => {
+  const saveToOneDrive = useCallback(async (nameOverride?: string) => {
     if (!caseId || !createFinalUpload) return;
     const out = await pdf.takeOutput();
     if (!out) return;
     setSavingToDrive(true);
     setSaveError(null);
     try {
-      const base = state.title.trim() || "Submission_Package";
+      const base =
+        (nameOverride ?? driveFileName).trim() ||
+        state.title.trim() ||
+        "Submission_Package";
       const name = base.toLowerCase().endsWith(".pdf") ? base : `${base}.pdf`;
       const session = await createFinalUpload(caseId, name);
       if ("error" in session) throw new Error(session.error);
@@ -383,12 +390,12 @@ function EditorBody({
     } finally {
       setSavingToDrive(false);
     }
-  }, [caseId, createFinalUpload, pdf, state.title]);
+  }, [caseId, createFinalUpload, pdf, state.title, driveFileName]);
 
-  const handleSaveToOneDrive = useCallback(async () => {
+  const handleSaveToOneDrive = useCallback(async (nameOverride?: string) => {
     if (!pdf.model || pdf.model.pages.length === 0) return;
     if (pdf.lastBuild && gatePassed) {
-      await saveToOneDrive();
+      await saveToOneDrive(nameOverride);
       return;
     }
     setExporting(true);
@@ -402,7 +409,7 @@ function EditorBody({
         setVerifyOpen(true);
         return;
       }
-      await saveToOneDrive();
+      await saveToOneDrive(nameOverride);
     } finally {
       setExporting(false);
     }
@@ -509,7 +516,10 @@ function EditorBody({
           onDownload={() => void handleDownload()}
           onSaveToOneDrive={
             caseId && createFinalUpload
-              ? () => void handleSaveToOneDrive()
+              ? () => {
+                  setDriveFileName(state.title.trim());
+                  setSaveDialogOpen(true);
+                }
               : undefined
           }
           savingToDrive={savingToDrive}
@@ -625,6 +635,18 @@ function EditorBody({
         onFiles={handleFiles}
         caseDocuments={caseDocuments}
         getDownloadUrl={getDownloadUrl}
+      />
+
+      <SaveDriveDialog
+        open={saveDialogOpen}
+        defaultName={state.title.trim()}
+        saving={savingToDrive}
+        onCancel={() => setSaveDialogOpen(false)}
+        onSave={(fileName) => {
+          setDriveFileName(fileName);
+          setSaveDialogOpen(false);
+          void handleSaveToOneDrive(fileName);
+        }}
       />
 
       <SplitDialog
