@@ -45,3 +45,145 @@ export async function getCaseDocumentDownloadUrl(
     return { error: "Could not reach OneDrive for this document." };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Case folder browsing: the editor sidebar shows the case's REAL OneDrive
+// folder tree (files and folders), not just the files.documents rows. Listing
+// and URL-minting are metadata-only; bytes always flow browser-to-Microsoft.
+// Both actions validate the target lives INSIDE the case's folder so a token
+// for one case can never walk another case's tree.
+// ---------------------------------------------------------------------------
+
+export interface CaseDriveItem {
+  id: string;
+  name: string;
+  kind: "folder" | "file";
+  mime: string | null;
+  sizeBytes: number;
+  childCount: number;
+}
+
+type GraphChild = {
+  id: string;
+  name: string;
+  size?: number;
+  file?: { mimeType?: string };
+  folder?: { childCount?: number };
+  parentReference?: { path?: string; driveId?: string };
+};
+
+async function caseFolderContext(
+  caseId: string,
+): Promise<
+  | { driveId: string; folderId: string; folderPath: string }
+  | { error: string }
+> {
+  if (!z.string().uuid().safeParse(caseId).success) {
+    return { error: "Invalid case id" };
+  }
+  const me = await getStaff();
+  if (!me) return { error: "Not authenticated" };
+
+  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
+  if (!driveId) return { error: "Document library not configured" };
+
+  const supabase = await createClient();
+  const { data: caseRow } = await supabase
+    .schema("crm")
+    .from("cases")
+    .select("id, sharepoint_folder_id")
+    .eq("id", caseId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!caseRow?.sharepoint_folder_id) {
+    return { error: "Case has no OneDrive folder yet." };
+  }
+
+  try {
+    const folder = await graphFetch<GraphChild>(
+      `/drives/${driveId}/items/${caseRow.sharepoint_folder_id}?$select=id,name,parentReference`,
+    );
+    const folderPath = `${folder.parentReference?.path ?? ""}/${folder.name}`;
+    return { driveId, folderId: caseRow.sharepoint_folder_id, folderPath };
+  } catch (err) {
+    console.error("[pdf-tool] case folder lookup failed:", err);
+    return { error: "Could not reach the case folder." };
+  }
+}
+
+/** True when the item sits inside (or is) the case folder. */
+function isInsideCaseFolder(
+  item: GraphChild,
+  ctx: { folderId: string; folderPath: string },
+): boolean {
+  if (item.id === ctx.folderId) return true;
+  const path = item.parentReference?.path ?? "";
+  return path === ctx.folderPath || path.startsWith(`${ctx.folderPath}/`);
+}
+
+export async function listCaseFolderChildren(
+  caseId: string,
+  folderItemId?: string,
+): Promise<{ items: CaseDriveItem[] } | { error: string }> {
+  const ctx = await caseFolderContext(caseId);
+  if ("error" in ctx) return ctx;
+
+  const targetId = folderItemId ?? ctx.folderId;
+  try {
+    if (targetId !== ctx.folderId) {
+      const target = await graphFetch<GraphChild>(
+        `/drives/${ctx.driveId}/items/${targetId}?$select=id,name,parentReference`,
+      );
+      if (!isInsideCaseFolder(target, ctx)) {
+        return { error: "Folder is outside this case." };
+      }
+    }
+    const res = await graphFetch<{ value: GraphChild[] }>(
+      `/drives/${ctx.driveId}/items/${targetId}/children?$select=id,name,size,file,folder&$top=200`,
+    );
+    const items: CaseDriveItem[] = (res.value ?? [])
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        kind: c.folder ? ("folder" as const) : ("file" as const),
+        mime: c.file?.mimeType ?? null,
+        sizeBytes: Number(c.size ?? 0),
+        childCount: c.folder?.childCount ?? 0,
+      }))
+      .sort((a, b) =>
+        a.kind !== b.kind
+          ? a.kind === "folder"
+            ? -1
+            : 1
+          : a.name.localeCompare(b.name),
+      );
+    return { items };
+  } catch (err) {
+    console.error("[pdf-tool] folder listing failed:", err);
+    return { error: "Could not list the folder." };
+  }
+}
+
+export async function getCaseDriveFileDownloadUrl(
+  caseId: string,
+  itemId: string,
+): Promise<{ url: string } | { error: string }> {
+  const ctx = await caseFolderContext(caseId);
+  if ("error" in ctx) return ctx;
+  try {
+    const item = await graphFetch<
+      GraphChild & { "@microsoft.graph.downloadUrl"?: string }
+    >(
+      `/drives/${ctx.driveId}/items/${itemId}?$select=id,name,parentReference,content.downloadUrl`,
+    );
+    if (!isInsideCaseFolder(item, ctx)) {
+      return { error: "File is outside this case." };
+    }
+    const url = item["@microsoft.graph.downloadUrl"];
+    if (!url) return { error: "Microsoft did not return a download URL." };
+    return { url };
+  } catch (err) {
+    console.error("[pdf-tool] drive file url failed:", err);
+    return { error: "Could not reach OneDrive for this file." };
+  }
+}

@@ -5,7 +5,11 @@ import { EditorShell } from "@/components/pdf-tool/editor/editor-shell";
 import { getStaff } from "@/lib/auth/staff";
 import { createClient } from "@/lib/supabase/server";
 
-import { getCaseDocumentDownloadUrl } from "./actions";
+import {
+  getCaseDocumentDownloadUrl,
+  getCaseDriveFileDownloadUrl,
+  listCaseFolderChildren,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +31,8 @@ export default async function PdfToolPage({
   const { case: caseId } = await searchParams;
 
   let caseDocuments: CaseDocumentItem[] = [];
+  let validCaseId: string | undefined;
+  let initialTitle: string | undefined;
 
   if (caseId) {
     const supabase = await createClient();
@@ -39,6 +45,10 @@ export default async function PdfToolPage({
       .maybeSingle();
 
     if (caseRow) {
+      validCaseId = caseRow.id;
+      // Per the original spec: {caseRef}_Submission_{YYYY-MM-DD}.
+      initialTitle = `${caseRow.case_number}_Submission_${new Date()
+        .toLocaleDateString("en-CA", { timeZone: "America/Toronto" })}`;
       const { data: docs } = await supabase
         .schema("files")
         .from("documents")
@@ -70,6 +80,10 @@ export default async function PdfToolPage({
       <EditorShell
         caseDocuments={caseDocuments}
         getDownloadUrl={getCaseDocumentDownloadUrl}
+        caseId={validCaseId}
+        listCaseFolder={listCaseFolderChildren}
+        getDriveFileUrl={getCaseDriveFileDownloadUrl}
+        initialTitle={initialTitle}
       />
     </div>
   );

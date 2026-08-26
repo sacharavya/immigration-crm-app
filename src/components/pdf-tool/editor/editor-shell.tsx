@@ -33,6 +33,7 @@ import { VerificationDialog } from "../verification-dialog";
 import { PageCanvas } from "./canvas/page-canvas";
 import { EditorProvider, useEditor } from "./editor-store";
 import { ProgressToast } from "./progress-toast";
+import { CaseFilesPanel } from "./sidebar/case-files-panel";
 import {
   ThumbnailRail,
   type PageClickModifiers,
@@ -65,13 +66,26 @@ export interface EditorShellProps {
   getDownloadUrl?: (
     documentId: string,
   ) => Promise<{ url: string } | { error: string }>;
+  // Case folder tree (files AND folders) for the sidebar, shown when the
+  // editor is opened from a case.
+  caseId?: string;
+  listCaseFolder?: (
+    caseId: string,
+    folderItemId?: string,
+  ) => Promise<{ items: import("@/app/(staff)/dashboard/pdf-tool/actions").CaseDriveItem[] } | { error: string }>;
+  getDriveFileUrl?: (
+    caseId: string,
+    itemId: string,
+  ) => Promise<{ url: string } | { error: string }>;
+  /** Overrides the date-based default, e.g. "{caseNumber}_Submission_{date}". */
+  initialTitle?: string;
   layout?: LayoutConfig;
 }
 
 export function EditorShell(props: EditorShellProps) {
   // Computed once per mount; the store owns it from there.
-  const [initialTitle] = useState(() =>
-    defaultFileName(new Date()).replace(/\.pdf$/i, ""),
+  const [initialTitle] = useState(
+    () => props.initialTitle ?? defaultFileName(new Date()).replace(/\.pdf$/i, ""),
   );
   return (
     <EditorProvider title={initialTitle}>
@@ -90,6 +104,9 @@ function needsGate(report: BuildReport): boolean {
 function EditorBody({
   caseDocuments,
   getDownloadUrl,
+  caseId,
+  listCaseFolder,
+  getDriveFileUrl,
   layout = DEFAULT_LAYOUT,
 }: EditorShellProps) {
   const pdf: UsePdfEngine = usePdfEngine();
@@ -441,15 +458,27 @@ function EditorBody({
       <div className="flex min-h-0 flex-1">
         {mainZones.map((zone) =>
           zone === "sidebar" ? (
-            <ThumbnailRail
-              key="sidebar"
-              model={pdf.model}
-              thumbnails={pdf.thumbnails}
-              disabled={pdf.acting}
-              onReorder={(order) => void handleReorder(order)}
-              onPageClick={handleRailClick}
-              onAddPage={() => setMergeOpen(true)}
-            />
+            <div key="sidebar" className="flex min-h-0 flex-col">
+              {caseId && listCaseFolder && getDriveFileUrl && (
+                <CaseFilesPanel
+                  caseId={caseId}
+                  listChildren={listCaseFolder}
+                  getFileUrl={getDriveFileUrl}
+                  onAddFiles={async (files) => {
+                    await pdf.loadFiles(files);
+                  }}
+                  disabled={pdf.acting}
+                />
+              )}
+              <ThumbnailRail
+                model={pdf.model}
+                thumbnails={pdf.thumbnails}
+                disabled={pdf.acting}
+                onReorder={(order) => void handleReorder(order)}
+                onPageClick={handleRailClick}
+                onAddPage={() => setMergeOpen(true)}
+              />
+            </div>
           ) : state.activeTool === "rearrange" ? (
             <RearrangeView
               key="canvas"
