@@ -1,8 +1,9 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 import type { AttentionFilter } from "@/lib/cases/board-card";
 import { PHASE_LABELS } from "@/lib/utils/phase";
@@ -29,6 +30,7 @@ export function CasesFilters({
   serviceType,
   serviceTypeOptions,
   attention,
+  q,
 }: {
   view: CasesView;
   phase: number | null;
@@ -37,14 +39,32 @@ export function CasesFilters({
   serviceType: string | null;
   serviceTypeOptions: ServiceTypePick[];
   attention: AttentionFilter | null;
+  q: string;
 }) {
   const router = useRouter();
+
+  // Debounced free-text search: type, settle 300ms, URL updates. The URL is
+  // the source of truth (server filters), the input is just a live buffer.
+  const [searchValue, setSearchValue] = useState(q);
+  const debounceRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (searchValue === q) return;
+    if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      router.push(buildHref({ q: searchValue.trim() || null }));
+    }, 300);
+    return () => {
+      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- buildHref is stable per render inputs
+  }, [searchValue]);
 
   function buildHref(next: {
     phase?: number | null;
     assignee?: string | null;
     serviceType?: string | null;
     attention?: AttentionFilter | null;
+    q?: string | null;
   }) {
     const params = new URLSearchParams();
     if (view === "list") params.set("view", "list");
@@ -65,6 +85,9 @@ export function CasesFilters({
       next.attention === undefined ? attention : next.attention;
     if (nextAttention) params.set("attention", nextAttention);
 
+    const nextQ = next.q === undefined ? q : next.q;
+    if (nextQ) params.set("q", nextQ);
+
     const qs = params.toString();
     return qs ? `/dashboard/cases?${qs}` : "/dashboard/cases";
   }
@@ -79,10 +102,22 @@ export function CasesFilters({
     phase !== null ||
     assignee !== null ||
     serviceType !== null ||
-    attention !== null;
+    attention !== null ||
+    q !== "";
 
   return (
     <div className="flex flex-wrap items-center gap-3">
+      <label className="relative inline-flex items-center">
+        <Search className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
+        <input
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          placeholder="Client name, email, phone, client # or case #"
+          aria-label="Search cases"
+          className="h-8 w-72 rounded-md border border-border bg-card pl-8 pr-2.5 text-sm text-foreground transition-colors placeholder:text-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
+        />
+      </label>
+
       <FilterSelect
         label="Phase"
         value={phase === null ? "" : String(phase)}

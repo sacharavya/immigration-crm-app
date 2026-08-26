@@ -30,6 +30,7 @@ import { ViewToggle, type CasesView } from "./_components/view-toggle";
 
 type Props = {
   searchParams: Promise<{
+    q?: string;
     view?: string;
     phase?: string;
     assignee?: string;
@@ -65,6 +66,7 @@ export default async function CasesPage({ searchParams }: Props) {
     ? (sp.view as CasesView)
     : "board";
 
+  const searchQuery = sp.q?.trim().toLowerCase() ?? "";
   const phaseParam = Number.parseInt(sp.phase ?? "", 10);
   const phaseFilter = phaseParam >= 1 && phaseParam <= 5 ? phaseParam : null;
   const assigneeFilter = sp.assignee?.trim() || null;
@@ -96,7 +98,7 @@ export default async function CasesPage({ searchParams }: Props) {
         service_type_id,
         assigned_rcic,
         assigned_paralegal,
-        client:clients(legal_name_full)
+        client:clients(legal_name_full, client_number, email, phone_primary)
       `,
     )
     .is("deleted_at", null)
@@ -120,7 +122,33 @@ export default async function CasesPage({ searchParams }: Props) {
     query = query.eq("service_type_id", serviceTypeFilter);
   }
 
-  const { data: cases } = canViewCases ? await query : { data: [] as never[] };
+  const { data: casesRaw } = canViewCases
+    ? await query
+    : { data: [] as never[] };
+
+  // Free-text search across case number and the client's identity fields.
+  // Phone matches on digits only so "437 733" finds "(437) 733-7525".
+  const qDigits = searchQuery.replace(/\D/g, "");
+  const cases = searchQuery
+    ? (casesRaw ?? []).filter((c) => {
+        const client = c.client;
+        if (c.case_number.toLowerCase().includes(searchQuery)) return true;
+        if (client?.legal_name_full?.toLowerCase().includes(searchQuery)) {
+          return true;
+        }
+        if (client?.client_number?.toLowerCase().includes(searchQuery)) {
+          return true;
+        }
+        if (client?.email?.toLowerCase().includes(searchQuery)) return true;
+        if (
+          qDigits.length >= 3 &&
+          (client?.phone_primary ?? "").replace(/\D/g, "").includes(qDigits)
+        ) {
+          return true;
+        }
+        return false;
+      })
+    : casesRaw;
 
   const caseIds = (cases ?? []).map((c) => c.id);
   const clientIds = [...new Set((cases ?? []).map((c) => c.client_id))];
@@ -380,6 +408,7 @@ export default async function CasesPage({ searchParams }: Props) {
       </div>
 
       <CasesFilters
+        q={sp.q?.trim() ?? ""}
         view={view}
         phase={phaseFilter}
         assignee={assigneeFilter}
