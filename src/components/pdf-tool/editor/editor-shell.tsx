@@ -149,6 +149,10 @@ function EditorBody({
     bytes: Uint8Array;
     name: string;
   } | null>(null);
+  // Last compression target staff chose; fresh export builds re-apply it so
+  // "compress, download, then save" cannot silently produce an uncompressed
+  // file (review finding). Sticky for the session.
+  const [compressTarget, setCompressTarget] = useState<number | null>(null);
 
   // Builds bake state.pageNumbers into the output, but the engine hook only
   // invalidates the held build on MODEL mutations. Changing page-number
@@ -390,10 +394,6 @@ function EditorBody({
   const [savedUrl, setSavedUrl] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  // Last compression target staff chose; fresh export builds re-apply it so
-  // "compress, download, then save" cannot silently produce an uncompressed
-  // file (review finding). Sticky for the session.
-  const [compressTarget, setCompressTarget] = useState<number | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   /** Name chosen by the exporter in the save dialog; survives the gate. */
   const [driveFileName, setDriveFileName] = useState("");
