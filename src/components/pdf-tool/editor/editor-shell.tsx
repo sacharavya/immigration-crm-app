@@ -34,6 +34,7 @@ import { PageCanvas } from "./canvas/page-canvas";
 import { EditorProvider, useEditor } from "./editor-store";
 import { ProgressToast } from "./progress-toast";
 import { CaseFilesPanel } from "./sidebar/case-files-panel";
+import { SidebarFrame } from "./sidebar/sidebar-frame";
 import {
   ThumbnailRail,
   type PageClickModifiers,
@@ -458,27 +459,32 @@ function EditorBody({
       <div className="flex min-h-0 flex-1">
         {mainZones.map((zone) =>
           zone === "sidebar" ? (
-            <div key="sidebar" className="flex min-h-0 w-60 shrink-0 flex-col border-r border-stone-200">
-              {caseId && listCaseFolder && getDriveFileUrl && (
-                <CaseFilesPanel
-                  caseId={caseId}
-                  listChildren={listCaseFolder}
-                  getFileUrl={getDriveFileUrl}
-                  onAddFiles={async (files) => {
-                    await pdf.loadFiles(files);
-                  }}
+            <SidebarFrame
+              key="sidebar"
+              filesPanel={
+                caseId && listCaseFolder && getDriveFileUrl ? (
+                  <CaseFilesPanel
+                    caseId={caseId}
+                    listChildren={listCaseFolder}
+                    getFileUrl={getDriveFileUrl}
+                    onAddFiles={async (files) => {
+                      await pdf.loadFiles(files);
+                    }}
+                    disabled={pdf.acting}
+                  />
+                ) : undefined
+              }
+              rail={
+                <ThumbnailRail
+                  model={pdf.model}
+                  thumbnails={pdf.thumbnails}
                   disabled={pdf.acting}
+                  onReorder={(order) => void handleReorder(order)}
+                  onPageClick={handleRailClick}
+                  onAddPage={() => setMergeOpen(true)}
                 />
-              )}
-              <ThumbnailRail
-                model={pdf.model}
-                thumbnails={pdf.thumbnails}
-                disabled={pdf.acting}
-                onReorder={(order) => void handleReorder(order)}
-                onPageClick={handleRailClick}
-                onAddPage={() => setMergeOpen(true)}
-              />
-            </div>
+              }
+            />
           ) : state.activeTool === "rearrange" ? (
             <RearrangeView
               key="canvas"
