@@ -140,7 +140,7 @@ export function ThumbnailRail({
   };
 
   return (
-    <div className="flex w-36 shrink-0 flex-col border-r border-stone-200 bg-stone-50">
+    <div className="flex min-h-0 w-full flex-1 flex-col bg-stone-50">
       <div className="border-b border-stone-200 p-2">
         <Button
           variant="outline"

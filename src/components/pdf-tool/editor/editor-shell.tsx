@@ -458,7 +458,7 @@ function EditorBody({
       <div className="flex min-h-0 flex-1">
         {mainZones.map((zone) =>
           zone === "sidebar" ? (
-            <div key="sidebar" className="flex min-h-0 flex-col">
+            <div key="sidebar" className="flex min-h-0 w-60 shrink-0 flex-col border-r border-stone-200">
               {caseId && listCaseFolder && getDriveFileUrl && (
                 <CaseFilesPanel
                   caseId={caseId}

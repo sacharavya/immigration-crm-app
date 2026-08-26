@@ -97,7 +97,7 @@ export function CaseFilesPanel({
         Case files
       </button>
       {!collapsed && (
-        <div className="max-h-72 overflow-y-auto px-1 pb-2">
+        <div className="max-h-96 overflow-y-auto px-1 pb-2">
           {rootError ? (
             <p className="px-2 py-1 text-xs text-rose-600">{rootError}</p>
           ) : root === null ? (
@@ -224,7 +224,7 @@ function FolderNode({
         type="button"
         onClick={() => void toggle()}
         className="flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-sm text-stone-700 hover:bg-stone-50"
-        style={{ paddingLeft: `${8 + depth * 14}px` }}
+        style={{ paddingLeft: `${8 + depth * 10}px` }}
       >
         {open ? (
           <ChevronDown className="h-3.5 w-3.5 shrink-0 text-stone-400" />
@@ -240,7 +240,7 @@ function FolderNode({
           {loading && (
             <p
               className="flex items-center gap-1.5 py-0.5 text-xs text-stone-400"
-              style={{ paddingLeft: `${28 + depth * 14}px` }}
+              style={{ paddingLeft: `${26 + depth * 10}px` }}
             >
               <Loader2 className="h-3 w-3 animate-spin" /> Loading…
             </p>
@@ -248,7 +248,7 @@ function FolderNode({
           {error && (
             <p
               className="py-0.5 text-xs text-rose-600"
-              style={{ paddingLeft: `${28 + depth * 14}px` }}
+              style={{ paddingLeft: `${26 + depth * 10}px` }}
             >
               {error}
             </p>
@@ -256,7 +256,7 @@ function FolderNode({
           {children && children.length === 0 && (
             <p
               className="py-0.5 text-xs text-stone-400"
-              style={{ paddingLeft: `${28 + depth * 14}px` }}
+              style={{ paddingLeft: `${26 + depth * 10}px` }}
             >
               Empty
             </p>
@@ -297,8 +297,8 @@ function FileNode({
   const addable = item.mime !== null && ADDABLE.has(item.mime);
   return (
     <li
-      className="group flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-stone-50"
-      style={{ paddingLeft: `${24 + depth * 14}px` }}
+      className="flex min-w-0 items-center gap-2 rounded px-2 py-1.5 hover:bg-stone-50"
+      style={{ paddingLeft: `${8 + depth * 10}px` }}
     >
       {item.thumbnailUrl ? (
         // Pre-authenticated Microsoft thumbnail; short-lived URL fetched by
@@ -308,39 +308,41 @@ function FileNode({
           src={item.thumbnailUrl}
           alt=""
           loading="lazy"
-          className={`h-10 w-8 shrink-0 rounded border border-stone-200 bg-white object-cover ${addable ? "" : "opacity-50"}`}
+          className={`h-20 w-16 shrink-0 rounded border border-stone-200 bg-white object-cover shadow-sm ${addable ? "" : "opacity-50"}`}
         />
       ) : (
         <span
-          className={`flex h-10 w-8 shrink-0 items-center justify-center rounded border border-stone-200 bg-stone-50 ${addable ? "text-stone-400" : "text-stone-300"}`}
+          className={`flex h-20 w-16 shrink-0 items-center justify-center rounded border border-stone-200 bg-stone-50 ${addable ? "text-stone-400" : "text-stone-300"}`}
         >
-          <FileText className="h-4 w-4" />
+          <FileText className="h-6 w-6" />
         </span>
       )}
-      <span
-        className={`min-w-0 flex-1 truncate ${addable ? "text-stone-700" : "text-stone-400"}`}
-        title={item.name}
-      >
-        {item.name}
-      </span>
-      {addable && (
-        <button
-          type="button"
-          onClick={() => onAdd(item)}
-          disabled={disabled || added || pending}
-          className="inline-flex h-6 shrink-0 items-center gap-1 rounded border border-stone-200 bg-white px-1.5 text-[11px] font-medium text-stone-600 opacity-0 hover:bg-stone-100 focus:opacity-100 disabled:opacity-40 group-hover:opacity-100"
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <span
+          className={`min-w-0 truncate text-xs ${addable ? "text-stone-700" : "text-stone-400"}`}
+          title={item.name}
         >
-          {pending ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : added ? (
-            "Added"
-          ) : (
-            <>
-              <Plus className="h-3 w-3" /> Add
-            </>
-          )}
-        </button>
-      )}
+          {item.name}
+        </span>
+        {addable && (
+          <button
+            type="button"
+            onClick={() => onAdd(item)}
+            disabled={disabled || added || pending}
+            className="inline-flex h-6 w-fit items-center gap-1 rounded border border-stone-200 bg-white px-2 text-[11px] font-medium text-stone-600 hover:bg-stone-100 disabled:opacity-40"
+          >
+            {pending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : added ? (
+              "Added"
+            ) : (
+              <>
+                <Plus className="h-3 w-3" /> Add
+              </>
+            )}
+          </button>
+        )}
+      </div>
     </li>
   );
 }
