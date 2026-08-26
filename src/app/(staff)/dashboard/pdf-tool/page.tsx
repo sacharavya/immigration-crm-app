@@ -6,6 +6,7 @@ import { getStaff } from "@/lib/auth/staff";
 import { createClient } from "@/lib/supabase/server";
 
 import {
+  createFinalUploadSession,
   getCaseDocumentDownloadUrl,
   getCaseDriveFileDownloadUrl,
   listCaseFolderChildren,
@@ -83,6 +84,7 @@ export default async function PdfToolPage({
         caseId={validCaseId}
         listCaseFolder={listCaseFolderChildren}
         getDriveFileUrl={getCaseDriveFileDownloadUrl}
+        createFinalUpload={createFinalUploadSession}
         initialTitle={initialTitle}
       />
     </div>

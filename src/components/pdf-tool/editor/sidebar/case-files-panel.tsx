@@ -27,6 +27,9 @@ export interface CaseFilesPanelProps {
   ) => Promise<{ url: string } | { error: string }>;
   /** Receives ready File objects; the shell feeds them to the engine. */
   onAddFiles: (files: File[]) => Promise<void>;
+  /** Names of source files that still have pages in the package. Drives the
+   *  Added state reactively: deleting a file's pages reverts its tile. */
+  activeFileNames: ReadonlySet<string>;
   disabled: boolean;
 }
 
@@ -38,11 +41,11 @@ export function CaseFilesPanel({
   listChildren,
   getFileUrl,
   onAddFiles,
+  activeFileNames,
   disabled,
 }: CaseFilesPanelProps) {
   const [root, setRoot] = useState<CaseDriveItem[] | null>(null);
   const [rootError, setRootError] = useState<string | null>(null);
-  const [addedIds, setAddedIds] = useState<ReadonlySet<string>>(new Set());
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -71,7 +74,6 @@ export function CaseFilesPanel({
       const buf = await resp.arrayBuffer();
       const mime = item.mime === "image/jpg" ? "image/jpeg" : (item.mime ?? "");
       await onAddFiles([new File([buf], item.name, { type: mime })]);
-      setAddedIds((s) => new Set(s).add(item.id));
     } catch (err) {
       setAddError(
         `Could not add "${item.name}": ${err instanceof Error ? err.message : "unknown error"}`,
@@ -102,7 +104,7 @@ export function CaseFilesPanel({
               items={root}
               depth={0}
               listChildren={listChildren}
-              addedIds={addedIds}
+              activeFileNames={activeFileNames}
               pendingId={pendingId}
               disabled={disabled}
               onAdd={(item) => void addFile(item)}
@@ -122,7 +124,7 @@ function TreeLevel({
   items,
   depth,
   listChildren,
-  addedIds,
+  activeFileNames,
   pendingId,
   disabled,
   onAdd,
@@ -131,7 +133,7 @@ function TreeLevel({
   items: CaseDriveItem[];
   depth: number;
   listChildren: CaseFilesPanelProps["listChildren"];
-  addedIds: ReadonlySet<string>;
+  activeFileNames: ReadonlySet<string>;
   pendingId: string | null;
   disabled: boolean;
   onAdd: (item: CaseDriveItem) => void;
@@ -146,7 +148,7 @@ function TreeLevel({
             item={item}
             depth={depth}
             listChildren={listChildren}
-            addedIds={addedIds}
+            activeFileNames={activeFileNames}
             pendingId={pendingId}
             disabled={disabled}
             onAdd={onAdd}
@@ -156,7 +158,7 @@ function TreeLevel({
             key={item.id}
             item={item}
             depth={depth}
-            added={addedIds.has(item.id)}
+            added={activeFileNames.has(item.name)}
             pending={pendingId === item.id}
             disabled={disabled || pendingId !== null}
             onAdd={onAdd}
@@ -172,7 +174,7 @@ function FolderNode({
   item,
   depth,
   listChildren,
-  addedIds,
+  activeFileNames,
   pendingId,
   disabled,
   onAdd,
@@ -181,7 +183,7 @@ function FolderNode({
   item: CaseDriveItem;
   depth: number;
   listChildren: CaseFilesPanelProps["listChildren"];
-  addedIds: ReadonlySet<string>;
+  activeFileNames: ReadonlySet<string>;
   pendingId: string | null;
   disabled: boolean;
   onAdd: (item: CaseDriveItem) => void;
@@ -257,7 +259,7 @@ function FolderNode({
               items={children}
               depth={depth + 1}
               listChildren={listChildren}
-              addedIds={addedIds}
+              activeFileNames={activeFileNames}
               pendingId={pendingId}
               disabled={disabled}
               onAdd={onAdd}

@@ -13,6 +13,7 @@
 import { arrayMove } from "@dnd-kit/sortable";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { uploadToGraphSession } from "@/lib/pdf-engine/sources/graph-upload";
 import { LocalDownloadSink } from "@/lib/pdf-engine/sources/local";
 import type {
   BuildOptions,
@@ -78,6 +79,11 @@ export interface EditorShellProps {
     caseId: string,
     itemId: string,
   ) => Promise<{ url: string } | { error: string }>;
+  /** Mints a Graph upload session into the case's "Final" folder. */
+  createFinalUpload?: (
+    caseId: string,
+    fileName: string,
+  ) => Promise<{ uploadUrl: string } | { error: string }>;
   /** Overrides the date-based default, e.g. "{caseNumber}_Submission_{date}". */
   initialTitle?: string;
   layout?: LayoutConfig;
@@ -108,12 +114,22 @@ function EditorBody({
   caseId,
   listCaseFolder,
   getDriveFileUrl,
+  createFinalUpload,
   layout = DEFAULT_LAYOUT,
 }: EditorShellProps) {
   const pdf: UsePdfEngine = usePdfEngine();
   const { state, dispatch } = useEditor();
 
   const [mergeOpen, setMergeOpen] = useState(false);
+
+  // Source files whose pages are still in the package; drives the case
+  // gallery's Added state so deleting pages re-enables Add.
+  const activeFileNames = useMemo(() => {
+    const activeDocIds = new Set(pdf.model?.pages.map((p) => p.documentId));
+    return new Set(
+      pdf.documents.filter((d) => activeDocIds.has(d.id)).map((d) => d.name),
+    );
+  }, [pdf.model, pdf.documents]);
   const [splitOpen, setSplitOpen] = useState(false);
   const [pageNumbersOpen, setPageNumbersOpen] = useState(false);
   const [compressOpen, setCompressOpen] = useState(false);
@@ -121,9 +137,9 @@ function EditorBody({
   /** True while a build meant for export runs - drives the modal overlay. */
   const [exporting, setExporting] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
-  const [verifySource, setVerifySource] = useState<"download" | "compress">(
-    "download",
-  );
+  const [verifySource, setVerifySource] = useState<
+    "download" | "compress" | "onedrive"
+  >("download");
   /** Whether the held build cleared (or never needed) the verification gate. */
   const [gatePassed, setGatePassed] = useState(false);
 
@@ -340,6 +356,58 @@ function EditorBody({
     }
   }, [pdf, gatePassed, state.pageNumbers, saveOutput]);
 
+  // Save-to-OneDrive: same pipeline as download, different sink. The bytes
+  // are PUT directly to Microsoft via a pre-authenticated upload session.
+  const [savingToDrive, setSavingToDrive] = useState(false);
+  const [savedUrl, setSavedUrl] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const saveToOneDrive = useCallback(async () => {
+    if (!caseId || !createFinalUpload) return;
+    const out = await pdf.takeOutput();
+    if (!out) return;
+    setSavingToDrive(true);
+    setSaveError(null);
+    try {
+      const base = state.title.trim() || "Submission_Package";
+      const name = base.toLowerCase().endsWith(".pdf") ? base : `${base}.pdf`;
+      const session = await createFinalUpload(caseId, name);
+      if ("error" in session) throw new Error(session.error);
+      const item = await uploadToGraphSession(session.uploadUrl, out.bytes);
+      setSavedUrl(item.webUrl);
+      setGatePassed(false);
+    } catch (err) {
+      setSaveError(
+        err instanceof Error ? err.message : "OneDrive upload failed.",
+      );
+    } finally {
+      setSavingToDrive(false);
+    }
+  }, [caseId, createFinalUpload, pdf, state.title]);
+
+  const handleSaveToOneDrive = useCallback(async () => {
+    if (!pdf.model || pdf.model.pages.length === 0) return;
+    if (pdf.lastBuild && gatePassed) {
+      await saveToOneDrive();
+      return;
+    }
+    setExporting(true);
+    try {
+      const options: BuildOptions = { compression: { targetBytes: null } };
+      if (state.pageNumbers) options.pageNumbers = state.pageNumbers;
+      const report = await pdf.build(options);
+      if (!report) return;
+      if (needsGate(report)) {
+        setVerifySource("onedrive");
+        setVerifyOpen(true);
+        return;
+      }
+      await saveToOneDrive();
+    } finally {
+      setExporting(false);
+    }
+  }, [pdf, gatePassed, state.pageNumbers, saveToOneDrive]);
+
   const handleCompress = useCallback(
     async (targetBytes: number) => {
       setGatePassed(false);
@@ -366,7 +434,8 @@ function EditorBody({
     setVerifyOpen(false);
     setGatePassed(true);
     if (verifySource === "download") void saveOutput();
-  }, [verifySource, saveOutput]);
+    if (verifySource === "onedrive") void saveToOneDrive();
+  }, [verifySource, saveOutput, saveToOneDrive]);
 
   const handleVerifyCancel = useCallback(() => {
     setVerifyOpen(false);
@@ -438,6 +507,12 @@ function EditorBody({
           canDownload={hasPages && !pdf.acting}
           downloading={exporting}
           onDownload={() => void handleDownload()}
+          onSaveToOneDrive={
+            caseId && createFinalUpload
+              ? () => void handleSaveToOneDrive()
+              : undefined
+          }
+          savingToDrive={savingToDrive}
         />
       )}
 
@@ -456,6 +531,39 @@ function EditorBody({
         </p>
       )}
 
+      {saveError && (
+        <p className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">
+          {saveError}
+        </p>
+      )}
+      {savedUrl !== null && !saveError && (
+        <p className="flex items-center justify-between gap-3 border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-900">
+          <span>
+            Saved to the case&apos;s Final folder in OneDrive.
+            {savedUrl && (
+              <>
+                {" "}
+                <a
+                  href={savedUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium underline underline-offset-2"
+                >
+                  Open file
+                </a>
+              </>
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={() => setSavedUrl(null)}
+            className="text-xs text-emerald-700 hover:underline"
+          >
+            Dismiss
+          </button>
+        </p>
+      )}
+
       <div className="flex min-h-0 flex-1">
         {mainZones.map((zone) =>
           zone === "sidebar" ? (
@@ -470,6 +578,7 @@ function EditorBody({
                     onAddFiles={async (files) => {
                       await pdf.loadFiles(files);
                     }}
+                    activeFileNames={activeFileNames}
                     disabled={pdf.acting}
                   />
                 ) : undefined

@@ -158,15 +158,25 @@ export async function ensureCaseRetainerFolder(
 }
 
 /**
+ * Returns the case folder's "Final" subfolder, creating it lazily. Finished
+ * submission packages built by the PDF tool land here.
+ */
+export async function ensureCaseFinalFolder(
+  caseFolderItemId: string,
+): Promise<{ driveId: string; folderItemId: string }> {
+  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
+  if (!driveId) {
+    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
+  }
+  const folder = await ensureFolder(driveId, caseFolderItemId, "Final");
+  return { driveId, folderItemId: folder.id };
+}
+
+/**
  * Returns the drive id + the parent item id of the
  * "Consultation Payments/{year}" folder, creating the path lazily.
- *
- * APPT-8: consultation appointments booked via /book-an-appointment don't have a case
- * folder yet (the prospect isn't a client until they retain), so their
- * Interac e-transfer screenshots need to live somewhere outside the
- * case hierarchy. They land under
- * GRAPH_ROOT_FOLDER/Consultation Payments/{year}/ so the firm can
- * browse them by year without polluting case folders.
+ * Consultation bookings have no case folder yet, so e-transfer screenshots
+ * live under GRAPH_ROOT_FOLDER/Consultation Payments/{year}/.
  */
 export async function ensureConsultationPaymentsFolder(
   year: string,

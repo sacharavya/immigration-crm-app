@@ -3,7 +3,7 @@
 // Top chrome: inline-editable title (drives the export file name), undo/redo,
 // zoom stepper, and the primary Download button on the right.
 
-import { Download, Minus, Plus, Redo2, Undo2 } from "lucide-react";
+import { CloudUpload, Download, Loader2, Minus, Plus, Redo2, Undo2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -21,6 +21,8 @@ export function TopBar({
   canDownload,
   downloading,
   onDownload,
+  onSaveToOneDrive,
+  savingToDrive = false,
 }: {
   title: string;
   onTitleChange: (title: string) => void;
@@ -33,6 +35,9 @@ export function TopBar({
   canDownload: boolean;
   downloading: boolean;
   onDownload: () => void;
+  /** Present only when the editor was opened from a case. */
+  onSaveToOneDrive?: () => void;
+  savingToDrive?: boolean;
 }) {
   return (
     <div className="flex items-center gap-3 border-b border-stone-200 bg-white px-4 py-2">
@@ -92,6 +97,21 @@ export function TopBar({
         </Button>
       </div>
 
+      {onSaveToOneDrive && (
+        <Button
+          variant="outline"
+          disabled={!canDownload || downloading || savingToDrive}
+          onClick={onSaveToOneDrive}
+          title="Save the finished package to the case's Final folder in OneDrive"
+        >
+          {savingToDrive ? (
+            <Loader2 data-icon="inline-start" className="animate-spin" />
+          ) : (
+            <CloudUpload data-icon="inline-start" />
+          )}
+          Save to OneDrive
+        </Button>
+      )}
       <Button disabled={!canDownload || downloading} onClick={onDownload}>
         <Download data-icon="inline-start" />
         Download

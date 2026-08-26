@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { getStaff } from "@/lib/auth/staff";
 import { graphFetch } from "@/lib/graph/client";
+import { ensureCaseFinalFolder } from "@/lib/graph/folders";
 import { createClient } from "@/lib/supabase/server";
 
 // Mints a short-lived, pre-authenticated OneDrive download URL for a case
@@ -197,5 +198,41 @@ export async function getCaseDriveFileDownloadUrl(
   } catch (err) {
     console.error("[pdf-tool] drive file url failed:", err);
     return { error: "Could not reach OneDrive for this file." };
+  }
+}
+
+// Mints a Graph upload session for the case's "Final" folder. Metadata only:
+// the BROWSER uploads the package bytes straight to Microsoft with the
+// returned pre-authenticated URL (chunked PUT), so the document never
+// transits our server.
+export async function createFinalUploadSession(
+  caseId: string,
+  fileName: string,
+): Promise<{ uploadUrl: string } | { error: string }> {
+  const ctx = await caseFolderContext(caseId);
+  if ("error" in ctx) return ctx;
+  const safe = fileName.replace(/[\\/:*?"<>|#%]/g, "_").slice(0, 180);
+  if (!safe.toLowerCase().endsWith(".pdf")) {
+    return { error: "Only PDF output can be saved." };
+  }
+  try {
+    const { driveId, folderItemId } = await ensureCaseFinalFolder(ctx.folderId);
+    const session = await graphFetch<{ uploadUrl?: string }>(
+      `/drives/${driveId}/items/${folderItemId}:/${encodeURIComponent(safe)}:/createUploadSession`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          item: { "@microsoft.graph.conflictBehavior": "rename", name: safe },
+        }),
+      },
+    );
+    if (!session.uploadUrl) {
+      return { error: "Microsoft did not return an upload URL." };
+    }
+    return { uploadUrl: session.uploadUrl };
+  } catch (err) {
+    console.error("[pdf-tool] createUploadSession failed:", err);
+    return { error: "Could not start the OneDrive upload." };
   }
 }
