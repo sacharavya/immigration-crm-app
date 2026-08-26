@@ -76,6 +76,7 @@ type GraphChild = {
   thumbnails?: Array<{
     small?: { url?: string };
     medium?: { url?: string };
+    large?: { url?: string };
   }>;
 };
 
@@ -146,7 +147,7 @@ export async function listCaseFolderChildren(
       }
     }
     const res = await graphFetch<{ value: GraphChild[] }>(
-      `/drives/${ctx.driveId}/items/${targetId}/children?$select=id,name,size,file,folder&$expand=thumbnails($select=small,medium)&$top=200`,
+      `/drives/${ctx.driveId}/items/${targetId}/children?$select=id,name,size,file,folder&$expand=thumbnails($select=small,medium,large)&$top=200`,
     );
     const items: CaseDriveItem[] = (res.value ?? [])
       .map((c) => ({
@@ -157,7 +158,10 @@ export async function listCaseFolderChildren(
         sizeBytes: Number(c.size ?? 0),
         childCount: c.folder?.childCount ?? 0,
         thumbnailUrl:
-          c.thumbnails?.[0]?.medium?.url ?? c.thumbnails?.[0]?.small?.url ?? null,
+          c.thumbnails?.[0]?.large?.url ??
+          c.thumbnails?.[0]?.medium?.url ??
+          c.thumbnails?.[0]?.small?.url ??
+          null,
       }))
       .sort((a, b) =>
         a.kind !== b.kind

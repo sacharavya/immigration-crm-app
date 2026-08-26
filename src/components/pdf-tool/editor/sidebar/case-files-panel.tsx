@@ -97,7 +97,7 @@ export function CaseFilesPanel({
         Case files
       </button>
       {!collapsed && (
-        <div className="max-h-96 overflow-y-auto px-1 pb-2">
+        <div className="max-h-[32rem] overflow-y-auto px-1 pb-2">
           {rootError ? (
             <p className="px-2 py-1 text-xs text-rose-600">{rootError}</p>
           ) : root === null ? (
@@ -297,52 +297,52 @@ function FileNode({
   const addable = item.mime !== null && ADDABLE.has(item.mime);
   return (
     <li
-      className="flex min-w-0 items-center gap-2 rounded px-2 py-1.5 hover:bg-stone-50"
+      className="min-w-0 px-2 py-2"
       style={{ paddingLeft: `${8 + depth * 10}px` }}
     >
-      {item.thumbnailUrl ? (
-        // Pre-authenticated Microsoft thumbnail; short-lived URL fetched by
-        // the browser directly. next/image cannot optimize these, hence img.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={item.thumbnailUrl}
-          alt=""
-          loading="lazy"
-          className={`h-20 w-16 shrink-0 rounded border border-stone-200 bg-white object-cover shadow-sm ${addable ? "" : "opacity-50"}`}
-        />
-      ) : (
-        <span
-          className={`flex h-20 w-16 shrink-0 items-center justify-center rounded border border-stone-200 bg-stone-50 ${addable ? "text-stone-400" : "text-stone-300"}`}
-        >
-          <FileText className="h-6 w-6" />
-        </span>
-      )}
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <span
-          className={`min-w-0 truncate text-xs ${addable ? "text-stone-700" : "text-stone-400"}`}
-          title={item.name}
-        >
-          {item.name}
-        </span>
+      <div className="group relative">
+        {item.thumbnailUrl ? (
+          // Pre-authenticated Microsoft thumbnail; short-lived URL fetched by
+          // the browser directly. next/image cannot optimize these, hence img.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.thumbnailUrl}
+            alt=""
+            loading="lazy"
+            className={`h-48 w-full rounded border border-stone-200 bg-white object-cover object-top shadow-sm ${addable ? "" : "opacity-50"}`}
+          />
+        ) : (
+          <span
+            className={`flex h-48 w-full items-center justify-center rounded border border-stone-200 bg-stone-50 ${addable ? "text-stone-400" : "text-stone-300"}`}
+          >
+            <FileText className="h-10 w-10" />
+          </span>
+        )}
         {addable && (
           <button
             type="button"
             onClick={() => onAdd(item)}
             disabled={disabled || added || pending}
-            className="inline-flex h-6 w-fit items-center gap-1 rounded border border-stone-200 bg-white px-2 text-[11px] font-medium text-stone-600 hover:bg-stone-100 disabled:opacity-40"
+            className="absolute right-1.5 top-1.5 inline-flex h-7 items-center gap-1 rounded-md border border-stone-200 bg-white/95 px-2 text-[11px] font-semibold text-stone-700 shadow-sm hover:bg-white disabled:opacity-60"
           >
             {pending ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : added ? (
               "Added"
             ) : (
               <>
-                <Plus className="h-3 w-3" /> Add
+                <Plus className="h-3.5 w-3.5" /> Add
               </>
             )}
           </button>
         )}
       </div>
+      <span
+        className={`mt-1 block min-w-0 truncate text-center text-xs ${addable ? "text-stone-700" : "text-stone-400"}`}
+        title={item.name}
+      >
+        {item.name}
+      </span>
     </li>
   );
 }
