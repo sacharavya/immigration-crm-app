@@ -10,7 +10,11 @@ import { z } from "zod";
 const applySchema = z.object({
   name: z.string().min(1).max(200),
   email: z.string().email().max(200),
-  phone: z.string().max(50).optional().default(""),
+  phone: z
+    .string()
+    .min(1)
+    .max(50)
+    .regex(/^[\d\s()+\-./]+$/, "Invalid phone number format"),
   intent: z.enum(["sowp", "express_entry", "not_sure"]),
   note: z.string().max(1000).optional().default(""),
   consent: z.literal(true),
@@ -69,7 +73,7 @@ export async function submitNocApplication(
       .schema("crm")
       .from("clients")
       .update({
-        phone_primary: data.phone.trim() || undefined,
+        phone_primary: data.phone.trim(),
         background_responses: {
           ...((existing.background_responses as Record<string, unknown>) ?? {}),
           noc_inquiry: inquiry,
@@ -92,7 +96,7 @@ export async function submitNocApplication(
     given_names: parts[0],
     family_name: parts.length > 1 ? parts.slice(1).join(" ") : null,
     email: emailLower,
-    phone_primary: data.phone.trim() || null,
+    phone_primary: data.phone.trim(),
     status: "lead",
     source: "noc_finder",
     background_responses: { noc_inquiry: inquiry },

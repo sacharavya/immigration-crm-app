@@ -36,8 +36,8 @@ export function ApplyForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !email.trim()) {
-      setError("Name and email are required.");
+    if (!name.trim() || !email.trim() || !phone.trim()) {
+      setError("Name, email, and phone are required.");
       return;
     }
     if (!consent) {
@@ -127,7 +127,7 @@ export function ApplyForm({
         <input
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          placeholder="Phone (optional)"
+          placeholder="Phone"
           disabled={pending}
           className="h-10 border border-stone-200 bg-white px-3 text-sm"
         />
