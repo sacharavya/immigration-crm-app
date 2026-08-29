@@ -131,18 +131,53 @@ export function ApplyForm({
           disabled={pending}
           className="h-10 border border-stone-200 bg-white px-3 text-sm"
         />
-        <select
-          value={intent}
-          onChange={(e) =>
-            setIntent(e.target.value as "sowp" | "express_entry" | "not_sure")
-          }
-          disabled={pending}
-          className="h-10 border border-stone-200 bg-white px-3 text-sm"
-        >
-          <option value="sowp">Spousal open work permit (SOWP)</option>
-          <option value="express_entry">Express Entry</option>
-          <option value="not_sure">Not sure - advise me</option>
-        </select>
+      </div>
+
+      {/* Intent: checkbox look, single-select behavior (checking one clears
+          the others). */}
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        {(
+          [
+            {
+              value: "sowp",
+              label: "Spousal open work permit",
+              hint: "Apply for your spouse's SOWP",
+            },
+            {
+              value: "express_entry",
+              label: "Express Entry",
+              hint: "Start your PR application",
+            },
+            {
+              value: "not_sure",
+              label: "Not sure",
+              hint: "Advise me on my options",
+            },
+          ] as const
+        ).map((opt) => (
+          <label
+            key={opt.value}
+            className={`flex cursor-pointer items-start gap-2 border p-3 text-sm transition-colors ${
+              intent === opt.value
+                ? "border-[var(--navy)] bg-[var(--navy)]/5"
+                : "border-stone-200 bg-white hover:bg-stone-50"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={intent === opt.value}
+              onChange={() => setIntent(opt.value)}
+              disabled={pending}
+              className="mt-0.5 h-4 w-4 border-stone-300"
+            />
+            <span>
+              <span className="block font-medium text-stone-800">
+                {opt.label}
+              </span>
+              <span className="block text-xs text-stone-500">{opt.hint}</span>
+            </span>
+          </label>
+        ))}
       </div>
       <textarea
         value={note}

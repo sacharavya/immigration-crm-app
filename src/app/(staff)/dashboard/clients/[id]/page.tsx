@@ -509,7 +509,43 @@ export default async function ClientDetailPage({ params }: Props) {
     { label: "Test scores", value: consultIntake.language_score ?? null },
     { label: "Occupation", value: consultIntake.occupation ?? null },
   ];
-  const filledFields = [...profileFields, ...intakeFields].filter((f) => f.value);
+  // NOC-finder inquiry (public lead form). Shown only when present.
+  const nocInquiry = ((clientRow.background_responses as Record<
+    string,
+    unknown
+  > | null)?.noc_inquiry ?? null) as {
+    intent?: string;
+    noc_code?: string;
+    noc_title?: string;
+    teer?: number;
+    sowp_status?: string;
+    note?: string | null;
+    submitted_at?: string;
+  } | null;
+  const nocIntentLabel =
+    nocInquiry?.intent === "sowp"
+      ? "Spousal open work permit"
+      : nocInquiry?.intent === "express_entry"
+        ? "Express Entry"
+        : "Not sure - wants advice";
+  const nocInquiryFields: Array<{ label: string; value: string | null }> =
+    nocInquiry
+      ? [
+          { label: "NOC inquiry", value: nocIntentLabel },
+          {
+            label: "NOC occupation",
+            value: nocInquiry.noc_code
+              ? `${nocInquiry.noc_code} ${nocInquiry.noc_title ?? ""} (TEER ${nocInquiry.teer ?? "?"}, SOWP ${nocInquiry.sowp_status ?? "unknown"})`
+              : null,
+          },
+          { label: "Inquiry note", value: nocInquiry.note ?? null },
+        ]
+      : [];
+  const filledFields = [
+    ...profileFields,
+    ...intakeFields,
+    ...nocInquiryFields,
+  ].filter((f) => f.value);
   const pendingLabels = profileFields
     .filter((f) => !f.value)
     .map((f) => f.label.toLowerCase());
