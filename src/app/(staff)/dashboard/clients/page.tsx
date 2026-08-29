@@ -70,6 +70,8 @@ export default async function ClientsPage({ searchParams }: Props) {
       .select(
         "id, client_number, legal_name_full, email, phone_primary, country_of_citizenship, country_of_residence, assigned_rcic, immigration_status, immigration_status_expiry, created_at, source, created_by_agent",
       )
+      // Leads live on /dashboard/leads until a case converts them to active.
+      .neq("status", "lead")
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(500) as unknown as Promise<{ data: Array<{

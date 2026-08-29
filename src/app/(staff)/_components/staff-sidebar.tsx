@@ -17,6 +17,7 @@ import {
   Settings as SettingsIcon,
   Shield,
   Tags,
+  UserPlus,
   Users,
 } from "lucide-react";
 import Image from "next/image";
@@ -37,6 +38,7 @@ const PRIMARY_NAV: ReadonlyArray<{
 }> = [
   { href: "/dashboard", label: "Dashboard", Icon: BarChart3 },
   { href: "/dashboard/clients", label: "Clients", Icon: Users },
+  { href: "/dashboard/leads", label: "Leads", Icon: UserPlus },
   { href: "/dashboard/tasks", label: "Tasks", Icon: CheckSquare },
 ];
 
