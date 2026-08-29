@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -157,10 +157,10 @@ export function ApplyForm({
         ).map((opt) => (
           <label
             key={opt.value}
-            className={`flex cursor-pointer items-start gap-2 border p-3 text-sm transition-colors ${
+            className={`group flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 text-sm transition-all ${
               intent === opt.value
-                ? "border-[var(--navy)] bg-[var(--navy)]/5"
-                : "border-stone-200 bg-white hover:bg-stone-50"
+                ? "border-[var(--navy)] bg-[var(--navy)]/5 shadow-sm ring-1 ring-[var(--navy)]/30"
+                : "border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50"
             }`}
           >
             <input
@@ -168,8 +168,18 @@ export function ApplyForm({
               checked={intent === opt.value}
               onChange={() => setIntent(opt.value)}
               disabled={pending}
-              className="mt-0.5 h-4 w-4 border-stone-300"
+              className="sr-only"
             />
+            <span
+              aria-hidden
+              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all ${
+                intent === opt.value
+                  ? "border-[var(--navy)] bg-[var(--navy)] text-white"
+                  : "border-stone-300 bg-white text-transparent group-hover:border-stone-400"
+              }`}
+            >
+              <Check className="h-3.5 w-3.5" strokeWidth={3} />
+            </span>
             <span>
               <span className="block font-medium text-stone-800">
                 {opt.label}
@@ -189,14 +199,24 @@ export function ApplyForm({
         className="mt-3 w-full border border-stone-200 bg-white px-3 py-2 text-sm"
       />
 
-      <label className="mt-3 flex items-start gap-2 text-xs text-stone-600">
+      <label className="group mt-3 flex cursor-pointer items-start gap-2 text-xs text-stone-600">
         <input
           type="checkbox"
           checked={consent}
           onChange={(e) => setConsent(e.target.checked)}
           disabled={pending}
-          className="mt-0.5 h-4 w-4 border-stone-300"
+          className="sr-only"
         />
+        <span
+          aria-hidden
+          className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${
+            consent
+              ? "border-[var(--navy)] bg-[var(--navy)] text-white"
+              : "border-stone-300 bg-white text-transparent group-hover:border-stone-400"
+          }`}
+        >
+          <Check className="h-3 w-3" strokeWidth={3} />
+        </span>
         <span>
           I agree to the collection and use of my information as described in
           the{" "}
