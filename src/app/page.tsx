@@ -114,7 +114,7 @@ export default function HomePage() {
             href="/find-your-noc-code"
             icon={<Search className="h-6 w-6 text-[var(--gold)]" />}
             title="Find your NOC Code"
-            description="Look up the National Occupation Classification code for your job title."
+            description="New IRCC rules limit spousal open work permits by occupation. Check if your NOC still qualifies for SOWP or Express Entry."
           />
         </div>
       </section>

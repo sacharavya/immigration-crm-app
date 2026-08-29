@@ -1,5 +1,7 @@
 "use client";
 
+import { ApplyForm } from "./apply-form";
+
 import {
   AlertCircle,
   CheckCircle2,
@@ -147,16 +149,20 @@ export function NocFinder({ onSelect }: NocFinderProps) {
     };
   }, [titleQuery, duties, fetchResults]);
 
-  // Auto-select first result when results change
+  // Auto-select first result when results change. Deferred: setState directly
+  // in an effect body triggers cascading renders.
   useEffect(() => {
-    if (results.length === 0) {
-      setSelectedCode(null);
-      return;
-    }
-    const stillPresent = selectedCode && results.some((r) => r.code === selectedCode);
-    if (!stillPresent) {
-      setSelectedCode(results[0].code);
-    }
+    queueMicrotask(() => {
+      if (results.length === 0) {
+        setSelectedCode(null);
+        return;
+      }
+      const stillPresent =
+        selectedCode && results.some((r) => r.code === selectedCode);
+      if (!stillPresent) {
+        setSelectedCode(results[0].code);
+      }
+    });
   }, [results, selectedCode]);
 
   // Notify parent on selection
@@ -196,8 +202,10 @@ export function NocFinder({ onSelect }: NocFinderProps) {
             Find your NOC Code
           </h1>
           <p className="mt-1 text-sm text-stone-600">
-            Search the National Occupation Classification (NOC 2021) to find the
-            code that matches your work experience.
+            IRCC&apos;s new rules limit spousal open work permits (SOWP) to
+            specific occupations. Find your NOC code and see instantly whether
+            your job still qualifies for SOWP, and whether it is eligible for
+            Express Entry.
           </p>
           <p className="mt-1 text-xs text-stone-400">
             Uses the full NOC 2021 dataset from Statistics Canada.
@@ -390,6 +398,18 @@ export function NocFinder({ onSelect }: NocFinderProps) {
                   sowp={selected.sowp}
                   lastVerified={sowpLastVerified}
                 />
+
+                {/* Apply with Big Bang: the verdict just landed - this is the
+                    conversion moment. Keyed so a new selection resets state. */}
+                <div className="mt-4">
+                  <ApplyForm
+                    key={selected.code}
+                    nocCode={selected.code}
+                    nocTitle={selected.title}
+                    teer={selected.teer}
+                    sowpStatus={selected.sowp.status}
+                  />
+                </div>
 
                 {/* Lead statement */}
                 {selected.leadStatement && (
