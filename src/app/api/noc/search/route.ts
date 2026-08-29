@@ -30,7 +30,9 @@ async function extractKeywords(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        // Groq decommissions models (llama-3.3-70b-versatile 404ed in Aug
+        // 2026); override via env without a deploy when it happens again.
+        model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
         temperature: 0,
         max_tokens: 300,
         messages: [
