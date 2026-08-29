@@ -4,6 +4,7 @@
  */
 
 import { Mail, MapPin, Phone } from "lucide-react";
+import Link from "next/link";
 
 export function PublicFooter() {
   return (
@@ -40,6 +41,17 @@ export function PublicFooter() {
         </div>
       </div>
       <div className="border-t border-stone-200 px-6 py-4 text-center text-xs text-stone-400">
+        <div className="mb-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+          <Link href="/privacy-policy" className="hover:text-stone-600 hover:underline">
+            Privacy Policy
+          </Link>
+          <Link href="/data-usage" className="hover:text-stone-600 hover:underline">
+            Data Usage
+          </Link>
+          <Link href="/terms" className="hover:text-stone-600 hover:underline">
+            Terms of Use
+          </Link>
+        </div>
         &copy; {new Date().getFullYear()} Big Bang Immigration Consulting Inc.
         &middot; Licensed by the College of Immigration and Citizenship
         Consultants (CICC) &middot; RCIC# R711181
