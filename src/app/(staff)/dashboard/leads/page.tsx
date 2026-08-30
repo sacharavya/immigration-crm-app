@@ -98,7 +98,7 @@ export default async function LeadsPage() {
                 >
                   <td className="px-4 py-3">
                     <Link
-                      href={`/dashboard/clients/${l.id}`}
+                      href={`/dashboard/leads/${l.id}`}
                       className="font-medium text-stone-900 hover:text-[var(--primary)] hover:underline"
                     >
                       {l.legal_name_full}
