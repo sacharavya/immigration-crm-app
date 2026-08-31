@@ -76,7 +76,9 @@ export function CategoryCard({
 
   return (
     <>
-      <Card>
+      {/* Default Card ring is a 10%-opacity hairline; categories need a
+          visible boundary. */}
+      <Card className="border border-stone-300 ring-0">
         <CardContent className="p-0">
           <div className="flex items-center gap-3 px-5 py-3">
             <button
