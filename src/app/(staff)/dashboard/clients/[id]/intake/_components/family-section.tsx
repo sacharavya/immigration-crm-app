@@ -111,13 +111,14 @@ export function FamilySection({
   const [pending, startTransition] = useTransition();
 
   function setGate(v: boolean) {
-    return new Promise<void>((resolve) => {
+    return new Promise<{ ok: true } | { error: string }>((resolve) => {
       startTransition(async () => {
-        await updateClientCore({
-          clientId: client.id,
-          patch: { [gateField]: v } as never,
-        });
-        resolve();
+        resolve(
+          await updateClientCore({
+            clientId: client.id,
+            patch: { [gateField]: v } as never,
+          }),
+        );
       });
     });
   }

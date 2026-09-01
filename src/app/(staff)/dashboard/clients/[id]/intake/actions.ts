@@ -87,6 +87,26 @@ function rev(clientId: string) {
   revalidatePath(`/dashboard/clients/${clientId}`);
 }
 
+// Field-level saves: staff always refresh (keeps the dashboard views fresh),
+// but portal clients only refresh when a boolean flipped — booleans gate
+// dependent UI that renders from server props (trip lists, end-date fields),
+// while text/date values live in local input state. Any revalidatePath inside
+// a server action makes the caller refetch the whole page's RSC tree, which
+// takes seconds on high-latency connections and made portal autosaves feel
+// broken (answers appeared to revert while the refresh was in flight).
+function revAfterFieldSave(
+  actorKind: "staff" | "portal",
+  clientId: string,
+  updates: Record<string, unknown>,
+) {
+  if (
+    actorKind === "staff" ||
+    Object.values(updates).some((v) => typeof v === "boolean")
+  ) {
+    rev(clientId);
+  }
+}
+
 // Trim and convert "" to null for nullable text. Keeps the DB clean of
 // empty strings and lets the completeness logic treat absence uniformly.
 function nullish(v: string | null | undefined): string | null {
@@ -291,7 +311,7 @@ export async function updateClientCore(
     .eq("id", clientId);
   if (error) return { error: error.message };
 
-  rev(clientId);
+  revAfterFieldSave(g.actor.kind, clientId, updates);
   return { ok: true };
 }
 
@@ -330,6 +350,11 @@ export async function updateBackgroundResponse(
   if (!row) return { error: "Client not found" };
 
   const current = (row.background_responses ?? {}) as { [k: string]: Json };
+  const prevEntry = current[questionCode];
+  const prevAnswer =
+    prevEntry && typeof prevEntry === "object" && "answer" in prevEntry
+      ? (prevEntry as { answer?: Json }).answer
+      : null;
   const next: { [k: string]: Json } = {
     ...current,
     [questionCode]: {
@@ -345,7 +370,9 @@ export async function updateBackgroundResponse(
     .eq("id", clientId);
   if (error) return { error: error.message };
 
-  rev(clientId);
+  // Answer flips reveal/hide the details textarea (server-rendered), so they
+  // refresh even for portal clients; details typing saves without one.
+  if (g.actor.kind === "staff" || prevAnswer !== answer) rev(clientId);
   return { ok: true };
 }
 
@@ -440,7 +467,7 @@ export async function updateFamilyMember(
     .eq("id", id);
   if (error) return { error: error.message };
 
-  rev(clientId);
+  revAfterFieldSave(g.actor.kind, clientId, updates);
   return { ok: true };
 }
 
@@ -558,7 +585,7 @@ export async function updateEducation(
     .eq("id", id);
   if (error) return { error: error.message };
 
-  rev(clientId);
+  revAfterFieldSave(g.actor.kind, clientId, updates);
   return { ok: true };
 }
 
@@ -668,7 +695,7 @@ export async function updateEmployment(
     .eq("id", id);
   if (error) return { error: error.message };
 
-  rev(clientId);
+  revAfterFieldSave(g.actor.kind, clientId, updates);
   return { ok: true };
 }
 
@@ -779,7 +806,7 @@ export async function updateTravel(
     .eq("id", id);
   if (error) return { error: error.message };
 
-  rev(clientId);
+  revAfterFieldSave(g.actor.kind, clientId, updates);
   return { ok: true };
 }
 
@@ -886,7 +913,7 @@ export async function updateAddress(
     .eq("id", id);
   if (error) return { error: error.message };
 
-  rev(clientId);
+  revAfterFieldSave(g.actor.kind, clientId, updates);
   return { ok: true };
 }
 
@@ -996,7 +1023,7 @@ export async function updateOrganisation(
     .eq("id", id);
   if (error) return { error: error.message };
 
-  rev(clientId);
+  revAfterFieldSave(g.actor.kind, clientId, updates);
   return { ok: true };
 }
 
@@ -1102,7 +1129,7 @@ export async function updateGovernmentPosition(
     .eq("id", id);
   if (error) return { error: error.message };
 
-  rev(clientId);
+  revAfterFieldSave(g.actor.kind, clientId, updates);
   return { ok: true };
 }
 
@@ -1208,7 +1235,7 @@ export async function updateMilitaryService(
     .eq("id", id);
   if (error) return { error: error.message };
 
-  rev(clientId);
+  revAfterFieldSave(g.actor.kind, clientId, updates);
   return { ok: true };
 }
 
@@ -1366,7 +1393,7 @@ export async function updateBiometricRecord(
     .eq("id", id);
   if (error) return { error: error.message };
 
-  rev(clientId);
+  revAfterFieldSave(g.actor.kind, clientId, updates);
   return { ok: true };
 }
 

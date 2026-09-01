@@ -83,15 +83,16 @@ function BackgroundQuestion({
   const details = response?.details ?? null;
 
   function setAnswer(v: boolean) {
-    return new Promise<void>((resolve) => {
+    return new Promise<{ ok: true } | { error: string }>((resolve) => {
       startTransition(async () => {
-        await updateBackgroundResponse({
-          clientId,
-          questionCode: code,
-          answer: v ? "yes" : "no",
-          details,
-        });
-        resolve();
+        resolve(
+          await updateBackgroundResponse({
+            clientId,
+            questionCode: code,
+            answer: v ? "yes" : "no",
+            details,
+          }),
+        );
       });
     });
   }

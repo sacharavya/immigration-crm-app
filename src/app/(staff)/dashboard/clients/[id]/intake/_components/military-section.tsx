@@ -37,13 +37,14 @@ export function MilitarySection({
   }));
 
   function setGate(v: boolean) {
-    return new Promise<void>((resolve) => {
+    return new Promise<{ ok: true } | { error: string }>((resolve) => {
       startTransition(async () => {
-        await updateClientCore({
-          clientId: client.id,
-          patch: { military_service_held: v } as never,
-        });
-        resolve();
+        resolve(
+          await updateClientCore({
+            clientId: client.id,
+            patch: { military_service_held: v } as never,
+          }),
+        );
       });
     });
   }

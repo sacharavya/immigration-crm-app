@@ -40,16 +40,20 @@ export function IntakeSubmitBar({ sectionsComplete, sectionsTotal }: Props) {
   const ready = sectionsComplete === sectionsTotal;
 
   return (
-    <div className="sticky bottom-4 z-10 rounded-2xl border border-stone-200 bg-white p-5 shadow-lg">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+    // On phones the bar collapses to a slim strip (count + button) so it
+    // stops covering the questions being answered.
+    <div className="sticky bottom-2 z-10 rounded-2xl border border-stone-200 bg-white p-3 shadow-lg sm:bottom-4 sm:p-5">
+      <div className="flex flex-row items-center justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-sm font-semibold text-stone-900">
-            {ready ? "All sections complete" : "Almost there"}
+            {ready
+              ? "All sections complete"
+              : `${sectionsComplete} of ${sectionsTotal} sections complete`}
           </h2>
-          <p className="mt-1 text-xs text-stone-600">
+          <p className="mt-1 hidden text-xs text-stone-600 sm:block">
             {ready
               ? "You can submit now, or keep editing — your answers are already saved."
-              : `${sectionsComplete} of ${sectionsTotal} sections complete. You can submit now, but we recommend completing every section first.`}
+              : "You can submit now, but we recommend completing every section first."}
           </p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">

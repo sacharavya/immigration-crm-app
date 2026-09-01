@@ -158,23 +158,44 @@ export function YesNoField({
   name,
 }: {
   initial: boolean | null;
-  onChange: (v: boolean) => Promise<void> | void;
+  // May return the save result. On { error } (or a throw) the selection
+  // reverts and a retry hint is shown; a void return counts as success.
+  onChange: (
+    v: boolean,
+  ) => Promise<{ ok: true } | { error: string } | void> | void;
   disabled?: boolean;
   name: string;
 }) {
-  const [pending, setPending] = useState<boolean | null>(null);
+  // The tapped value sticks locally the moment it lands. Before this, the
+  // shown value fell back to server props after the save resolved, so on
+  // high-latency connections answers visibly "reverted" for seconds until
+  // the router refresh delivered fresh props (clients in Nepal hit this).
+  const [value, setValue] = useState<boolean | null>(initial);
+  useSyncedInitial(initial, value, setValue);
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   async function pick(v: boolean) {
-    if (disabled) return;
-    setPending(v);
+    if (disabled || saving) return;
+    const prev = value;
+    setValue(v);
+    setSaving(true);
+    setFailed(false);
     try {
-      await onChange(v);
+      const result = await onChange(v);
+      if (result && "error" in result) {
+        setValue(prev);
+        setFailed(true);
+      }
+    } catch {
+      setValue(prev);
+      setFailed(true);
     } finally {
-      setPending(null);
+      setSaving(false);
     }
   }
 
-  const current = pending ?? initial;
+  const current = value;
 
   return (
     <div className="inline-flex items-center gap-2">
@@ -204,6 +225,11 @@ export function YesNoField({
           </label>
         );
       })}
+      {failed && (
+        <span role="alert" className="text-xs text-red-600">
+          Could not save. Please tap your answer again.
+        </span>
+      )}
     </div>
   );
 }
