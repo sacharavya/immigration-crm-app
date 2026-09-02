@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import type { Database } from "@/lib/supabase/types";
 
 import { addEducation, removeEducation, updateEducation } from "../actions";
 import { SelectField, TextField } from "./fields";
+import { AddRowButton } from "./saving-indicator";
 
 type ClientRow = Database["crm"]["Tables"]["clients"]["Row"];
 type EducationRow =
@@ -44,20 +45,10 @@ export function EducationSection({
   countries: CountryOption[];
   canEdit: boolean;
 }) {
-  const [pending, startTransition] = useTransition();
   const countryOptions = countries.map((c) => ({
     value: c.code,
     label: c.name,
   }));
-
-  function add() {
-    startTransition(async () => {
-      await addEducation({
-        clientId: client.id,
-        institution: "New institution",
-      });
-    });
-  }
 
   const summary = computeYearsByLevel(education);
 
@@ -85,17 +76,16 @@ export function EducationSection({
           </div>
         )}
         {canEdit && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={add}
-            disabled={pending}
+          <AddRowButton
+            label="Add education"
             className="mt-3"
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            Add education
-          </Button>
+            onAdd={() =>
+              addEducation({
+                clientId: client.id,
+                institution: "New institution",
+              })
+            }
+          />
         )}
       </div>
     </div>

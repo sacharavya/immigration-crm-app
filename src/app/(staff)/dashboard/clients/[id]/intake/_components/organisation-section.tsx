@@ -1,9 +1,7 @@
 "use client";
 
-import { Plus } from "lucide-react";
 import { useTransition } from "react";
 
-import { Button } from "@/components/ui/button";
 import type { Database } from "@/lib/supabase/types";
 
 import {
@@ -13,7 +11,7 @@ import {
   updateOrganisation,
 } from "../actions";
 import { SelectField, TextField, YesNoField } from "./fields";
-import { DeleteRowButton } from "./saving-indicator";
+import { AddRowButton, DeleteRowButton } from "./saving-indicator";
 
 type ClientRow = Database["crm"]["Tables"]["clients"]["Row"];
 type OrgRow = Database["crm"]["Tables"]["client_organisations"]["Row"];
@@ -45,15 +43,6 @@ export function OrganisationSection({
             patch: { organisations_member: v } as never,
           }),
         );
-      });
-    });
-  }
-
-  function add() {
-    startTransition(async () => {
-      await addOrganisation({
-        clientId: client.id,
-        organisation_name: "New organisation",
       });
     });
   }
@@ -96,16 +85,15 @@ export function OrganisationSection({
             </div>
           )}
           {canEdit && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={add}
-              disabled={pending}
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              Add organisation
-            </Button>
+            <AddRowButton
+              label="Add organisation"
+              onAdd={() =>
+                addOrganisation({
+                  clientId: client.id,
+                  organisation_name: "New organisation",
+                })
+              }
+            />
           )}
         </>
       )}

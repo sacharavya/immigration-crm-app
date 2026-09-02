@@ -1,14 +1,11 @@
 "use client";
 
-import { Plus } from "lucide-react";
-import { useTransition } from "react";
 
-import { Button } from "@/components/ui/button";
 import type { Database } from "@/lib/supabase/types";
 
 import { addAddress, removeAddress, updateAddress } from "../actions";
 import { SelectField, TextField } from "./fields";
-import { DeleteRowButton } from "./saving-indicator";
+import { AddRowButton, DeleteRowButton } from "./saving-indicator";
 
 type AddressRow = Database["crm"]["Tables"]["client_address_history"]["Row"];
 type CountryOption = { code: string; name: string };
@@ -24,20 +21,10 @@ export function AddressSection({
   countries: CountryOption[];
   canEdit: boolean;
 }) {
-  const [pending, startTransition] = useTransition();
   const countryOptions = countries.map((c) => ({
     value: c.code,
     label: c.name,
   }));
-
-  function add() {
-    startTransition(async () => {
-      await addAddress({
-        clientId,
-        address_line: "New address",
-      });
-    });
-  }
 
   return (
     <div className="space-y-3">
@@ -61,16 +48,10 @@ export function AddressSection({
         </div>
       )}
       {canEdit && (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={add}
-          disabled={pending}
-        >
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          Add address
-        </Button>
+        <AddRowButton
+          label="Add address"
+          onAdd={() => addAddress({ clientId, address_line: "New address" })}
+        />
       )}
     </div>
   );

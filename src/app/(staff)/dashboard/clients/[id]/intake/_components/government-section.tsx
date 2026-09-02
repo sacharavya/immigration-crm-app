@@ -1,9 +1,7 @@
 "use client";
 
-import { Plus } from "lucide-react";
 import { useTransition } from "react";
 
-import { Button } from "@/components/ui/button";
 import type { Database } from "@/lib/supabase/types";
 
 import {
@@ -13,7 +11,7 @@ import {
   updateGovernmentPosition,
 } from "../actions";
 import { SelectField, TextField, YesNoField } from "./fields";
-import { DeleteRowButton } from "./saving-indicator";
+import { AddRowButton, DeleteRowButton } from "./saving-indicator";
 
 type ClientRow = Database["crm"]["Tables"]["clients"]["Row"];
 type GovRow =
@@ -56,12 +54,6 @@ export function GovernmentSection({
     });
   }
 
-  function add() {
-    startTransition(async () => {
-      await addGovernmentPosition({ clientId: client.id });
-    });
-  }
-
   return (
     <div className="space-y-4">
       <div className="rounded-md border border-stone-200 bg-stone-50 px-4 py-3">
@@ -100,16 +92,10 @@ export function GovernmentSection({
             </div>
           )}
           {canEdit && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={add}
-              disabled={pending}
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              Add position
-            </Button>
+            <AddRowButton
+              label="Add position"
+              onAdd={() => addGovernmentPosition({ clientId: client.id })}
+            />
           )}
         </>
       )}

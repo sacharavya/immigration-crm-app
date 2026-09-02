@@ -1,9 +1,7 @@
 "use client";
 
-import { Plus } from "lucide-react";
 import { useTransition } from "react";
 
-import { Button } from "@/components/ui/button";
 import type { Database } from "@/lib/supabase/types";
 
 import {
@@ -13,7 +11,7 @@ import {
   updateMilitaryService,
 } from "../actions";
 import { SelectField, TextField, TextareaField, YesNoField } from "./fields";
-import { DeleteRowButton } from "./saving-indicator";
+import { AddRowButton, DeleteRowButton } from "./saving-indicator";
 
 type ClientRow = Database["crm"]["Tables"]["clients"]["Row"];
 type MilRow = Database["crm"]["Tables"]["client_military_services"]["Row"];
@@ -46,12 +44,6 @@ export function MilitarySection({
           }),
         );
       });
-    });
-  }
-
-  function add() {
-    startTransition(async () => {
-      await addMilitaryService({ clientId: client.id });
     });
   }
 
@@ -92,16 +84,10 @@ export function MilitarySection({
             </div>
           )}
           {canEdit && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={add}
-              disabled={pending}
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              Add service entry
-            </Button>
+            <AddRowButton
+              label="Add service entry"
+              onAdd={() => addMilitaryService({ clientId: client.id })}
+            />
           )}
         </>
       )}

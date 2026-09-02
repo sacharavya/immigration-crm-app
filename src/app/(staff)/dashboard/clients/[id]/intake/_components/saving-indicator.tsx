@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Check, Loader2, Trash2 } from "lucide-react";
+import { AlertCircle, Check, Loader2, Plus, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,64 @@ export function SavingIndicator({
 }
 
 // Shared confirm-delete row button used across all section row editors.
+// Add-row buttons fire a server action whose new row only appears once the
+// page refresh lands — seconds on slow connections. Owning the pending state
+// here makes the tap show "Adding…" immediately, blocks double-taps, and
+// surfaces failures instead of swallowing them.
+export function AddRowButton({
+  label,
+  onAdd,
+  disabled,
+  className,
+}: {
+  label: string;
+  onAdd: () => Promise<{ ok: true } | { error: string } | void>;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [failed, setFailed] = useState(false);
+
+  function run() {
+    if (pending) return;
+    setFailed(false);
+    startTransition(async () => {
+      try {
+        const r = await onAdd();
+        if (r && "error" in r) setFailed(true);
+      } catch {
+        setFailed(true);
+      }
+    });
+  }
+
+  return (
+    <span
+      className={`inline-flex flex-wrap items-center gap-2 ${className ?? ""}`}
+    >
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={run}
+        disabled={disabled || pending}
+      >
+        {pending ? (
+          <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Plus className="mr-1 h-3.5 w-3.5" />
+        )}
+        {pending ? "Adding…" : label}
+      </Button>
+      {failed && (
+        <span role="alert" className="text-xs text-red-600">
+          Could not add. Please tap again.
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function DeleteRowButton({
   onConfirm,
   disabled,

@@ -1,9 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
-import { useTransition } from "react";
 
-import { Button } from "@/components/ui/button";
 import type { Database } from "@/lib/supabase/types";
 
 import {
@@ -12,7 +9,7 @@ import {
   updateEmployment,
 } from "../actions";
 import { SelectField, TextField } from "./fields";
-import { DeleteRowButton } from "./saving-indicator";
+import { AddRowButton, DeleteRowButton } from "./saving-indicator";
 
 type EmploymentRow =
   Database["crm"]["Tables"]["client_employment_history"]["Row"];
@@ -38,20 +35,10 @@ export function EmploymentSection({
   countries: CountryOption[];
   canEdit: boolean;
 }) {
-  const [pending, startTransition] = useTransition();
   const countryOptions = countries.map((c) => ({
     value: c.code,
     label: c.name,
   }));
-
-  function add() {
-    startTransition(async () => {
-      await addEmployment({
-        clientId,
-        occupation: "New entry",
-      });
-    });
-  }
 
   return (
     <div className="space-y-3">
@@ -74,16 +61,10 @@ export function EmploymentSection({
         </div>
       )}
       {canEdit && (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={add}
-          disabled={pending}
-        >
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          Add entry
-        </Button>
+        <AddRowButton
+          label="Add entry"
+          onAdd={() => addEmployment({ clientId, occupation: "New entry" })}
+        />
       )}
     </div>
   );

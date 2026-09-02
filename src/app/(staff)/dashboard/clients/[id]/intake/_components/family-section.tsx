@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   updateFamilyMember,
 } from "../actions";
 import { SelectField, TextField, YesNoField } from "./fields";
+import { AddRowButton } from "./saving-indicator";
 
 type ClientRow = Database["crm"]["Tables"]["clients"]["Row"];
 type FamilyRow = Database["crm"]["Tables"]["client_family_members"]["Row"];
@@ -123,16 +124,6 @@ export function FamilySection({
     });
   }
 
-  function add(defaultRelationship: RelationshipKind) {
-    startTransition(async () => {
-      await addFamilyMember({
-        clientId: client.id,
-        relationship: defaultRelationship,
-        full_name: "New entry",
-      });
-    });
-  }
-
   return (
     <div className="space-y-4">
       {showGate && (
@@ -176,21 +167,22 @@ export function FamilySection({
           )}
 
           {canEdit && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => add(allowedRelationships[0])}
-              disabled={pending}
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              Add{" "}
-              {mode === "parents_spouse"
-                ? "family member"
-                : mode === "children"
-                ? "child"
-                : "sibling"}
-            </Button>
+            <AddRowButton
+              label={`Add ${
+                mode === "parents_spouse"
+                  ? "family member"
+                  : mode === "children"
+                    ? "child"
+                    : "sibling"
+              }`}
+              onAdd={() =>
+                addFamilyMember({
+                  clientId: client.id,
+                  relationship: allowedRelationships[0],
+                  full_name: "New entry",
+                })
+              }
+            />
           )}
         </>
       )}

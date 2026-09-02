@@ -7,6 +7,7 @@ import { getPortalActor, type PortalActor } from "@/lib/auth/intake-portal";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
 import { BACKGROUND_QUESTION_CODES } from "@/lib/intake/completeness";
+import { adminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { Database, Json } from "@/lib/supabase/types";
 
@@ -80,6 +81,17 @@ async function gate(
     };
   }
   return { ok: true, actor: { kind: "staff", me } };
+}
+
+// Portal actors are anonymous: no auth session, so the staff-only RLS on
+// crm tables silently zero-rows their UPDATEs, empties their SELECTs
+// ("Client not found"), and rejects their INSERTs. gate() has already proven
+// the portal cookie's token maps to the clientId being written, so the
+// service-role client is the correct vehicle -- and every row-level query
+// below still scopes by client_id, keeping a portal session confined to its
+// own rows even with RLS bypassed.
+async function dbFor(actor: { kind: "staff" | "portal" }) {
+  return actor.kind === "portal" ? adminClient() : await createClient();
 }
 
 function rev(clientId: string) {
@@ -303,7 +315,7 @@ export async function updateClientCore(
 
   if (Object.keys(updates).length === 0) return { ok: true };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("clients")
@@ -338,7 +350,7 @@ export async function updateBackgroundResponse(
   }
   const { clientId, questionCode, answer, details } = parsed.data;
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
 
   const { data: row, error: fetchErr } = await supabase
     .schema("crm")
@@ -416,7 +428,7 @@ export async function addFamilyMember(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const insert: FamilyInsert = {
     client_id: parsed.data.clientId,
     relationship: parsed.data.relationship,
@@ -459,12 +471,13 @@ export async function updateFamilyMember(
   }
   if (Object.keys(updates).length === 0) return { ok: true };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_family_members")
     .update(updates)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   revAfterFieldSave(g.actor.kind, clientId, updates);
@@ -478,12 +491,13 @@ export async function removeFamilyMember(
   const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_family_members")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   rev(clientId);
@@ -534,7 +548,7 @@ export async function addEducation(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const insert: EducationInsert = {
     client_id: parsed.data.clientId,
     institution: parsed.data.institution,
@@ -577,12 +591,13 @@ export async function updateEducation(
   }
   if (Object.keys(updates).length === 0) return { ok: true };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_education_history")
     .update(updates)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   revAfterFieldSave(g.actor.kind, clientId, updates);
@@ -596,12 +611,13 @@ export async function removeEducation(
   const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_education_history")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   rev(clientId);
@@ -645,7 +661,7 @@ export async function addEmployment(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const insert: EmploymentInsert = {
     client_id: parsed.data.clientId,
     occupation: parsed.data.occupation,
@@ -687,12 +703,13 @@ export async function updateEmployment(
   }
   if (Object.keys(updates).length === 0) return { ok: true };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_employment_history")
     .update(updates)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   revAfterFieldSave(g.actor.kind, clientId, updates);
@@ -706,12 +723,13 @@ export async function removeEmployment(
   const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_employment_history")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   rev(clientId);
@@ -755,7 +773,7 @@ export async function addTravel(
     return { error: "End date must be on or after start date" };
   }
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const insert: TravelInsert = {
     client_id: parsed.data.clientId,
     date_from: parsed.data.date_from,
@@ -798,12 +816,13 @@ export async function updateTravel(
   }
   if (Object.keys(updates).length === 0) return { ok: true };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_travel_history")
     .update(updates)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   revAfterFieldSave(g.actor.kind, clientId, updates);
@@ -817,12 +836,13 @@ export async function removeTravel(
   const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_travel_history")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   rev(clientId);
@@ -863,7 +883,7 @@ export async function addAddress(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const insert: AddressInsert = {
     client_id: parsed.data.clientId,
     address_line: parsed.data.address_line,
@@ -905,12 +925,13 @@ export async function updateAddress(
   }
   if (Object.keys(updates).length === 0) return { ok: true };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_address_history")
     .update(updates)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   revAfterFieldSave(g.actor.kind, clientId, updates);
@@ -924,12 +945,13 @@ export async function removeAddress(
   const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_address_history")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   rev(clientId);
@@ -973,7 +995,7 @@ export async function addOrganisation(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const insert: OrgInsert = {
     client_id: parsed.data.clientId,
     organisation_name: parsed.data.organisation_name,
@@ -1015,12 +1037,13 @@ export async function updateOrganisation(
   }
   if (Object.keys(updates).length === 0) return { ok: true };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_organisations")
     .update(updates)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   revAfterFieldSave(g.actor.kind, clientId, updates);
@@ -1034,12 +1057,13 @@ export async function removeOrganisation(
   const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_organisations")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   rev(clientId);
@@ -1082,7 +1106,7 @@ export async function addGovernmentPosition(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const insert: GovInsert = { client_id: parsed.data.clientId };
   const { data, error } = await supabase
     .schema("crm")
@@ -1121,12 +1145,13 @@ export async function updateGovernmentPosition(
   }
   if (Object.keys(updates).length === 0) return { ok: true };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_government_positions")
     .update(updates)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   revAfterFieldSave(g.actor.kind, clientId, updates);
@@ -1140,12 +1165,13 @@ export async function removeGovernmentPosition(
   const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_government_positions")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   rev(clientId);
@@ -1188,7 +1214,7 @@ export async function addMilitaryService(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const insert: MilInsert = { client_id: parsed.data.clientId };
   const { data, error } = await supabase
     .schema("crm")
@@ -1227,12 +1253,13 @@ export async function updateMilitaryService(
   }
   if (Object.keys(updates).length === 0) return { ok: true };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_military_services")
     .update(updates)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   revAfterFieldSave(g.actor.kind, clientId, updates);
@@ -1246,12 +1273,13 @@ export async function removeMilitaryService(
   const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_military_services")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   rev(clientId);
@@ -1319,7 +1347,7 @@ export async function addBiometricRecord(
   }
   const data = parsed.data;
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
 
   // display_order = max existing + 10 for this client, or 100 if first.
   const { data: existing } = await supabase
@@ -1385,12 +1413,13 @@ export async function updateBiometricRecord(
   }
   if (Object.keys(updates).length === 0) return { ok: true };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
   const { error } = await supabase
     .schema("crm")
     .from("client_biometric_records")
     .update(updates)
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   revAfterFieldSave(g.actor.kind, clientId, updates);
@@ -1404,7 +1433,7 @@ export async function removeBiometricRecord(
   const g = await gate(clientId);
   if (!g.ok) return { error: g.error };
 
-  const supabase = await createClient();
+  const supabase = await dbFor(g.actor);
 
   // Refuse if any non-deleted case still references this record. Soft delete
   // would leave dangling links otherwise, since the row stays in the table.
@@ -1424,7 +1453,8 @@ export async function removeBiometricRecord(
     .schema("crm")
     .from("client_biometric_records")
     .update({ deleted_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   if (error) return { error: error.message };
 
   rev(clientId);
