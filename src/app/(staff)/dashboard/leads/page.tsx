@@ -53,7 +53,7 @@ export default async function LeadsPage() {
     .order("created_at", { ascending: false })
     .limit(200);
 
-  // BBI-CRM alpha requests from the public /crm page. Newer than the
+  // BBI-CRM alpha requests from /immigration-crm-software. Newer than the
   // generated Database types, hence the untyped view.
   const { data: accessRequests } = await (
     supabase as unknown as SupabaseClient
@@ -199,7 +199,8 @@ export default async function LeadsPage() {
             BBI-CRM access requests
           </h2>
           <p className="mt-1 text-sm text-stone-500">
-            Firms asking to join the alpha program via the public /crm page.
+            Firms asking to join the alpha program via the public
+            /immigration-crm-software page.
           </p>
           <div className="mt-4 overflow-x-auto border border-stone-200 bg-white">
             <table className="w-full text-sm">

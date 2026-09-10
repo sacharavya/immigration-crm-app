@@ -51,7 +51,10 @@ export function PublicFooter() {
           <Link href="/terms" className="hover:text-stone-600 hover:underline">
             Terms of Use
           </Link>
-          <Link href="/crm" className="hover:text-stone-600 hover:underline">
+          <Link
+            href="/immigration-crm-software"
+            className="hover:text-stone-600 hover:underline"
+          >
             BBI-CRM for firms
           </Link>
         </div>

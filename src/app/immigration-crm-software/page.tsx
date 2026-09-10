@@ -20,143 +20,160 @@ import { PublicFooter } from "@/components/public-footer";
 import { RequestForm } from "./_components/request-form";
 
 export const metadata: Metadata = {
-  title: "BBI-CRM — Practice management for Canadian immigration firms",
+  title:
+    "Immigration CRM Software for Canadian Firms | BBI-CRM by Big Bang Immigration",
   description:
-    "Case management, submission package builder, IRCC form autofill, CICC compliance, and Canadian data residency. Join the free alpha program with a week of hands-on training.",
+    "Immigration case management software built inside a CICC-regulated firm: submission package builder, IRCC form autofill, client portal, compliance, billing, and Canadian data residency. Free through alpha and beta testing, with a week of hands-on training.",
 };
+
+// dev: true = not shipped yet; rendered with an "In development" tag so alpha
+// firms know exactly what exists today vs what lands during the program.
+type FeatureItem = { text: string; dev?: boolean };
 
 const FEATURES: Array<{
   Icon: typeof Briefcase;
   title: string;
-  items: string[];
+  dev?: boolean; // whole group still in development
+  items: FeatureItem[];
 }> = [
   {
     Icon: Briefcase,
     title: "Case Management",
     items: [
-      "Case creation by application type (Express Entry, PNP, work permit, study permit, family sponsorship, and more)",
-      "Checklist per application type, driving document collection and assembly order",
-      "Case status milestones and pipeline view",
-      "Deadlines, reminders and expiry tracking (permits, biometrics, medicals, LMIA)",
-      "Task assignment and internal notes",
-      "Contact and client records: applicant, dependants, employer, representative",
+      { text: "Case creation by application type (Express Entry, PNP, work permit, study permit, family sponsorship, and more)" },
+      { text: "Checklist per application type, driving document collection and assembly order" },
+      { text: "Case status milestones and pipeline view" },
+      { text: "Deadlines, reminders and expiry tracking (permits, biometrics, medicals, LMIA)" },
+      { text: "Task assignment and internal notes" },
+      { text: "Contact and client records: applicant, dependants, employer, representative" },
     ],
   },
   {
     Icon: FileStack,
     title: "Submission Package Builder",
     items: [
-      "Merge documents in checklist order",
-      "Compress to portal presets: IRCC 4 MB, IRCC 2 MB, OINP 10 MB, email 20 MB, or merge only",
-      "Auto bookmarks and index page",
-      "Page-level editing: reorder, rotate, delete",
-      "Redaction and bursting (split a package back into individual files)",
-      "Output to the case's Final folder in OneDrive, with readable file naming and version tracking",
+      { text: "Merge documents in checklist order" },
+      { text: "Compress to portal presets: IRCC 4 MB, IRCC 2 MB, OINP 10 MB, email 20 MB, or merge only" },
+      { text: "Auto bookmarks and index page" },
+      { text: "Page-level editing: reorder, rotate, delete" },
+      { text: "Redaction and bursting (split a package back into individual files)", dev: true },
+      { text: "Output to the case's Final folder in OneDrive, with readable file naming and version tracking" },
     ],
   },
   {
     Icon: FileText,
     title: "Forms and Autofill",
+    dev: true,
     items: [
-      "IRCC form library (IMM forms) with data mapping",
-      "Autofill from case data into IRCC PDFs and web portals",
-      "Provincial nominee portal autofill",
-      "Form validation before submission",
-      "Reusable client profile: data entered once flows into every form",
+      { text: "IRCC form library (IMM forms) with data mapping" },
+      { text: "Autofill from case data into IRCC PDFs and web portals" },
+      { text: "Provincial nominee portal autofill" },
+      { text: "Form validation before submission" },
+      { text: "Reusable client profile: data entered once flows into every form" },
     ],
   },
   {
     Icon: Bot,
     title: "AI Layer",
+    dev: true,
     items: [
-      "Case file strength assessment per application type",
-      "Completeness check against the checklist",
-      "Consistency check across documents and forms",
-      "Substantive review against published IRCC policies and program requirements",
-      "AI drafting: cover letters, submission letters, LMIA rationales, procedural fairness responses",
-      "Regulatory monitor for IRCC and provincial program changes",
-      "Inference only — no training on client data",
+      { text: "Case file strength assessment per application type" },
+      { text: "Completeness check against the checklist" },
+      { text: "Consistency check across documents and forms" },
+      { text: "Substantive review against published IRCC policies and program requirements" },
+      { text: "AI drafting: cover letters, submission letters, LMIA rationales, procedural fairness responses" },
+      { text: "Regulatory monitor for IRCC and provincial program changes" },
+      { text: "Inference only — no training on client data" },
     ],
   },
   {
     Icon: Users,
     title: "Client Portal",
     items: [
-      "Document upload with per-document status (requested, uploaded, accepted, rejected)",
-      "Intake questionnaires with conditional logic",
-      "Case status visibility for the client",
-      "Multilingual intake",
-      "Secure messaging",
-      "E-signatures",
+      { text: "Document upload with per-document status (requested, uploaded, accepted, rejected)" },
+      { text: "Intake questionnaires with conditional logic" },
+      { text: "E-signatures on retainers and consultation agreements" },
+      { text: "Case status visibility for the client", dev: true },
+      { text: "Multilingual intake", dev: true },
+      { text: "Secure messaging", dev: true },
     ],
   },
   {
     Icon: ShieldCheck,
     title: "CICC Compliance and Practice Governance",
     items: [
-      "Retainer agreement generation tied to the CICC Code",
-      "Conflict of interest check at intake",
-      "Supervision hierarchies mapped to CICC accountability",
-      "Client file retention rules and audit logs",
-      "Complaint and incident documentation",
-      "Trust and client account records",
-      "Audit-ready practice record export",
+      { text: "Retainer agreement generation tied to the CICC Code" },
+      { text: "Supervision hierarchies mapped to CICC accountability" },
+      { text: "Client file retention rules and audit logs" },
+      { text: "Conflict of interest check at intake", dev: true },
+      { text: "Complaint and incident documentation", dev: true },
+      { text: "Trust and client account records", dev: true },
+      { text: "Audit-ready practice record export", dev: true },
     ],
   },
   {
     Icon: Receipt,
     title: "Billing and Payments",
     items: [
-      "Invoicing and payment tracking",
-      "Trust vs general account separation",
-      "Online payments (Stripe)",
-      "Retainer balance tracking",
+      { text: "Invoicing and payment tracking" },
+      { text: "Retainer balance tracking" },
+      { text: "Trust vs general account separation", dev: true },
+      { text: "Online payments (Stripe)", dev: true },
     ],
   },
   {
     Icon: Plug,
     title: "Integrations",
     items: [
-      "OneDrive and Google Drive document storage",
-      "Gmail and Outlook",
-      "Calendar sync",
-      "Stripe",
-      "Public API and webhooks",
-      "Data import from Officio and other incumbents",
+      { text: "OneDrive document storage" },
+      { text: "Outlook and Microsoft 365 calendar sync" },
+      { text: "Google Drive and Gmail", dev: true },
+      { text: "Stripe", dev: true },
+      { text: "Public API and webhooks", dev: true },
+      { text: "Data import from Officio and other incumbents", dev: true },
     ],
   },
   {
     Icon: Building2,
     title: "Enterprise and Multi-Office",
+    dev: true,
     items: [
-      "Multi-tenant firm accounts",
-      "Role-based permissions",
-      "SSO",
-      "Multi-office structures and reporting",
-      "White-label option",
+      { text: "Multi-tenant firm accounts" },
+      { text: "Role-based permissions" },
+      { text: "SSO" },
+      { text: "Multi-office structures and reporting" },
+      { text: "White-label option" },
     ],
   },
   {
     Icon: Lock,
     title: "Security and Data Residency",
     items: [
-      "Canadian hosting: data stored and processed inside Canada",
-      "Client-side PDF processing — documents never leave the browser during assembly",
-      "Row-level security per firm and per case",
-      "Encryption and access logs",
+      { text: "Canadian hosting: data stored and processed inside Canada" },
+      { text: "Client-side PDF processing — documents never leave the browser during assembly" },
+      { text: "Row-level security per firm and per case" },
+      { text: "Encryption and access logs" },
     ],
   },
   {
     Icon: LineChart,
     title: "Reporting and Analytics",
     items: [
-      "Caseload and pipeline dashboards",
-      "Staff productivity and turnaround times",
-      "Revenue and outstanding balances",
-      "Application outcome tracking by program",
+      { text: "Caseload and pipeline dashboards" },
+      { text: "Staff productivity and turnaround times" },
+      { text: "Revenue and outstanding balances" },
+      { text: "Application outcome tracking by program", dev: true },
     ],
   },
 ];
+
+function DevTag() {
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200">
+      In development
+    </span>
+  );
+}
 
 export default function CrmPage() {
   return (
@@ -189,16 +206,16 @@ export default function CrmPage() {
             BBI-CRM · Alpha program
           </p>
           <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
-            The immigration practice platform built inside a{" "}
+            Immigration CRM software built inside a{" "}
             <span className="text-[var(--navy)]">CICC-regulated firm</span>
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-stone-600">
             We built BBI-CRM to run our own practice: case management,
             submission packages, IRCC forms, compliance, and billing in one
             place, hosted in Canada. Now we are opening it to a small group of
-            firms — free during the alpha, with a full week of hands-on
-            training, in exchange for the feedback that shapes what we build
-            next.
+            firms — free through alpha and beta testing, with a full week of
+            hands-on training, in exchange for the feedback that shapes what
+            we build next.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-4">
             <a
@@ -215,7 +232,7 @@ export default function CrmPage() {
             </a>
           </div>
           <div className="mt-10 flex flex-wrap gap-x-8 gap-y-2 text-sm text-stone-500">
-            <span>Free during alpha</span>
+            <span>Free through alpha and beta</span>
             <span>One week of hands-on training</span>
             <span>Canadian data residency</span>
             <span>Built and used daily by an active RCIC practice</span>
@@ -229,29 +246,40 @@ export default function CrmPage() {
           Everything a firm runs on, in one system
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-stone-500">
-          The platform is in daily use inside our own practice and under
-          active development; some capabilities below land during the alpha —
-          alpha firms decide which come first.
+          The platform is in daily use inside our own practice. Anything
+          tagged{" "}
+          <span className="font-medium text-amber-700">In development</span>{" "}
+          lands during the alpha — and alpha firms decide which of it comes
+          first.
         </p>
         <div className="mt-10 grid gap-6 sm:grid-cols-2">
-          {FEATURES.map(({ Icon, title, items }) => (
+          {FEATURES.map(({ Icon, title, dev, items }) => (
             <div
               key={title}
               className="rounded-lg border border-stone-200 bg-white p-6"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <span className="flex h-9 w-9 items-center justify-center rounded-md bg-[var(--navy)]/5 text-[var(--navy)]">
                   <Icon className="h-4.5 w-4.5" />
                 </span>
                 <h3 className="text-base font-semibold text-stone-900">
                   {title}
                 </h3>
+                {dev && <DevTag />}
               </div>
               <ul className="mt-4 space-y-2 text-sm leading-relaxed text-stone-600">
                 {items.map((item) => (
-                  <li key={item} className="flex gap-2">
+                  <li key={item.text} className="flex gap-2">
                     <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-stone-400" />
-                    {item}
+                    <span>
+                      {item.text}
+                      {item.dev && !dev && (
+                        <>
+                          {" "}
+                          <DevTag />
+                        </>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -270,7 +298,7 @@ export default function CrmPage() {
             <ul className="mt-5 space-y-3 text-sm leading-relaxed text-stone-600">
               <li className="flex gap-2">
                 <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--navy)]" />
-                Full platform access at no cost for the length of the alpha
+                Full platform access at no cost through alpha and beta testing
               </li>
               <li className="flex gap-2">
                 <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--navy)]" />
@@ -284,8 +312,21 @@ export default function CrmPage() {
               </li>
               <li className="flex gap-2">
                 <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--navy)]" />
-                Priority say in the roadmap and early-adopter pricing when the
-                alpha ends
+                Priority say in the roadmap while the platform takes shape
+              </li>
+              <li className="flex gap-2">
+                <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--navy)]" />
+                No obligation when testing ends: if the platform has earned a
+                place in your firm, migrate onto a subscription or package and
+                keep everything you have built — your cases, documents, and
+                setup carry over. Pricing is not set yet, and testing firms
+                will hear it first and help shape it.
+              </li>
+              <li className="flex gap-2">
+                <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--navy)]" />
+                Prefer not to continue? Download your complete data and close
+                the account — we permanently delete what remains and store
+                nothing further.
               </li>
             </ul>
           </div>
