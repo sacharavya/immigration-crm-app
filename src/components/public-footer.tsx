@@ -51,6 +51,9 @@ export function PublicFooter() {
           <Link href="/terms" className="hover:text-stone-600 hover:underline">
             Terms of Use
           </Link>
+          <Link href="/crm" className="hover:text-stone-600 hover:underline">
+            BBI-CRM for firms
+          </Link>
         </div>
         &copy; {new Date().getFullYear()} Big Bang Immigration Consulting Inc.
         &middot; Licensed by the College of Immigration and Citizenship
