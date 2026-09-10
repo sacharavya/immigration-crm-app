@@ -7,6 +7,7 @@ import {
   CalendarDays,
   CheckSquare,
   ChevronDown,
+  FileText,
   Handshake,
   History,
   Inbox,
@@ -40,6 +41,7 @@ const PRIMARY_NAV: ReadonlyArray<{
   { href: "/dashboard/clients", label: "Clients", Icon: Users },
   { href: "/dashboard/leads", label: "Leads", Icon: UserPlus },
   { href: "/dashboard/tasks", label: "Tasks", Icon: CheckSquare },
+  { href: "/dashboard/forms", label: "Forms", Icon: FileText },
 ];
 
 function initialsOf(first: string, last: string) {
