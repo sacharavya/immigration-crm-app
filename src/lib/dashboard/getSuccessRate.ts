@@ -88,7 +88,7 @@ export async function getSuccessRate(
     supabase
       .schema("ref")
       .from("service_types")
-      .select("id, code, category_code")
+      .select("id, code, name, category_code")
       .is("deactivated_at", null)
       .order("code"),
     supabase.schema("ref").from("service_categories").select("code, name"),
@@ -100,7 +100,7 @@ export async function getSuccessRate(
   const serviceById = new Map(
     (serviceTypes ?? []).map((s) => [
       s.id,
-      { code: s.code, categoryCode: s.category_code },
+      { code: s.code, name: s.name, categoryCode: s.category_code },
     ]),
   );
 
@@ -112,7 +112,7 @@ export async function getSuccessRate(
   for (const s of serviceTypes ?? []) {
     serviceBuckets.set(s.id, {
       key: s.code,
-      label: s.code,
+      label: s.name ?? s.code,
       decided: 0,
       approved: 0,
     });
@@ -138,7 +138,7 @@ export async function getSuccessRate(
       serviceBuckets
         .set(r.service_type_id, {
           key: svc.code,
-          label: svc.code,
+          label: svc.name ?? svc.code,
           decided: 0,
           approved: 0,
         })

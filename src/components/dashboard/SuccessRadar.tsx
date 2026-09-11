@@ -50,7 +50,7 @@ export function SuccessRadar({ data }: { data: RadarData }) {
     const detail = meta
       ? meta.dimmed
         ? `${meta.decided} case${meta.decided === 1 ? "" : "s"}`
-        : `${meta.value}%`
+        : `${meta.value}%, ${meta.decided} case${meta.decided === 1 ? "" : "s"}`
       : "";
     return (
       <text
