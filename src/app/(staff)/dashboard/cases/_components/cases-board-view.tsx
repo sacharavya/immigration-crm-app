@@ -286,19 +286,15 @@ function CaseCard({
         dragging && "rotate-1 ring-2 ring-primary/20",
       )}
     >
-      {/* Top line: ball-in-court dot, case number, service inline, then the
-          priority pill and drag handle. */}
+      {/* Stacked layout, one fact per row, so narrow columns never wrap or
+          truncate: number, type, name, decision, action, documents, payment,
+          worker, age. */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <BallDot ball={card.ballInCourt} />
-          <span className="font-mono text-[11px] text-muted-foreground">
+          <span className="truncate font-mono text-[11px] text-muted-foreground">
             {card.caseNumber}
           </span>
-          {card.serviceName && (
-            <span className="truncate text-[11px] text-muted-foreground">
-              · {card.serviceName}
-            </span>
-          )}
         </div>
         <div className="relative z-10 flex shrink-0 items-center gap-1">
           {card.priority !== "none" && <PriorityPill priority={card.priority} />}
@@ -316,6 +312,17 @@ function CaseCard({
         </div>
       </div>
 
+      {/* Case type under the number. */}
+      {card.serviceName ? (
+        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+          {card.serviceName}
+        </p>
+      ) : (
+        <p className="mt-0.5 text-xs font-medium text-[color:var(--warning-text)]">
+          Service not set
+        </p>
+      )}
+
       {/* Client name is the open control; its stretched ::after makes the whole
           card a single pointer click target while staying one keyboard stop.
           Interactive controls (drag handle, move menu) sit above it via z-10. */}
@@ -323,37 +330,34 @@ function CaseCard({
         type="button"
         onClick={open}
         aria-label={`Open case ${card.caseNumber} for ${card.clientName}`}
-        className="mt-2 block w-full text-left after:absolute after:inset-0 after:content-[''] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="mt-1.5 block w-full text-left after:absolute after:inset-0 after:content-[''] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         <span className="line-clamp-1 text-sm font-semibold text-foreground">
           {card.clientName}
         </span>
       </button>
 
-      {/* Decision outcome on its own row: the header is too narrow to share
-          with the case number without wrapping it. */}
       {card.decision && (
         <div className="mt-1.5">
           <DecisionBadge decision={card.decision} />
         </div>
       )}
 
-      {/* Service-missing line in place of the service. */}
-      {!card.serviceName && (
-        <p className="mt-0.5 text-xs font-medium text-[color:var(--warning-text)]">
-          Service not set
-        </p>
-      )}
-
       <StatusLine ball={card.ballInCourt} text={card.statusText} className="mt-2" />
 
       {card.urgency && <UrgencyLine urgency={card.urgency} className="mt-1" />}
 
-      {/* Metrics: documents progress + payment. */}
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <DocsProgress received={card.docsReceived} required={card.docsRequired} />
-        <PaymentIndicator state={card.payment.state} label={card.payment.label} />
-      </div>
+      {/* Documents, then payment, stacked. */}
+      <DocsProgress
+        received={card.docsReceived}
+        required={card.docsRequired}
+        className="mt-3"
+      />
+      <PaymentIndicator
+        state={card.payment.state}
+        label={card.payment.label}
+        className="mt-1.5"
+      />
 
       {/* Footer: worker + phase age, with the keyboard move menu. */}
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2">
