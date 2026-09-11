@@ -72,6 +72,7 @@ import {
   type RelatedParty,
 } from "./_components/related-people-row";
 import { SubStatusRow } from "./_components/sub-status-row";
+import { hstForRetainer } from "@/lib/cases/fee-totals";
 import { deriveSubmissionRisk } from "@/lib/cases/submission-risk";
 import {
   IMMIGRATION_STATUS_LABELS,
@@ -908,9 +909,14 @@ export default async function CasePage({ params, searchParams }: Props) {
   const quotedGovernmentFee = retainerData
     ? retainerData.government_fee_cad
     : Number(retainerRow?.government_fee_cad ?? caseRow.government_fee_cad ?? 0);
+  // hstForRetainer applies the NULL-means-13% rule so this card agrees
+  // with the retainer PDF on every tab, not only when retainerData loads
+  // (it is skipped off the retainer tab to keep renders lean).
   const quotedHst = retainerData
     ? retainerData.hst_cad
-    : Number(retainerRow?.hst_cad ?? 0);
+    : retainerRow
+      ? hstForRetainer(Number(quotedBase), retainerRow.hst_cad)
+      : 0;
   const quoted = quotedBase + quotedGovernmentFee + quotedHst;
 
   const staffNameById = new Map(
