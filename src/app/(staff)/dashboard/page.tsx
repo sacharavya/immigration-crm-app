@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { MyTasks } from "@/components/dashboard/MyTasks";
-import { NeedsAttention } from "@/components/dashboard/NeedsAttention";
 import { PipelineStrip } from "@/components/dashboard/PipelineStrip";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { SuccessRadar } from "@/components/dashboard/success-radar-lazy";
@@ -15,7 +14,6 @@ import { getStaff } from "@/lib/auth/staff";
 import { loadActiveBoardCards, type EnrichedCard } from "@/lib/dashboard/boardCards";
 import { getKpis } from "@/lib/dashboard/getKpis";
 import { getMyTasks } from "@/lib/dashboard/getMyTasks";
-import { getNeedsAttention } from "@/lib/dashboard/getNeedsAttention";
 import { getPipeline } from "@/lib/dashboard/getPipeline";
 import { getRecentActivity } from "@/lib/dashboard/getRecentActivity";
 import { getSuccessRate } from "@/lib/dashboard/getSuccessRate";
@@ -61,7 +59,6 @@ export default async function DashboardPage() {
       : Promise.resolve([] as AppointmentRow[]),
   ]);
 
-  const needs = getNeedsAttention(cards);
   const pipeline = getPipeline(cards);
 
   // Outstanding fees is financial; hide that card from staff without the
@@ -133,7 +130,14 @@ export default async function DashboardPage() {
 
       <div className="grid gap-6 min-[1080px]:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
-          {canCases && <NeedsAttention rows={needs} />}
+          {canAppointments && (
+            <UpcomingAppointmentsCard
+              title="Upcoming appointments"
+              appointments={appointments}
+              viewAllHref="/dashboard/appointments"
+              prominent
+            />
+          )}
           {canCases && <PipelineStrip phases={pipeline} />}
           {canCases && <RecentActivity rows={recent} />}
         </div>
@@ -141,13 +145,6 @@ export default async function DashboardPage() {
         <div className="space-y-6">
           {canCases && <SuccessRadar data={radar} />}
           {canTasks && <MyTasks tasks={tasks} />}
-          {canAppointments && (
-            <UpcomingAppointmentsCard
-              title="Upcoming"
-              appointments={appointments}
-              viewAllHref="/dashboard/appointments"
-            />
-          )}
         </div>
       </div>
     </main>
