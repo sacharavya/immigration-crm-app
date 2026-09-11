@@ -63,6 +63,11 @@ export function RecentActivity({ rows }: { rows: RecentRow[] }) {
                   </span>
                   <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                     {row.clientName}
+                    {row.serviceName && (
+                      <span className="ml-2 font-normal text-xs text-muted-foreground">
+                        {row.serviceName}
+                      </span>
+                    )}
                   </span>
                   <span
                     className={cn(

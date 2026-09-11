@@ -80,6 +80,10 @@ export type BoardCardModel = {
 
   priority: CasePriority;
 
+  // Decision-phase outcome shown as a badge: passport_requested is an
+  // approval in IRCC terms, refused a refusal. Null outside phase 6.
+  decision: "approved" | "refused" | null;
+
   workerId: string | null;
   workerName: string | null;
 
@@ -275,6 +279,12 @@ export function deriveBoardCard(input: DeriveBoardCardInput): BoardCardModel {
     docsReceived: input.docs.received,
     payment,
     priority,
+    decision:
+      input.status === "passport_requested"
+        ? "approved"
+        : input.status === "refused"
+          ? "refused"
+          : null,
     workerId: input.workerId,
     workerName: input.workerName,
     phaseAgeDays,

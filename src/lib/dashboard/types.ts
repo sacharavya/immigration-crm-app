@@ -64,6 +64,8 @@ export type RecentRow = {
   caseId: string;
   caseNumber: string;
   clientName: string;
+  // Service type display name; null when the case has no service set.
+  serviceName: string | null;
   status: string;
   updatedAt: string;
 };

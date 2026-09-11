@@ -209,3 +209,19 @@ describe("deriveBoardCard - priority", () => {
     );
   });
 });
+
+describe("deriveBoardCard - decision badge", () => {
+  it("maps passport_requested to approved", () => {
+    const card = make({ status: "passport_requested" as CaseStatus });
+    assert.equal(deriveBoardCard(card).decision, "approved");
+  });
+
+  it("maps refused to refused", () => {
+    const card = make({ status: "refused" as CaseStatus });
+    assert.equal(deriveBoardCard(card).decision, "refused");
+  });
+
+  it("is null outside the decision phase", () => {
+    assert.equal(deriveBoardCard(make()).decision, null);
+  });
+});

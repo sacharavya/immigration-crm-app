@@ -210,10 +210,11 @@ export default async function CasesPage({ searchParams }: Props) {
       : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
     supabase
       .schema("crm")
+      // No is_active filter: the name LOOKUP must resolve deactivated staff
+      // too, or their cards read "Unassigned". The picker filters below.
       .from("staff")
-      .select("id, first_name, last_name")
+      .select("id, first_name, last_name, is_active")
       .is("deleted_at", null)
-      .eq("is_active", true)
       .order("last_name", { ascending: true }),
     supabase
       .schema("ref")
@@ -247,10 +248,12 @@ export default async function CasesPage({ searchParams }: Props) {
     (allStaff ?? []).map((a) => [a.id, `${a.first_name} ${a.last_name}`.trim()]),
   );
 
-  const assigneeOptions: StaffPick[] = (allStaff ?? []).map((s) => ({
-    id: s.id,
-    name: `${s.first_name} ${s.last_name}`.trim(),
-  }));
+  const assigneeOptions: StaffPick[] = (allStaff ?? [])
+    .filter((s) => s.is_active)
+    .map((s) => ({
+      id: s.id,
+      name: `${s.first_name} ${s.last_name}`.trim(),
+    }));
 
   // Only VERIFIED payments contribute to the paid/partial/unpaid signal.
   const collectedByCase = new Map<string, number>();
@@ -346,10 +349,15 @@ export default async function CasesPage({ searchParams }: Props) {
       serviceName: serviceNameById.get(c.service_type_id) ?? null,
       status: c.status,
       priority: c.priority,
-      workerId: c.assigned_paralegal ?? null,
-      workerName: c.assigned_paralegal
-        ? (assigneeById.get(c.assigned_paralegal) ?? null)
-        : null,
+      // Case worker when set, otherwise the RCIC: a card with an assigned
+      // RCIC must never read "Unassigned".
+      workerId: c.assigned_paralegal ?? c.assigned_rcic ?? null,
+      workerName:
+        (c.assigned_paralegal
+          ? assigneeById.get(c.assigned_paralegal)
+          : undefined) ??
+        (c.assigned_rcic ? assigneeById.get(c.assigned_rcic) : undefined) ??
+        null,
       updatedAt: c.updated_at,
       submittedAt: c.submitted_at ?? null,
       chip: chipByCase.get(c.id) ?? null,

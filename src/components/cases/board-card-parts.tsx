@@ -211,6 +211,34 @@ export function PriorityPill({
   );
 }
 
+// ---- Decision badge ------------------------------------------------------
+
+// Phase-6 outcome, visible at a glance: passport_requested is an approval.
+export function DecisionBadge({
+  decision,
+  className,
+}: {
+  decision: "approved" | "refused" | null;
+  className?: string;
+}) {
+  if (!decision) return null;
+  const meta =
+    decision === "approved"
+      ? { label: "Approved", classes: "bg-green-100 text-green-800" }
+      : { label: "Refused", classes: "bg-red-100 text-red-800" };
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+        meta.classes,
+        className,
+      )}
+    >
+      {meta.label}
+    </span>
+  );
+}
+
 // ---- Worker avatar -------------------------------------------------------
 // The case worker (not the RCIC of record). Accent wash with navy text.
 function initials(name: string): string {

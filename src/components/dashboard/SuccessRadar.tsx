@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   PolarAngleAxis,
   PolarGrid,
@@ -11,9 +10,6 @@ import {
 } from "recharts";
 
 import type { RadarAxis, RadarData } from "@/lib/dashboard/types";
-import { cn } from "@/lib/utils/index";
-
-type View = "service" | "category";
 
 type Point = {
   axis: string;
@@ -31,27 +27,12 @@ function toPoints(axes: RadarAxis[]): Point[] {
   }));
 }
 
-// "Strongest X 82%. Weakest Y 54%", computed only from axes that cleared the
-// sample floor, so it doubles as the non-visual takeaway.
-function summarize(axes: RadarAxis[]): string {
-  const scored = axes
-    .filter((a) => a.successRate !== null)
-    .map((a) => ({ label: a.label, pct: Math.round((a.successRate as number) * 100) }))
-    .sort((a, b) => b.pct - a.pct);
-  if (scored.length === 0) return "";
-  const top = scored[0];
-  if (scored.length === 1) return `Strongest ${top.label} ${top.pct}%.`;
-  const bottom = scored[scored.length - 1];
-  return `Strongest ${top.label} ${top.pct}%. Weakest ${bottom.label} ${bottom.pct}%.`;
-}
-
+// Category axes only: the firm offers ~17 service types, which collided
+// on a radar and read poorly as bars. Categories are few enough to plot.
 export function SuccessRadar({ data }: { data: RadarData }) {
-  const [view, setView] = useState<View>("service");
-  const axes = data[view];
+  const axes = data.category;
   const points = toPoints(axes);
   const metaByLabel = new Map(points.map((p) => [p.axis, p]));
-  const hasSignal = points.some((p) => !p.dimmed);
-  const summary = summarize(axes);
 
   // A custom angle tick: percent for a scored axis, the decided count for a
   // dimmed one. The constraint reads in text, not by color alone.
@@ -66,7 +47,7 @@ export function SuccessRadar({ data }: { data: RadarData }) {
     const detail = meta
       ? meta.dimmed
         ? `${meta.decided} case${meta.decided === 1 ? "" : "s"}`
-        : `${meta.value}%`
+        : `${meta.value}%, ${meta.decided} case${meta.decided === 1 ? "" : "s"}`
       : "";
     return (
       <text
@@ -92,47 +73,24 @@ export function SuccessRadar({ data }: { data: RadarData }) {
       <header className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div>
           <h2 className="text-sm font-semibold tracking-tight text-foreground">
-            Success rate by service
+            Success rate by category
           </h2>
           <p className="text-xs text-muted-foreground">
             Approvals over decisions, last 12 months.
           </p>
         </div>
-        <div
-          role="tablist"
-          aria-label="Radar grouping"
-          className="flex shrink-0 overflow-hidden rounded-md border border-border text-[11px] font-medium"
-        >
-          {(["service", "category"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="tab"
-              aria-selected={view === v}
-              onClick={() => setView(v)}
-              className={cn(
-                "px-2.5 py-1 capitalize transition-colors",
-                view === v
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card text-muted-foreground hover:bg-muted",
-              )}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
       </header>
 
       <div className="p-4">
-        {!hasSignal ? (
+        {points.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
-            Not enough decided cases yet to show success rates.
+            No services configured yet.
           </p>
         ) : (
           <>
             <div
               role="img"
-              aria-label={`Success rate by ${view}. ${summary}`}
+              aria-label="Success rate by category"
               className="h-64 w-full"
             >
               <ResponsiveContainer width="100%" height="100%">
@@ -160,11 +118,6 @@ export function SuccessRadar({ data }: { data: RadarData }) {
                 </RadarChart>
               </ResponsiveContainer>
             </div>
-            {summary && (
-              <p className="mt-2 text-center text-xs text-muted-foreground">
-                {summary}
-              </p>
-            )}
           </>
         )}
       </div>
