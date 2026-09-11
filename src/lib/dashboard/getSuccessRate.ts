@@ -1,7 +1,8 @@
 // Approval success rate per service and per category, over the trailing 12
 // months by decision date. Outcome is derived from case status (no outcome
-// enum): approved = passport_requested, refused = refused. A sample-size floor
-// keeps a 2-case category from reading as a real 0% or 100%.
+// enum): approved = passport_requested, refused = refused. Every decided case
+// counts: the firm is young, so the chart shows whatever data exists and the
+// per-axis decided count gives readers the sample-size context.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -11,7 +12,8 @@ import type { RadarAxis, RadarData } from "./types";
 
 // Below this many decided cases an axis is treated as no signal (successRate
 // null): plotted dimmed and labelled with a count, excluded from the summary.
-export const MIN_DECIDED = 5;
+// 1 = show every axis that has any decision; raise once caseload grows.
+export const MIN_DECIDED = 1;
 
 type Bucket = { key: string; label: string; decided: number; approved: number };
 

@@ -31,7 +31,9 @@ export function UpcomingAppointmentsCard({
   viewAllHref?: string;
 }) {
   return (
-    <Card>
+    // Default Card ring is a 10%-opacity hairline; give the widget a
+    // visible boundary (same treatment as the checklists category cards).
+    <Card className="border border-stone-300 ring-0">
       <CardContent className="space-y-3 p-4">
         <div className="flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-stone-700">
