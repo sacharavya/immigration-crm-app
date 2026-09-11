@@ -360,6 +360,36 @@ export async function ensureStaffSignaturesFolder(): Promise<{
   return { driveId, folderItemId: parent.id };
 }
 
+/**
+ * Resolves (and lazily creates) "Forms Library/<form number>" in the firm
+ * document library, under the configured GRAPH_ROOT_FOLDER when set. Blank
+ * form version PDFs are stored here, one subfolder per form. Same drive
+ * resolution as ensureStaffSignaturesFolder.
+ */
+export async function ensureFormsLibraryFolder(formNumber: string): Promise<{
+  driveId: string;
+  folderItemId: string;
+}> {
+  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
+  if (!driveId) {
+    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
+  }
+
+  const rootFolder = process.env.GRAPH_ROOT_FOLDER?.trim() ?? "";
+  const rootParts = rootFolder
+    ? rootFolder.split("/").map((p) => p.trim()).filter(Boolean).map(sanitize)
+    : [];
+
+  const root = await graphFetch<DriveItem>(`/drives/${driveId}/root`);
+  let parent: DriveItem = root;
+  for (const part of rootParts) {
+    parent = await ensureFolder(driveId, parent.id, part);
+  }
+  parent = await ensureFolder(driveId, parent.id, "Forms Library");
+  parent = await ensureFolder(driveId, parent.id, sanitize(formNumber));
+  return { driveId, folderItemId: parent.id };
+}
+
 async function ensureFolder(
   driveId: string,
   parentItemId: string,

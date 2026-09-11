@@ -74,7 +74,12 @@ export type Permission =
   // + reception. manage_agents: super_user + admin only (rcic/reception can see
   // referral sources but not edit the directory).
   | "view_agents"
-  | "manage_agents";
+  | "manage_agents"
+  // FORMS-1: forms registry (official form versions + firm templates).
+  // super_user + admin only. crm.staff_can() needs no SQL change: admin
+  // passes via the NOT-IN catch-all, other roles fail via allowlists.
+  // Reads are open to all staff; this gates writes.
+  | "manage_forms";
 
 export type StaffWithOverrides = {
   id: string;
@@ -129,6 +134,7 @@ const ALL_PERMISSIONS: ReadonlyArray<Permission> = [
   "review_payments",
   "view_agents",
   "manage_agents",
+  "manage_forms",
 ];
 
 const ADMIN_DENIED: ReadonlySet<Permission> = new Set([

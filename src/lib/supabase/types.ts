@@ -1819,6 +1819,217 @@ export type Database = {
         }
         Relationships: []
       }
+      form_fills: {
+        Row: {
+          case_id: string
+          file_name: string | null
+          form_version_id: string
+          generated_at: string
+          generated_by: string | null
+          id: string
+          participant_id: string
+          profile_snapshot_json: Json
+          sharepoint_drive_id: string | null
+          sharepoint_item_id: string | null
+          sharepoint_web_url: string | null
+          unmapped_fields: Json
+        }
+        Insert: {
+          case_id: string
+          file_name?: string | null
+          form_version_id: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          participant_id: string
+          profile_snapshot_json: Json
+          sharepoint_drive_id?: string | null
+          sharepoint_item_id?: string | null
+          sharepoint_web_url?: string | null
+          unmapped_fields?: Json
+        }
+        Update: {
+          case_id?: string
+          file_name?: string | null
+          form_version_id?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          participant_id?: string
+          profile_snapshot_json?: Json
+          sharepoint_drive_id?: string | null
+          sharepoint_item_id?: string | null
+          sharepoint_web_url?: string | null
+          unmapped_fields?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_fills_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "agent_case_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_fills_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_fills_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "v_case_chip_inputs"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "form_fills_form_version_id_fkey"
+            columns: ["form_version_id"]
+            isOneToOne: false
+            referencedRelation: "form_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_fills_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_fills_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "case_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_versions: {
+        Row: {
+          activated_at: string | null
+          created_at: string
+          created_by: string | null
+          diff_json: Json | null
+          field_schema_json: Json
+          file_name: string | null
+          file_sha256: string
+          file_size_bytes: number | null
+          form_id: string
+          id: string
+          mapping_json: Json
+          notes: string | null
+          published_at: string | null
+          sharepoint_drive_id: string | null
+          sharepoint_item_id: string | null
+          sharepoint_web_url: string | null
+          status: string
+          superseded_at: string | null
+          version_label: string
+        }
+        Insert: {
+          activated_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          diff_json?: Json | null
+          field_schema_json?: Json
+          file_name?: string | null
+          file_sha256: string
+          file_size_bytes?: number | null
+          form_id: string
+          id?: string
+          mapping_json?: Json
+          notes?: string | null
+          published_at?: string | null
+          sharepoint_drive_id?: string | null
+          sharepoint_item_id?: string | null
+          sharepoint_web_url?: string | null
+          status?: string
+          superseded_at?: string | null
+          version_label: string
+        }
+        Update: {
+          activated_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          diff_json?: Json | null
+          field_schema_json?: Json
+          file_name?: string | null
+          file_sha256?: string
+          file_size_bytes?: number | null
+          form_id?: string
+          id?: string
+          mapping_json?: Json
+          notes?: string | null
+          published_at?: string | null
+          sharepoint_drive_id?: string | null
+          sharepoint_item_id?: string | null
+          sharepoint_web_url?: string | null
+          status?: string
+          superseded_at?: string | null
+          version_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_versions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forms: {
+        Row: {
+          created_at: string
+          firm_id: string | null
+          form_number: string
+          form_type: string
+          id: string
+          is_active: boolean
+          issuing_body: string
+          program_tags: string[]
+          scope: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          firm_id?: string | null
+          form_number: string
+          form_type: string
+          id?: string
+          is_active?: boolean
+          issuing_body: string
+          program_tags?: string[]
+          scope?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          firm_id?: string | null
+          form_number?: string
+          form_type?: string
+          id?: string
+          is_active?: boolean
+          issuing_body?: string
+          program_tags?: string[]
+          scope?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invoice_line_items: {
         Row: {
           description: string
@@ -2578,6 +2789,48 @@ export type Database = {
           key?: string
           label?: string
           target_bytes?: number | null
+        }
+        Relationships: []
+      }
+      software_access_requests: {
+        Row: {
+          contact_name: string
+          created_at: string
+          current_software: string | null
+          email: string
+          firm_name: string
+          firm_size: string | null
+          id: string
+          message: string | null
+          phone: string | null
+          rcic_number: string | null
+          status: string
+        }
+        Insert: {
+          contact_name: string
+          created_at?: string
+          current_software?: string | null
+          email: string
+          firm_name: string
+          firm_size?: string | null
+          id?: string
+          message?: string | null
+          phone?: string | null
+          rcic_number?: string | null
+          status?: string
+        }
+        Update: {
+          contact_name?: string
+          created_at?: string
+          current_software?: string | null
+          email?: string
+          firm_name?: string
+          firm_size?: string | null
+          id?: string
+          message?: string | null
+          phone?: string | null
+          rcic_number?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -3374,6 +3627,21 @@ export type Database = {
         }
         Relationships: []
       }
+      noc_duty_lexemes: {
+        Row: {
+          lexeme: string
+          ndoc: number | null
+        }
+        Insert: {
+          lexeme: string
+          ndoc?: number | null
+        }
+        Update: {
+          lexeme?: string
+          ndoc?: number | null
+        }
+        Relationships: []
+      }
       noc_occupations: {
         Row: {
           broad_category: string
@@ -3679,12 +3947,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3708,11 +3976,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3733,11 +4001,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3758,11 +4026,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3775,11 +4043,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
