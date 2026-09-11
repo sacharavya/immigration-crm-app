@@ -280,21 +280,26 @@ function CaseCard({
       style={style}
       suppressHydrationWarning
       className={cn(
-        "group relative rounded-xl border border-border border-l-4 bg-card p-3 transition-all hover:border-[color:var(--border-secondary)]",
+        "group relative rounded-xl border border-border border-l-4 bg-card p-3 transition-all hover:border-[color:var(--border-secondary)] @container",
         SIGNAL_EDGE[card.signal],
         isDragging && !dragging && "opacity-30",
         dragging && "rotate-1 ring-2 ring-primary/20",
       )}
     >
-      {/* Stacked layout, one fact per row, so narrow columns never wrap or
-          truncate: number, type, name, decision, action, documents, payment,
-          worker, age. */}
+      {/* Adaptive: compact layout when the card has room, fully stacked
+          (one fact per row) when the column squeezes below 18rem, so
+          nothing ever wraps or truncates. */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <BallDot ball={card.ballInCourt} />
-          <span className="truncate font-mono text-[11px] text-muted-foreground">
+          <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
             {card.caseNumber}
           </span>
+          {card.serviceName && (
+            <span className="hidden min-w-0 truncate text-[11px] text-muted-foreground @2xs:inline">
+              · {card.serviceName}
+            </span>
+          )}
         </div>
         <div className="relative z-10 flex shrink-0 items-center gap-1">
           {card.priority !== "none" && <PriorityPill priority={card.priority} />}
@@ -312,9 +317,10 @@ function CaseCard({
         </div>
       </div>
 
-      {/* Case type under the number. */}
+      {/* Case type under the number, narrow state only (inline above when
+          the card is wide). */}
       {card.serviceName ? (
-        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+        <p className="mt-0.5 truncate text-[11px] text-muted-foreground @2xs:hidden">
           {card.serviceName}
         </p>
       ) : (
@@ -347,17 +353,17 @@ function CaseCard({
 
       {card.urgency && <UrgencyLine urgency={card.urgency} className="mt-1" />}
 
-      {/* Documents, then payment, stacked. */}
-      <DocsProgress
-        received={card.docsReceived}
-        required={card.docsRequired}
-        className="mt-3"
-      />
-      <PaymentIndicator
-        state={card.payment.state}
-        label={card.payment.label}
-        className="mt-1.5"
-      />
+      {/* Documents + payment: side by side when wide, stacked when narrow. */}
+      <div className="mt-3 flex flex-col gap-1.5 @2xs:flex-row @2xs:items-center @2xs:justify-between @2xs:gap-2">
+        <DocsProgress
+          received={card.docsReceived}
+          required={card.docsRequired}
+        />
+        <PaymentIndicator
+          state={card.payment.state}
+          label={card.payment.label}
+        />
+      </div>
 
       {/* Footer: worker + phase age, with the keyboard move menu. */}
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2">
