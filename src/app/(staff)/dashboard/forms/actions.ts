@@ -7,6 +7,8 @@ import { z } from "zod";
 
 import { staffCan, type StaffWithOverrides } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
+import { diffFieldSchemas } from "@/lib/forms/diff";
+import type { FormFieldSchema } from "@/lib/forms/types";
 import { ensureFormsLibraryFolder } from "@/lib/graph/folders";
 import { uploadFile } from "@/lib/graph/uploads";
 import { createClient } from "@/lib/supabase/server";
@@ -96,6 +98,14 @@ export async function setFormActive(
 // plain object. The blank PDF goes to OneDrive "Forms Library/<form number>/"
 // named "<version_label>.pdf"; sha256 is computed here so duplicate bytes for
 // the same form are rejected before anything is stored.
+const fieldSchemaEntry = z.object({
+  path: z.string().min(1).max(500),
+  type: z.enum(["text", "checkbox", "radio", "dropdown", "unknown"]),
+  required: z.boolean(),
+  repeating: z.boolean(),
+  label: z.string().max(500).optional(),
+});
+
 const uploadVersionSchema = z.object({
   form_id: z.string().uuid(),
   version_label: z.string().trim().min(1).max(60),
@@ -104,6 +114,10 @@ const uploadVersionSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .nullable(),
   notes: z.string().trim().max(2000).nullable(),
+  // Extraction runs in the browser (FORMS-2); results ride along. Trusted
+  // as data, not authorization: this whole action is manage_forms-gated.
+  detected_form_type: z.enum(["xfa", "acroform"]).nullable(),
+  field_schema: z.array(fieldSchemaEntry).max(5000).nullable(),
 });
 
 export async function uploadFormVersion(
@@ -112,11 +126,20 @@ export async function uploadFormVersion(
   const g = await gateManageForms();
   if ("error" in g) return g;
 
+  let extractedFields: unknown = null;
+  try {
+    const raw = formData.get("field_schema");
+    extractedFields = typeof raw === "string" && raw ? JSON.parse(raw) : null;
+  } catch {
+    return { error: "Invalid extraction payload." };
+  }
   const parsed = uploadVersionSchema.safeParse({
     form_id: formData.get("form_id"),
     version_label: formData.get("version_label"),
     published_at: (formData.get("published_at") as string) || null,
     notes: (formData.get("notes") as string) || null,
+    detected_form_type: (formData.get("detected_form_type") as string) || null,
+    field_schema: extractedFields,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -152,6 +175,22 @@ export async function uploadFormVersion(
     return { error: "This exact file is already uploaded for this form." };
   }
 
+  // Diff against the most recent prior version's schema (any status), so
+  // the admin sees what changed before deciding to activate.
+  const fields = (parsed.data.field_schema ?? []) as FormFieldSchema[];
+  const { data: prevVersion } = await supabase
+    .schema("crm")
+    .from("form_versions")
+    .select("field_schema_json")
+    .eq("form_id", form.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const diff = diffFieldSchemas(
+    ((prevVersion?.field_schema_json ?? []) as FormFieldSchema[]) ?? [],
+    fields,
+  );
+
   let uploaded;
   try {
     const { driveId, folderItemId } = await ensureFormsLibraryFolder(
@@ -178,6 +217,8 @@ export async function uploadFormVersion(
         file_sha256: sha256,
         published_at: parsed.data.published_at,
         notes: parsed.data.notes,
+        field_schema_json: fields as never,
+        diff_json: (prevVersion ? diff : null) as never,
         created_by: g.me.id,
       })
       .select("id")
@@ -188,6 +229,16 @@ export async function uploadFormVersion(
           ? "A version with this label already exists for this form."
           : error.message,
       };
+    }
+    // Extraction is the authority on the actual form technology; correct
+    // the registry row if the admin guessed differently at registration.
+    if (parsed.data.detected_form_type) {
+      await supabase
+        .schema("crm")
+        .from("forms")
+        .update({ form_type: parsed.data.detected_form_type })
+        .eq("id", form.id)
+        .neq("form_type", "portal_reference");
     }
     rev(form.id);
     return { ok: true, id: data.id };

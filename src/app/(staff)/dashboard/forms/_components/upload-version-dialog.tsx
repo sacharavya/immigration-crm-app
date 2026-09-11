@@ -15,10 +15,14 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
+import { extractFormSchema } from "@/lib/forms/extract";
+import type { ExtractionResult } from "@/lib/forms/types";
+
 import { uploadFormVersion } from "../actions";
 
-// Version label auto-detection from page text lands in FORMS-2 (extraction);
-// until then the label is typed by the admin.
+// Extraction (FORMS-2) runs in the browser the moment a file is picked:
+// detects AcroForm vs XFA, lists the fields, and scrapes the printed
+// revision label to prefill the version label (still editable).
 export function UploadVersionDialog({ formId }: { formId: string }) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -27,12 +31,30 @@ export function UploadVersionDialog({ formId }: { formId: string }) {
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [extraction, setExtraction] = useState<ExtractionResult | null>(null);
+  const [extracting, setExtracting] = useState(false);
   const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
   function pick(f: File | null) {
     setFile(f);
     setError(null);
+    setExtraction(null);
+    if (!f) return;
+    setExtracting(true);
+    f.arrayBuffer()
+      .then((buf) => extractFormSchema(new Uint8Array(buf)))
+      .then((result) => {
+        setExtraction(result);
+        if (result.versionLabel) {
+          setVersionLabel((v) => v.trim() || result.versionLabel!);
+        }
+      })
+      .catch(() => {
+        // Not a readable PDF form; upload can still proceed with no schema.
+        setExtraction(null);
+      })
+      .finally(() => setExtracting(false));
   }
 
   function submit() {
@@ -48,6 +70,10 @@ export function UploadVersionDialog({ formId }: { formId: string }) {
       fd.set("published_at", publishedAt);
       fd.set("notes", notes);
       fd.set("file", file);
+      if (extraction) {
+        fd.set("detected_form_type", extraction.formType);
+        fd.set("field_schema", JSON.stringify(extraction.fields));
+      }
       const result = await uploadFormVersion(fd);
       if ("error" in result) {
         setError(result.error);
@@ -58,6 +84,7 @@ export function UploadVersionDialog({ formId }: { formId: string }) {
       setVersionLabel("");
       setPublishedAt("");
       setNotes("");
+      setExtraction(null);
     });
   }
 
@@ -103,6 +130,20 @@ export function UploadVersionDialog({ formId }: { formId: string }) {
               ) : (
                 <span className="text-stone-500">
                   Drop the PDF here or click to browse
+                </span>
+              )}
+              {extracting && (
+                <span className="text-xs text-stone-400">Reading fields...</span>
+              )}
+              {extraction && (
+                <span className="text-xs text-stone-500">
+                  Detected {extraction.formType === "xfa" ? "XFA" : "AcroForm"}
+                  {" · "}
+                  {extraction.fields.length} field
+                  {extraction.fields.length === 1 ? "" : "s"}
+                  {extraction.versionLabel
+                    ? ` · label ${extraction.versionLabel}`
+                    : ""}
                 </span>
               )}
             </button>

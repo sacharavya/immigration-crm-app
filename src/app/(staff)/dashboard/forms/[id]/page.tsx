@@ -6,6 +6,10 @@ import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
 import { createClient } from "@/lib/supabase/server";
 
+import {
+  FieldSchemaDialog,
+  SchemaDiffDialog,
+} from "../_components/schema-dialogs";
 import { UploadVersionDialog } from "../_components/upload-version-dialog";
 import { VersionActions } from "../_components/version-actions";
 import { FORM_TYPE_LABELS, ISSUING_BODY_LABELS } from "../constants";
@@ -46,7 +50,7 @@ export default async function FormDetailPage({ params }: Props) {
       .schema("crm")
       .from("form_versions")
       .select(
-        "id, version_label, status, published_at, activated_at, superseded_at, file_name, file_size_bytes, notes, created_at, sharepoint_item_id",
+        "id, version_label, status, published_at, activated_at, superseded_at, file_name, file_size_bytes, notes, created_at, sharepoint_item_id, field_schema_json, diff_json",
       )
       .eq("form_id", id)
       .order("created_at", { ascending: false }),
@@ -154,6 +158,18 @@ export default async function FormDetailPage({ params }: Props) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
+                      <FieldSchemaDialog
+                        versionLabel={v.version_label}
+                        fields={
+                          (v.field_schema_json ?? []) as never[]
+                        }
+                      />
+                      {v.diff_json != null && (
+                        <SchemaDiffDialog
+                          versionLabel={v.version_label}
+                          diff={v.diff_json as never}
+                        />
+                      )}
                       {v.sharepoint_item_id && (
                         <a
                           href={`/api/forms/blank/${v.id}`}
