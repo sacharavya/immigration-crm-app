@@ -1,8 +1,11 @@
-// Approval success rate per service and per category, over the trailing 12
-// months by decision date. Outcome is derived from case status (no outcome
-// enum): approved = passport_requested, refused = refused. Every decided case
-// counts: the firm is young, so the chart shows whatever data exists and the
-// per-axis decided count gives readers the sample-size context.
+// Approval success rate per service and per category. EVERY case type with
+// at least one case (any status, including archived) gets an axis: axes with
+// no decisions yet plot dimmed with their decided count, so the radar always
+// shows the firm's full shape. Outcome is derived from case status (no
+// outcome enum): approved = passport_requested, refused = refused. Archived
+// (closed) cases lose the decision status, so their outcome is recovered
+// from the status_changed event log (event_data carries { from, to }).
+// Decisions are windowed to the trailing 12 months by decided_at.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -27,24 +30,60 @@ function toAxis(b: Bucket): RadarAxis {
   };
 }
 
+const DECISION_STATUSES = ["passport_requested", "refused"] as const;
+
 export async function getSuccessRate(
   supabase: SupabaseClient<Database>,
 ): Promise<RadarData> {
   const since = new Date();
   since.setMonth(since.getMonth() - 12);
 
-  const { data: decided } = await supabase
+  const { data: casesData } = await supabase
     .schema("crm")
     .from("cases")
-    .select("service_type_id, status, decided_at")
-    .is("deleted_at", null)
-    .in("status", ["passport_requested", "refused"])
-    .gte("decided_at", since.toISOString());
+    .select("id, service_type_id, status, decided_at")
+    .is("deleted_at", null);
 
-  const rows = decided ?? [];
-  if (rows.length === 0) return { service: [], category: [] };
+  const allCases = casesData ?? [];
+  if (allCases.length === 0) return { service: [], category: [] };
 
-  const serviceTypeIds = [...new Set(rows.map((r) => r.service_type_id))];
+  const inWindow = (v: string | null) =>
+    v !== null && new Date(v).getTime() >= since.getTime();
+
+  // Decided-at-a-decision-status cases resolve directly; archived ones go
+  // through the event log below.
+  const decisions = new Map<string, boolean>();
+  const closedDecided: typeof allCases = [];
+  for (const c of allCases) {
+    if (!inWindow(c.decided_at)) continue;
+    if ((DECISION_STATUSES as readonly string[]).includes(c.status)) {
+      decisions.set(c.id, c.status === "passport_requested");
+    } else if (c.status === "closed") {
+      closedDecided.push(c);
+    }
+  }
+
+  if (closedDecided.length > 0) {
+    const { data: events } = await supabase
+      .schema("crm")
+      .from("case_events")
+      .select("case_id, event_data, created_at")
+      .eq("event_type", "status_changed")
+      .in("case_id", closedDecided.map((c) => c.id))
+      .order("created_at", { ascending: true });
+
+    // Last decision status the case passed through wins (a refusal later
+    // overturned to passport_requested counts as approved). Closed without
+    // ever passing a decision status (withdrawn, administrative close) is
+    // not a decision and stays uncounted.
+    for (const e of events ?? []) {
+      const to = (e.event_data as { to?: string } | null)?.to;
+      if (to === "passport_requested") decisions.set(e.case_id, true);
+      else if (to === "refused") decisions.set(e.case_id, false);
+    }
+  }
+
+  const serviceTypeIds = [...new Set(allCases.map((r) => r.service_type_id))];
   const [{ data: serviceTypes }, { data: categories }] = await Promise.all([
     supabase
       .schema("ref")
@@ -67,10 +106,12 @@ export async function getSuccessRate(
   const serviceBuckets = new Map<string, Bucket>();
   const categoryBuckets = new Map<string, Bucket>();
 
-  for (const r of rows) {
+  for (const r of allCases) {
     const svc = serviceById.get(r.service_type_id);
     if (!svc) continue;
-    const approved = r.status === "passport_requested" ? 1 : 0;
+    const outcome = decisions.get(r.id);
+    const decided = outcome !== undefined ? 1 : 0;
+    const approved = outcome === true ? 1 : 0;
 
     const sb =
       serviceBuckets.get(r.service_type_id) ??
@@ -82,7 +123,7 @@ export async function getSuccessRate(
           approved: 0,
         })
         .get(r.service_type_id)!;
-    sb.decided += 1;
+    sb.decided += decided;
     sb.approved += approved;
 
     const cb =
@@ -95,7 +136,7 @@ export async function getSuccessRate(
           approved: 0,
         })
         .get(svc.categoryCode)!;
-    cb.decided += 1;
+    cb.decided += decided;
     cb.approved += approved;
   }
 

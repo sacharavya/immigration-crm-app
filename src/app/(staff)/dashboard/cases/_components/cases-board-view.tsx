@@ -21,6 +21,7 @@ import {
   BallDot,
   DocsProgress,
   PaymentIndicator,
+  DecisionBadge,
   PriorityPill,
   SIGNAL_EDGE,
   StatusLine,
@@ -328,6 +329,14 @@ function CaseCard({
           {card.clientName}
         </span>
       </button>
+
+      {/* Decision outcome on its own row: the header is too narrow to share
+          with the case number without wrapping it. */}
+      {card.decision && (
+        <div className="mt-1.5">
+          <DecisionBadge decision={card.decision} />
+        </div>
+      )}
 
       {/* Service-missing line in place of the service. */}
       {!card.serviceName && (
