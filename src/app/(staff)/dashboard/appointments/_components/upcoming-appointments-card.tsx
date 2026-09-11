@@ -129,6 +129,30 @@ export function UpcomingAppointmentsCard({
                         </span>
                       )}
                     </div>
+                    <div
+                      className={cn(
+                        "mt-0.5 font-medium text-foreground",
+                        prominent ? "text-sm" : "text-xs",
+                      )}
+                    >
+                      {a.snapshot_client_name}
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
+                      <a
+                        href={`mailto:${a.snapshot_client_email}`}
+                        className="truncate hover:text-[var(--navy)] hover:underline"
+                      >
+                        {a.snapshot_client_email}
+                      </a>
+                      {a.snapshot_client_phone && (
+                        <a
+                          href={`tel:${a.snapshot_client_phone}`}
+                          className="hover:text-[var(--navy)] hover:underline"
+                        >
+                          {a.snapshot_client_phone}
+                        </a>
+                      )}
+                    </div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       {a.appointment_type?.name ?? "Appointment"}
                     </div>
