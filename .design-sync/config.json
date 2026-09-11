@@ -1,3 +1,70 @@
 {
-  "shape": "package"
+  "projectId": "b7d8b4c0-4a18-44e7-89fe-7edc3fb43451",
+  "shape": "package",
+  "pkg": "bbi-temp",
+  "globalName": "BBI",
+  "entry": "src/components/ui/.no-dist-synthesize-from-src",
+  "srcDir": "src/components/ui",
+  "tsconfig": "tsconfig.json",
+  "buildCmd": "node .design-sync/build-css.mjs",
+  "cssEntry": ".design-sync/.cache/ds.css",
+  "componentSrcMap": {
+    "CardHeader": null,
+    "CardFooter": null,
+    "CardTitle": null,
+    "CardAction": null,
+    "CardDescription": null,
+    "CardContent": null,
+    "DialogClose": null,
+    "DialogContent": null,
+    "DialogDescription": null,
+    "DialogFooter": null,
+    "DialogHeader": null,
+    "DialogOverlay": null,
+    "DialogPortal": null,
+    "DialogTitle": null,
+    "DialogTrigger": null,
+    "FieldLabel": null,
+    "FieldDescription": null,
+    "FieldError": null,
+    "FieldGroup": null,
+    "FieldLegend": null,
+    "FieldSeparator": null,
+    "FieldSet": null,
+    "FieldContent": null,
+    "FieldTitle": null,
+    "TableHeader": null,
+    "TableBody": null,
+    "TableFooter": null,
+    "TableHead": null,
+    "TableRow": null,
+    "TableCell": null,
+    "TableCaption": null
+  },
+  "dtsPropsFor": {
+    "Badge": "variant?: \"default\" | \"secondary\" | \"destructive\" | \"outline\" | \"ghost\" | \"link\"; className?: string; children?: React.ReactNode; render?: React.ReactElement; [key: string]: unknown;",
+    "Button": "variant?: \"default\" | \"outline\" | \"secondary\" | \"ghost\" | \"destructive\" | \"link\"; size?: \"default\" | \"xs\" | \"sm\" | \"lg\" | \"icon\" | \"icon-xs\" | \"icon-sm\" | \"icon-lg\"; disabled?: boolean; type?: \"button\" | \"submit\" | \"reset\"; onClick?: React.MouseEventHandler<HTMLButtonElement>; render?: React.ReactElement; className?: string; children?: React.ReactNode; [key: string]: unknown;",
+    "Card": "size?: \"default\" | \"sm\"; className?: string; children?: React.ReactNode; [key: string]: unknown;",
+    "DateInput": "value?: string; defaultValue?: string; onChange?: React.ChangeEventHandler<HTMLInputElement>; name?: string; id?: string; placeholder?: string; disabled?: boolean; required?: boolean; min?: string; max?: string; className?: string; [key: string]: unknown;",
+    "Dialog": "open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void; modal?: boolean; children?: React.ReactNode;",
+    "Field": "orientation?: \"vertical\" | \"horizontal\" | \"responsive\"; \"data-invalid\"?: boolean; \"data-disabled\"?: boolean; className?: string; children?: React.ReactNode; [key: string]: unknown;",
+    "Input": "type?: string; value?: string; defaultValue?: string; onChange?: React.ChangeEventHandler<HTMLInputElement>; placeholder?: string; name?: string; id?: string; disabled?: boolean; required?: boolean; readOnly?: boolean; \"aria-invalid\"?: boolean; className?: string; [key: string]: unknown;",
+    "Label": "htmlFor?: string; className?: string; children?: React.ReactNode; [key: string]: unknown;",
+    "Separator": "orientation?: \"horizontal\" | \"vertical\"; className?: string; [key: string]: unknown;",
+    "Table": "className?: string; children?: React.ReactNode; [key: string]: unknown;"
+  },
+  "overrides": {
+    "Dialog": {
+      "cardMode": "single",
+      "primaryStory": "Confirm",
+      "viewport": "640x420"
+    },
+    "Table": {
+      "cardMode": "column"
+    },
+    "Card": {
+      "cardMode": "column"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
 }
