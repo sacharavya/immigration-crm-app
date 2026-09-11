@@ -31,27 +31,11 @@ function toPoints(axes: RadarAxis[]): Point[] {
   }));
 }
 
-// "Strongest X 82%. Weakest Y 54%", computed only from axes that cleared the
-// sample floor, so it doubles as the non-visual takeaway.
-function summarize(axes: RadarAxis[]): string {
-  const scored = axes
-    .filter((a) => a.successRate !== null)
-    .map((a) => ({ label: a.label, pct: Math.round((a.successRate as number) * 100) }))
-    .sort((a, b) => b.pct - a.pct);
-  if (scored.length === 0) return "";
-  const top = scored[0];
-  if (scored.length === 1) return `Strongest ${top.label} ${top.pct}%.`;
-  const bottom = scored[scored.length - 1];
-  return `Strongest ${top.label} ${top.pct}%. Weakest ${bottom.label} ${bottom.pct}%.`;
-}
-
 export function SuccessRadar({ data }: { data: RadarData }) {
   const [view, setView] = useState<View>("service");
   const axes = data[view];
   const points = toPoints(axes);
   const metaByLabel = new Map(points.map((p) => [p.axis, p]));
-  const hasSignal = points.some((p) => !p.dimmed);
-  const summary = summarize(axes);
 
   // A custom angle tick: percent for a scored axis, the decided count for a
   // dimmed one. The constraint reads in text, not by color alone.
@@ -124,15 +108,15 @@ export function SuccessRadar({ data }: { data: RadarData }) {
       </header>
 
       <div className="p-4">
-        {!hasSignal ? (
+        {points.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
-            Not enough decided cases yet to show success rates.
+            No services configured yet.
           </p>
         ) : (
           <>
             <div
               role="img"
-              aria-label={`Success rate by ${view}. ${summary}`}
+              aria-label={`Success rate by ${view}`}
               className="h-64 w-full"
             >
               <ResponsiveContainer width="100%" height="100%">
@@ -160,11 +144,6 @@ export function SuccessRadar({ data }: { data: RadarData }) {
                 </RadarChart>
               </ResponsiveContainer>
             </div>
-            {summary && (
-              <p className="mt-2 text-center text-xs text-muted-foreground">
-                {summary}
-              </p>
-            )}
           </>
         )}
       </div>

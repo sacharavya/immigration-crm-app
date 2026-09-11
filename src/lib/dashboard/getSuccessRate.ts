@@ -45,7 +45,6 @@ export async function getSuccessRate(
     .is("deleted_at", null);
 
   const allCases = casesData ?? [];
-  if (allCases.length === 0) return { service: [], category: [] };
 
   const inWindow = (v: string | null) =>
     v !== null && new Date(v).getTime() >= since.getTime();
@@ -83,13 +82,15 @@ export async function getSuccessRate(
     }
   }
 
-  const serviceTypeIds = [...new Set(allCases.map((r) => r.service_type_id))];
+  // EVERY active service type is an axis, cases or not: a type with no
+  // cases plots dimmed at "0 cases" so the radar shows the full offering.
   const [{ data: serviceTypes }, { data: categories }] = await Promise.all([
     supabase
       .schema("ref")
       .from("service_types")
       .select("id, code, category_code")
-      .in("id", serviceTypeIds),
+      .is("deactivated_at", null)
+      .order("code"),
     supabase.schema("ref").from("service_categories").select("code, name"),
   ]);
 
@@ -105,6 +106,25 @@ export async function getSuccessRate(
 
   const serviceBuckets = new Map<string, Bucket>();
   const categoryBuckets = new Map<string, Bucket>();
+
+  // Seed a zero bucket for every service type and every category it
+  // belongs to, so caseless axes still render.
+  for (const s of serviceTypes ?? []) {
+    serviceBuckets.set(s.id, {
+      key: s.code,
+      label: s.code,
+      decided: 0,
+      approved: 0,
+    });
+    if (!categoryBuckets.has(s.category_code)) {
+      categoryBuckets.set(s.category_code, {
+        key: s.category_code,
+        label: categoryNameByCode.get(s.category_code) ?? s.category_code,
+        decided: 0,
+        approved: 0,
+      });
+    }
+  }
 
   for (const r of allCases) {
     const svc = serviceById.get(r.service_type_id);
