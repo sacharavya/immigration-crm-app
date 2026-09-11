@@ -12,9 +12,14 @@ import { activateVersion, deprecateVersion } from "../actions";
 export function VersionActions({
   versionId,
   status,
+  activateBlockers = [],
 }: {
   versionId: string;
   status: string;
+  // Form field paths whose required mapping is unresolved; non-empty
+  // disables Activate with an explanatory tooltip (the DB trigger is the
+  // backstop for the same rule).
+  activateBlockers?: string[];
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -32,13 +37,21 @@ export function VersionActions({
   return (
     <span className="inline-flex items-center gap-2">
       {status === "draft" && (
-        <Button
-          size="sm"
-          onClick={() => run(activateVersion)}
-          disabled={pending}
+        <span
+          title={
+            activateBlockers.length > 0
+              ? `Resolve ${activateBlockers.length} required field mapping${activateBlockers.length === 1 ? "" : "s"} first: ${activateBlockers.slice(0, 3).join(", ")}${activateBlockers.length > 3 ? ", ..." : ""}`
+              : undefined
+          }
         >
-          {pending ? "Activating..." : "Activate"}
-        </Button>
+          <Button
+            size="sm"
+            onClick={() => run(activateVersion)}
+            disabled={pending || activateBlockers.length > 0}
+          >
+            {pending ? "Activating..." : "Activate"}
+          </Button>
+        </span>
       )}
       {status === "active" && (
         <Button

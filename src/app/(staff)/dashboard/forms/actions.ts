@@ -8,6 +8,13 @@ import { z } from "zod";
 import { staffCan, type StaffWithOverrides } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
 import { diffFieldSchemas } from "@/lib/forms/diff";
+import {
+  copyMappingForward,
+  requiredGateBlockers,
+  type FormMapping,
+} from "@/lib/forms/mapping";
+import { PROFILE_PATHS } from "@/lib/forms/profile";
+import { TRANSFORM_KEYS } from "@/lib/forms/transforms";
 import type { FormFieldSchema } from "@/lib/forms/types";
 import { ensureFormsLibraryFolder } from "@/lib/graph/folders";
 import { uploadFile } from "@/lib/graph/uploads";
@@ -191,6 +198,24 @@ export async function uploadFormVersion(
     fields,
   );
 
+  // FORMS-3: carry the previous ACTIVE version's mapping forward. Renamed
+  // fields keep their mapping under the new path; vanished fields keep the
+  // orphaned entry marked broken for the admin to resolve.
+  const { data: activeVersion } = await supabase
+    .schema("crm")
+    .from("form_versions")
+    .select("mapping_json")
+    .eq("form_id", form.id)
+    .eq("status", "active")
+    .maybeSingle();
+  const mapping = activeVersion
+    ? copyMappingForward(
+        (activeVersion.mapping_json ?? {}) as FormMapping,
+        fields.map((f) => f.path),
+        diff.renamed,
+      )
+    : {};
+
   let uploaded;
   try {
     const { driveId, folderItemId } = await ensureFormsLibraryFolder(
@@ -219,6 +244,7 @@ export async function uploadFormVersion(
         notes: parsed.data.notes,
         field_schema_json: fields as never,
         diff_json: (prevVersion ? diff : null) as never,
+        mapping_json: mapping as never,
         created_by: g.me.id,
       })
       .select("id")
@@ -295,5 +321,121 @@ export async function deprecateVersion(
   if (error) return { error: error.message };
   if (!data) return { error: "Only the active version can be deprecated." };
   rev(data.form_id);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// FORMS-3: mapping editor actions.
+// ---------------------------------------------------------------------------
+
+const PROFILE_PATH_SET = new Set(PROFILE_PATHS.map((p) => p.path));
+
+const mappingEntrySchema = z
+  .object({
+    source: z.enum(["profile", "constant", "manual", "skip"]),
+    profile_path: z.string().max(300).optional(),
+    transform: z.string().max(60).optional(),
+    constant_value: z.string().max(2000).optional(),
+    array_index: z.number().int().min(0).max(99).optional(),
+    required: z.boolean(),
+    broken: z.boolean().optional(),
+  })
+  .refine(
+    (e) => !e.profile_path || PROFILE_PATH_SET.has(e.profile_path),
+    { message: "Unknown profile path" },
+  )
+  .refine(
+    (e) => !e.transform || (TRANSFORM_KEYS as string[]).includes(e.transform),
+    { message: "Unknown transform" },
+  );
+
+const saveMappingSchema = z.object({
+  version_id: z.string().uuid(),
+  mapping: z
+    .record(z.string().min(1).max(500), mappingEntrySchema)
+    .refine((m) => Object.keys(m).length <= 5000, {
+      message: "Too many mapping entries",
+    }),
+});
+
+export async function saveVersionMapping(
+  input: z.input<typeof saveMappingSchema>,
+): Promise<ActionResult<{ blockers: string[] }>> {
+  const g = await gateManageForms();
+  if ("error" in g) return g;
+
+  const parsed = saveMappingSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid mapping" };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("crm")
+    .from("form_versions")
+    .update({ mapping_json: parsed.data.mapping as never })
+    .eq("id", parsed.data.version_id)
+    .in("status", ["draft", "active"])
+    .select("form_id")
+    .maybeSingle();
+  if (error) return { error: error.message };
+  if (!data) return { error: "Only draft or active versions can be edited." };
+
+  rev(data.form_id);
+  return {
+    ok: true,
+    blockers: requiredGateBlockers(parsed.data.mapping as FormMapping),
+  };
+}
+
+// Re-runs copy-forward from the current active version on demand (the
+// "Copy from previous version" button in the mapping editor).
+export async function copyMappingFromActive(
+  versionId: string,
+): Promise<ActionResult> {
+  const g = await gateManageForms();
+  if ("error" in g) return g;
+
+  const supabase = await createClient();
+  const { data: version } = await supabase
+    .schema("crm")
+    .from("form_versions")
+    .select("id, form_id, status, field_schema_json, diff_json")
+    .eq("id", versionId)
+    .maybeSingle();
+  if (!version) return { error: "Version not found." };
+  if (version.status === "deprecated") {
+    return { error: "Deprecated versions cannot be edited." };
+  }
+
+  const { data: active } = await supabase
+    .schema("crm")
+    .from("form_versions")
+    .select("id, mapping_json")
+    .eq("form_id", version.form_id)
+    .eq("status", "active")
+    .maybeSingle();
+  if (!active || active.id === version.id) {
+    return { error: "No other active version to copy from." };
+  }
+
+  const fields = (version.field_schema_json ?? []) as FormFieldSchema[];
+  const renamed =
+    (version.diff_json as { renamed?: Array<{ from: string; to: string }> } | null)
+      ?.renamed ?? [];
+  const mapping = copyMappingForward(
+    (active.mapping_json ?? {}) as FormMapping,
+    fields.map((f) => f.path),
+    renamed,
+  );
+
+  const { error } = await supabase
+    .schema("crm")
+    .from("form_versions")
+    .update({ mapping_json: mapping as never })
+    .eq("id", version.id);
+  if (error) return { error: error.message };
+
+  rev(version.form_id);
   return { ok: true };
 }

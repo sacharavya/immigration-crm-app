@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
+import { requiredGateBlockers, type FormMapping } from "@/lib/forms/mapping";
 import { createClient } from "@/lib/supabase/server";
 
 import {
@@ -50,7 +51,7 @@ export default async function FormDetailPage({ params }: Props) {
       .schema("crm")
       .from("form_versions")
       .select(
-        "id, version_label, status, published_at, activated_at, superseded_at, file_name, file_size_bytes, notes, created_at, sharepoint_item_id, field_schema_json, diff_json",
+        "id, version_label, status, published_at, activated_at, superseded_at, file_name, file_size_bytes, notes, created_at, sharepoint_item_id, field_schema_json, diff_json, mapping_json",
       )
       .eq("form_id", id)
       .order("created_at", { ascending: false }),
@@ -170,6 +171,14 @@ export default async function FormDetailPage({ params }: Props) {
                           diff={v.diff_json as never}
                         />
                       )}
+                      {canManage && v.status !== "deprecated" && (
+                        <Link
+                          href={`/dashboard/forms/${form.id}/mapping/${v.id}`}
+                          className="text-xs text-[var(--navy)] underline-offset-2 hover:underline"
+                        >
+                          Mapping
+                        </Link>
+                      )}
                       {v.sharepoint_item_id && (
                         <a
                           href={`/api/forms/blank/${v.id}`}
@@ -182,6 +191,9 @@ export default async function FormDetailPage({ params }: Props) {
                         <VersionActions
                           versionId={v.id}
                           status={v.status}
+                          activateBlockers={requiredGateBlockers(
+                            (v.mapping_json ?? {}) as FormMapping,
+                          )}
                         />
                       )}
                     </div>
