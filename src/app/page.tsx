@@ -282,7 +282,7 @@ export default function HomePage() {
         }
       />
       <HeroBand deep>
-        <header className='relative flex flex-col items-center gap-5 px-6 pb-28 pt-16 text-center text-white sm:pt-20'>
+        <header className='relative flex flex-col items-center gap-6 px-6 pb-36 pt-32 text-center text-white sm:pt-36'>
           <div className='flex items-center rounded-xl bg-white/95 px-4 py-2.5 shadow-[0_10px_30px_-18px_rgba(27,54,93,.4)]'>
             <Image
               src='/RCIC.png'
@@ -294,10 +294,10 @@ export default function HomePage() {
               className='h-14 w-auto'
             />
           </div>
-          <h1 className='max-w-[820px] text-balance text-[clamp(38px,5.4vw,64px)] font-extrabold leading-[1.04] tracking-[-.03em]'>
+          <h1 className='max-w-[820px] text-balance text-[clamp(38px,5.4vw,64px)] font-extrabold leading-[1.04] tracking-[-.03em] [text-shadow:0_2px_16px_rgba(27,54,93,.35)]'>
             Your pathway to Canada starts here.
           </h1>
-          <p className='max-w-[640px] text-[17px] leading-relaxed text-white/90'>
+          <p className='max-w-[640px] text-[17px] leading-relaxed text-white [text-shadow:0_2px_16px_rgba(27,54,93,.35)]'>
             A regulated Canadian immigration firm guiding individuals and
             families through every step, with clarity, honesty and care.
           </p>
@@ -307,7 +307,7 @@ export default function HomePage() {
             </PrimaryLink>
             <WhiteLink href='#tools'>Find your pathway</WhiteLink>
           </div>
-          <div className='text-[12.5px] font-medium text-white'>
+          <div className='text-[12.5px] font-medium text-white [text-shadow:0_2px_16px_rgba(27,54,93,.35)]'>
             Licensed by the College of Immigration and Citizenship Consultants
             (CICC) · RCIC# R711181
           </div>
