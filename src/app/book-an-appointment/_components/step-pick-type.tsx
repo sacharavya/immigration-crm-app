@@ -57,38 +57,26 @@ export function StepPickType({
 }) {
   return (
     <div className="space-y-6">
-      {/* ── Hero band ──────────────────────────────────────────── */}
-      <div className="-mx-6 -mt-8 px-6 pb-6 pt-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
-          Book an appointment
-        </h1>
-        <p className="mt-1.5 text-sm leading-relaxed text-stone-600">
-          Schedule a meeting with our team. Pick the option that fits your
-          situation.
-        </p>
-      </div>
-
-      {/* ── Consultant card ────────────────────────────────────── */}
-      <div className="flex flex-col items-center py-2 text-center">
+      {/* Licence strip: the shell's band carries the page title, so this
+          stays compact next to the type cards. */}
+      <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-[#D9E2EC] bg-white px-5 py-4">
         <Image
           src="/RCIC.png"
           alt="RCIC — Regulated Canadian Immigration Consultant"
-          width={400}
-          height={400}
-          className="h-auto w-44 object-contain"
+          width={579}
+          height={189}
+          unoptimized
+          className="h-12 w-auto object-contain"
         />
-        <p className="mt-3 text-base font-semibold text-stone-900">
-          Big Bang Immigration Consulting
-        </p>
-        <p className="mt-1 text-sm text-stone-600">
-          Regulated Canadian Immigration Consultant
-        </p>
-        <p className="mt-0.5 text-xs text-stone-500">
-          RCIC# R711181
-        </p>
-        <p className="mt-0.5 text-xs text-stone-400">
-          Licensed by the College of Immigration and Citizenship Consultants
-        </p>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[#1B365D]">
+            Big Bang Immigration Consulting
+          </p>
+          <p className="text-xs text-[#5A6A85]">
+            Regulated Canadian Immigration Consultant · RCIC# R711181 ·
+            Licensed by the CICC
+          </p>
+        </div>
       </div>
 
       {/* ── Meeting type cards ─────────────────────────────────── */}
