@@ -224,7 +224,7 @@ export function MeetingSidebar({
 
   return (
     <div className="shrink-0 lg:w-80 lg:sticky lg:top-6">
-      <div className="border border-stone-200 bg-white p-5">
+      <div className="border border-[#D9E2EC] bg-white p-5">
         {/* Type label */}
         {isPaid && (
           <p className="text-xs font-medium text-stone-400">
@@ -266,14 +266,14 @@ export function MeetingSidebar({
 
         {/* Description */}
         {type.description && (
-          <p className="mt-4 border-t border-stone-100 pt-4 text-sm leading-relaxed text-stone-600">
+          <p className="mt-4 border-t border-[#EDF1F7] pt-4 text-sm leading-relaxed text-stone-600">
             {type.description}
           </p>
         )}
 
         {/* Selected time (shown on details + confirmation steps) */}
         {slot && clientTimezone && (
-          <div className="mt-4 border-t border-stone-100 pt-4">
+          <div className="mt-4 border-t border-[#EDF1F7] pt-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
               Selected time
             </p>
@@ -288,7 +288,7 @@ export function MeetingSidebar({
 
         {/* Preparation notes — structured */}
         {type.preparation_notes?.trim() && (
-          <div className="mt-4 border-t border-stone-100 pt-4">
+          <div className="mt-4 border-t border-[#EDF1F7] pt-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
               What to expect
             </p>
@@ -300,7 +300,7 @@ export function MeetingSidebar({
 
         {/* Payment notice */}
         {isPaid && (
-          <div className="mt-4 flex items-start gap-2 rounded-md bg-stone-50 px-3 py-2.5">
+          <div className="mt-4 flex items-start gap-2 rounded-md bg-[#F4F6F9] px-3 py-2.5">
             <Clock className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
             <p className="text-xs leading-relaxed text-stone-600">
               Payment via Interac e-Transfer is required to confirm your

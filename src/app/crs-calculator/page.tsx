@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { MarketingShell } from "@/components/marketing/shell";
+
 import { CrsForm } from "./_components/crs-form";
 
 export const metadata: Metadata = {
@@ -9,5 +11,13 @@ export const metadata: Metadata = {
 };
 
 export default function CrsCalculatorPage() {
-  return <CrsForm />;
+  return (
+    <MarketingShell
+      crumbs={[{ label: "CRS Calculator" }]}
+      title="CRS Calculator"
+      subtitle="Estimate your Comprehensive Ranking System score for Express Entry."
+    >
+      <CrsForm />
+    </MarketingShell>
+  );
 }

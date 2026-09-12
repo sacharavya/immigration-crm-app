@@ -216,8 +216,8 @@ export function StepPickSlot({
 
         {/* ── RIGHT: Calendar picker ───────────────────────────── */}
         <div className="min-w-0 flex-1">
-          <div className="border border-stone-200 bg-white">
-            <div className="border-b border-stone-100 px-5 py-3">
+          <div className="border border-[#D9E2EC] bg-white">
+            <div className="border-b border-[#EDF1F7] px-5 py-3">
               <h2 className="text-sm font-medium text-stone-700">
                 Select an appointment time
               </h2>
@@ -236,7 +236,7 @@ export function StepPickSlot({
             ) : (
               <div className="flex flex-col md:flex-row">
                 {/* Mini calendar */}
-                <div className="border-b border-stone-100 px-5 py-4 md:w-60 md:shrink-0 md:border-b-0 md:border-r">
+                <div className="border-b border-[#EDF1F7] px-5 py-4 md:w-60 md:shrink-0 md:border-b-0 md:border-r">
                   <MiniCalendar
                     year={calYear}
                     month={calMonth}
@@ -285,10 +285,10 @@ export function StepPickSlot({
                           <div
                             className={`mb-2 cursor-pointer px-1 py-1.5 transition-colors ${
                               isSelected
-                                ? "bg-[var(--navy)] text-white"
+                                ? "bg-[#3D6FD8] text-white"
                                 : isToday
-                                  ? "bg-[var(--navy)]/10 text-[var(--navy)]"
-                                  : "text-stone-600 hover:bg-stone-50"
+                                  ? "bg-[#3D6FD8]/10 text-[#3D6FD8]"
+                                  : "text-stone-600 hover:bg-[#F4F6F9]"
                             } ${isPast ? "opacity-40" : ""}`}
                             onClick={() => !isPast && selectDate(day)}
                           >
@@ -302,14 +302,14 @@ export function StepPickSlot({
 
                           <div className="space-y-1.5">
                             {isPast || daySlots.length === 0 ? (
-                              <span className="text-xs text-stone-300">—</span>
+                              <span className="text-xs text-[#B9C9F5]">—</span>
                             ) : (
                               daySlots.map((s) => (
                                 <button
                                   key={s.start_utc}
                                   type="button"
                                   onClick={() => onSelect(s)}
-                                  className="w-full rounded-md border border-stone-200 py-1.5 text-xs font-medium text-[var(--navy)] transition-colors hover:border-[var(--navy)] hover:bg-[var(--navy)] hover:text-white"
+                                  className="w-full rounded-md border border-[#D9E2EC] py-1.5 text-xs font-medium text-[#3D6FD8] transition-colors hover:border-[#3D6FD8] hover:bg-[#3D6FD8] hover:text-white"
                                 >
                                   {formatTime(s.start_utc, displayTz)}
                                 </button>
@@ -419,13 +419,13 @@ function MiniCalendar({
               onClick={() => onSelect(dateStr)}
               className={`relative mx-auto my-0.5 flex h-8 w-8 items-center justify-center rounded-full text-xs transition-colors ${
                 isSelected
-                  ? "bg-[var(--navy)] font-semibold text-white"
+                  ? "bg-[#3D6FD8] font-semibold text-white"
                   : isToday
-                    ? "font-semibold text-[var(--navy)] ring-1 ring-[var(--navy)]/30"
+                    ? "font-semibold text-[#3D6FD8] ring-1 ring-[#3D6FD8]/30"
                     : isPast
-                      ? "text-stone-300"
+                      ? "text-[#B9C9F5]"
                       : hasSlots
-                        ? "font-medium text-stone-800 hover:bg-[var(--navy)]/10"
+                        ? "font-medium text-stone-800 hover:bg-[#3D6FD8]/10"
                         : "text-stone-400"
               }`}
             >

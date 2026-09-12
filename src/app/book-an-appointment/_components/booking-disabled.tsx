@@ -8,7 +8,7 @@ const DEFAULT_MESSAGE =
 
 export function BookingDisabled({ message }: { message?: string } = {}) {
   return (
-    <div className="border border-stone-200 bg-white px-6 py-12 text-center">
+    <div className="border border-[#D9E2EC] bg-white px-6 py-12 text-center">
       <h1 className="text-xl font-semibold text-stone-900">
         Booking is currently unavailable
       </h1>
@@ -18,13 +18,13 @@ export function BookingDisabled({ message }: { message?: string } = {}) {
       <div className="mx-auto mt-6 inline-flex flex-col items-center gap-1 text-sm">
         <a
           href="mailto:info@bigbangimmigration.com"
-          className="text-[var(--navy)] underline-offset-2 hover:underline"
+          className="text-[#3D6FD8] underline-offset-2 hover:underline"
         >
           info@bigbangimmigration.com
         </a>
         <a
           href="tel:+14163865351"
-          className="text-[var(--navy)] underline-offset-2 hover:underline"
+          className="text-[#3D6FD8] underline-offset-2 hover:underline"
         >
           +1 416-386-5351
         </a>

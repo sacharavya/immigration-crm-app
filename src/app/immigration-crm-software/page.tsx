@@ -13,6 +13,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { dmMono, jakarta } from "@/components/marketing/fonts";
+import { MarketingFooter } from "@/components/marketing/footer";
 import {
   BrowserFrame,
   Eyebrow,
@@ -141,75 +142,6 @@ function FeatureCard({
   );
 }
 
-// A lightweight CSS recreation of the real dashboard for the hero browser
-// frame. Swap for a real screenshot at /public/dashboard-preview.png later
-// if preferred; this stays crisp at every size with no binary asset.
-function DashboardMock() {
-  const kpis = [
-    ["ACTIVE CASES", "10", "+1 from last month"],
-    ["CLIENTS", "17", "-21 from last month"],
-    ["RETAINED THIS MONTH", "3", "no change"],
-    ["OUTSTANDING FEES", "$137", "collections current"],
-  ];
-  return (
-    <div className="flex bg-white text-left">
-      <div className="hidden w-40 shrink-0 flex-col gap-1 border-r border-[#D9E2EC] p-3 text-[10.5px] font-medium text-[#5A6A85] sm:flex">
-        {["Dashboard", "Cases", "Clients", "Leads", "Tasks", "Forms", "Payments", "Appointments"].map((l, i) => (
-          <span
-            key={l}
-            className={`rounded-md px-2.5 py-1.5 ${i === 0 ? "bg-[#E9F0FC] font-semibold text-[#3D6FD8]" : ""}`}
-          >
-            {l}
-          </span>
-        ))}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
-        <div className="text-sm font-extrabold tracking-[-.01em]">
-          Welcome back, Saurav
-        </div>
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-          {kpis.map(([k, v, s]) => (
-            <div key={k} className="rounded-lg border border-[#D9E2EC] p-2.5">
-              <div className="text-[8.5px] tracking-[.08em] text-[#5A6A85]">{k}</div>
-              <div className="text-lg font-extrabold">{v}</div>
-              <div className="text-[8.5px] text-[#5A6A85]">{s}</div>
-            </div>
-          ))}
-        </div>
-        <div className="overflow-hidden rounded-lg border-2 border-[#3D6FD8]/40">
-          <div className="flex items-center justify-between bg-[#1B365D] px-3 py-1.5 text-[10px] font-semibold text-white">
-            Upcoming appointments
-            <span className="rounded-full bg-white/20 px-1.5 text-[9px]">1</span>
-          </div>
-          <div className="flex items-center gap-2.5 px-3 py-2">
-            <div className="flex w-9 flex-col items-center rounded-md bg-[#F4F6F9] py-1">
-              <span className="text-[7px] font-bold text-[#3D6FD8]">SEP</span>
-              <span className="text-sm font-extrabold leading-4">14</span>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10.5px] font-semibold">10:30 a.m. · Priya Anand</div>
-              <div className="text-[9px] text-[#5A6A85]">PR Consultation · Online</div>
-            </div>
-            <span className="ml-auto rounded-md border border-[#D9E2EC] px-2 py-1 text-[9px] font-semibold">
-              View
-            </span>
-          </div>
-        </div>
-        <div className="grid grid-cols-5 gap-1.5">
-          {PIPELINE.map((s) => (
-            <div key={s.name} className="rounded-lg border border-[#D9E2EC] p-2">
-              <div className="flex justify-between text-[8.5px] font-bold text-[#5A6A85]">
-                <span>{s.name}</span>
-                <span className="font-[family-name:var(--font-dm-mono)]">{s.n}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function CrmLandingPage() {
   return (
     <main
@@ -269,7 +201,15 @@ export default function CrmLandingPage() {
           </div>
           <div className="relative z-[1] mt-8 w-full max-w-[1120px] pb-0 text-[#1B365D]">
             <BrowserFrame url="app.bigbangimmigration.com/dashboard">
-              <DashboardMock />
+              <Image
+                src="/dashboard-preview.png"
+                alt="BBI CRM dashboard"
+                width={2778}
+                height={1706}
+                priority
+                unoptimized
+                className="block h-auto w-full"
+              />
             </BrowserFrame>
           </div>
         </header>
@@ -697,51 +637,7 @@ export default function CrmLandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="mt-auto px-6 pb-8 pt-24">
-        <div className="mx-auto grid max-w-[1120px] gap-10 border-b border-[#D9E2EC] pb-10 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
-          <div className="flex flex-col gap-3.5">
-            <Image
-              src="/logo.png"
-              alt="Big Bang Immigration Consulting Inc"
-              width={220}
-              unoptimized
-              height={70}
-              className="h-9 w-auto self-start"
-            />
-            <p className="max-w-[320px] text-[13px] leading-relaxed text-[#5A6A85]">
-              Immigration CRM built inside a CICC-regulated firm. 211-2390
-              Eglinton Avenue East, Toronto, ON M1K 2P5 · +1 (416) 386-5351 ·
-              info@bigbangimmigration.com
-            </p>
-          </div>
-          <div className="flex flex-col gap-2.5 text-[13px]">
-            <div className="font-bold">Product</div>
-            <a href="#features" className="text-[#5A6A85] hover:text-[#1B365D]">Features</a>
-            <a href="#how" className="text-[#5A6A85] hover:text-[#1B365D]">How it works</a>
-            <a href="#trust" className="text-[#5A6A85] hover:text-[#1B365D]">Security</a>
-          </div>
-          <div className="flex flex-col gap-2.5 text-[13px]">
-            <div className="font-bold">Firm</div>
-            <a href="https://bigbangimmigration.com" className="text-[#5A6A85] hover:text-[#1B365D]">bigbangimmigration.com</a>
-            <Link href="/book-an-appointment" className="text-[#5A6A85] hover:text-[#1B365D]">Book appointment</Link>
-            <Link href="/login" className="text-[#5A6A85] hover:text-[#1B365D]">Staff login</Link>
-          </div>
-          <div className="flex flex-col gap-2.5 text-[13px]">
-            <div className="font-bold">Legal</div>
-            <Link href="/privacy-policy" className="text-[#5A6A85] hover:text-[#1B365D]">Privacy Policy</Link>
-            <Link href="/data-usage" className="text-[#5A6A85] hover:text-[#1B365D]">Data Usage</Link>
-            <Link href="/terms" className="text-[#5A6A85] hover:text-[#1B365D]">Terms of Use</Link>
-          </div>
-        </div>
-        <div className="mx-auto flex max-w-[1120px] flex-wrap justify-between gap-3 pt-5 text-xs text-[#5A6A85]">
-          <span>© 2026 Big Bang Immigration Consulting Inc.</span>
-          <span>
-            Licensed by the College of Immigration and Citizenship Consultants
-            (CICC) · RCIC# R711181
-          </span>
-        </div>
-      </footer>
+      <MarketingFooter />
     </main>
   );
 }

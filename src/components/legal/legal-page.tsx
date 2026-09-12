@@ -1,9 +1,10 @@
 import Link from "next/link";
 
-import { PublicFooter } from "@/components/public-footer";
+import { MarketingShell } from "@/components/marketing/shell";
 
-// Shared shell for the public legal pages: consistent width, typography,
-// updated date, and cross-links between the three documents.
+// Shared shell for the public legal pages, rendered inside the marketing
+// chrome: gradient breadcrumb band, shared footer, cross-links between the
+// three documents.
 export function LegalPage({
   title,
   updated,
@@ -14,38 +15,32 @@ export function LegalPage({
   children: React.ReactNode;
 }) {
   return (
-    <main className="flex min-h-dvh flex-col bg-white">
-      <div className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
-        <Link
-          href="/"
-          className="text-sm text-stone-500 hover:text-[var(--navy)] hover:underline"
-        >
-          &larr; Big Bang Immigration
-        </Link>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-stone-900">
-          {title}
-        </h1>
-        <p className="mt-2 text-sm text-stone-500">Last updated: {updated}</p>
-        <div className="prose-legal mt-8 space-y-6 text-[15px] leading-relaxed text-stone-700">
+    <MarketingShell
+      crumbs={[{ label: "Legal", href: "/privacy-policy" }, { label: title }]}
+      title={title}
+      subtitle={`Last updated: ${updated}`}
+    >
+      <div className="mx-auto w-full max-w-3xl rounded-2xl border border-[#D9E2EC] bg-white p-8 shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)] sm:p-10">
+        <div className="prose-legal space-y-6 text-[15px] leading-relaxed text-stone-700">
           {children}
         </div>
-        <div className="mt-12 border-t border-stone-200 pt-6 text-sm text-stone-500">
+        <div className="mt-12 border-t border-[#D9E2EC] pt-6 text-sm text-[#5A6A85]">
           Related:{" "}
-          <Link href="/privacy-policy" className="text-[var(--navy)] hover:underline">
+          <Link href="/privacy-policy" className="text-[#3D6FD8] hover:underline">
             Privacy Policy
           </Link>
           {" · "}
-          <Link href="/data-usage" className="text-[var(--navy)] hover:underline">
+          <Link href="/data-usage" className="text-[#3D6FD8] hover:underline">
             Data Usage Summary
           </Link>
           {" · "}
-          <Link href="/terms" className="text-[var(--navy)] hover:underline">
+          <Link href="/terms" className="text-[#3D6FD8] hover:underline">
             Terms of Use
           </Link>
         </div>
       </div>
-      <PublicFooter />
-    </main>
+      <div className="pb-24" />
+    </MarketingShell>
   );
 }
 

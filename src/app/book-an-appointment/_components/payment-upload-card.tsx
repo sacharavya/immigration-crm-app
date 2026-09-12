@@ -108,7 +108,7 @@ export function PaymentUploadCard({
           details is on its way.
         </p>
         {signUrl && (
-          <div className="mt-2 border-t border-stone-100 pt-3">
+          <div className="mt-2 border-t border-[#EDF1F7] pt-3">
             <p className="text-sm font-semibold text-stone-900">
               One more step — sign your consultation agreement
             </p>
@@ -117,7 +117,7 @@ export function PaymentUploadCard({
             </p>
             <a
               href={signUrl}
-              className="mt-2 inline-flex h-9 items-center bg-[var(--navy)] px-4 text-sm font-medium text-white hover:bg-[var(--navy)]/90"
+              className="mt-2 inline-flex h-9 items-center bg-[#3D6FD8] px-4 text-sm font-medium text-white hover:bg-[#2F5BC0]"
             >
               Sign now
             </a>
@@ -128,7 +128,7 @@ export function PaymentUploadCard({
   }
 
   return (
-    <div className="space-y-5 border border-stone-200 bg-white p-6">
+    <div className="space-y-5 border border-[#D9E2EC] bg-white p-6">
       <div className="flex items-start gap-3">
         <div className="text-2xl">⌛</div>
         <div>
@@ -145,14 +145,14 @@ export function PaymentUploadCard({
         </div>
       </div>
 
-      <hr className="border-stone-200" />
+      <hr className="border-[#D9E2EC]" />
 
       <p className="text-sm leading-relaxed text-stone-700">
         To secure your spot for this consultation, send an Interac e-transfer
         for <strong>{formatFee(feeCad)}</strong> to{" "}
         <a
           href={`mailto:${FIRM_EMAIL}`}
-          className="text-[var(--navy)] underline-offset-2 hover:underline"
+          className="text-[#3D6FD8] underline-offset-2 hover:underline"
         >
           {FIRM_EMAIL}
         </a>{" "}
@@ -160,7 +160,7 @@ export function PaymentUploadCard({
         appointment is confirmed the moment your proof is submitted.
       </p>
 
-      <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
+      <div className="rounded-md border border-[#D9E2EC] bg-[#F4F6F9] p-3">
         <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
           Include this reference in the e-transfer message field
         </div>
@@ -171,7 +171,7 @@ export function PaymentUploadCard({
           <button
             type="button"
             onClick={copyReference}
-            className="rounded-md border border-stone-200 bg-white px-2 py-0.5 text-[11px] font-medium text-stone-700 hover:bg-stone-100"
+            className="rounded-md border border-[#D9E2EC] bg-white px-2 py-0.5 text-[11px] font-medium text-stone-700 hover:bg-stone-100"
           >
             {copied ? "Copied" : "Copy"}
           </button>
@@ -188,7 +188,7 @@ export function PaymentUploadCard({
           accept={ALLOWED_MIME.join(",")}
           onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
           disabled={pending}
-          className="block w-full text-sm text-stone-600 file:mr-3 file:rounded-md file:border file:border-stone-200 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-100"
+          className="block w-full text-sm text-stone-600 file:mr-3 file:rounded-md file:border file:border-[#D9E2EC] file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-100"
         />
         <p className="text-[11px] text-stone-500">{ALLOWED_HUMAN}</p>
         {file && (
@@ -203,7 +203,7 @@ export function PaymentUploadCard({
           type="button"
           onClick={submit}
           disabled={pending || !file}
-          className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--navy)] px-4 text-sm font-medium text-white shadow-sm hover:bg-[var(--navy)]/90 disabled:opacity-60"
+          className="inline-flex h-10 items-center gap-2 rounded-md bg-[#3D6FD8] px-4 text-sm font-medium text-white shadow-sm hover:bg-[#2F5BC0] disabled:opacity-60"
         >
           {pending ? (
             <>
@@ -217,7 +217,7 @@ export function PaymentUploadCard({
         </button>
       </div>
 
-      <hr className="border-stone-200" />
+      <hr className="border-[#D9E2EC]" />
 
       <p className="text-xs leading-relaxed text-stone-500">
         The payment you make for the consultation can be applied as a deposit

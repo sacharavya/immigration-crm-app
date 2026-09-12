@@ -9,7 +9,6 @@ import {
   Info,
   Search,
 } from "lucide-react";
-import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -187,30 +186,11 @@ export function NocFinder({ onSelect }: NocFinderProps) {
   const checkedSet = selected ? (checkedDuties[selected.code] ?? new Set()) : new Set<number>();
 
   return (
-    <div className="min-h-dvh bg-stone-50">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-        <Link
-          href="/"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-800"
-        >
-          ← Home
-        </Link>
-
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
-            Find your NOC Code
-          </h1>
-          <p className="mt-1 text-sm text-stone-600">
-            IRCC&apos;s new rules limit spousal open work permits (SOWP) to
-            specific occupations. Find your NOC code and see instantly whether
-            your job still qualifies for SOWP, and whether it is eligible for
-            Express Entry.
-          </p>
-          <p className="mt-1 text-xs text-stone-400">
-            Uses the full NOC 2021 dataset from Statistics Canada.
-          </p>
-        </div>
+    <div>
+      <div className="mx-auto max-w-6xl">
+        <p className="mb-4 text-xs text-[#5A6A85]">
+          Uses the full NOC 2021 dataset from Statistics Canada.
+        </p>
 
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           {/* ── LEFT: Search inputs ─────────────────────── */}

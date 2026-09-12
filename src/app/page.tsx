@@ -27,6 +27,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import { ContactForm } from './_contact/contact-form';
+import { MarketingFooter } from '@/components/marketing/footer';
 import { dmMono, jakarta } from '@/components/marketing/fonts';
 import {
   Eyebrow,
@@ -616,33 +617,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className='mt-auto border-t border-[#D9E2EC] px-6 py-7'>
-        <div className='mx-auto flex max-w-[1100px] flex-col items-center gap-2.5 text-center text-[12.5px] text-[#5A6A85]'>
-          <div className='flex flex-wrap justify-center gap-5'>
-            <Link href='/privacy-policy' className='hover:text-[#1B365D]'>
-              Privacy Policy
-            </Link>
-            <Link href='/data-usage' className='hover:text-[#1B365D]'>
-              Data Usage
-            </Link>
-            <Link href='/terms' className='hover:text-[#1B365D]'>
-              Terms of Use
-            </Link>
-            <Link
-              href='/immigration-crm-software'
-              className='hover:text-[#1B365D]'
-            >
-              BBI-CRM for firms
-            </Link>
-          </div>
-          <div>
-            © 2026 Big Bang Immigration Consulting Inc. · Licensed by the
-            College of Immigration and Citizenship Consultants (CICC) · RCIC#
-            R711181
-          </div>
-        </div>
-      </footer>
+      <MarketingFooter />
     </main>
   );
 }

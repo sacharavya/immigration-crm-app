@@ -117,11 +117,11 @@ function TypeCard({
     <button
       type="button"
       onClick={onSelect}
-      className="group flex w-full items-start gap-4 border border-stone-200 bg-white p-5 text-left"
+      className="group flex w-full items-start gap-4 border border-[#D9E2EC] bg-white p-5 text-left"
       style={{ borderLeftWidth: 4, borderLeftColor: "var(--navy)" }}
     >
       {/* Icon */}
-      <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--navy)]/[0.06]">
+      <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#3D6FD8]/[0.06]">
         {meta.icon}
       </div>
 
@@ -159,11 +159,11 @@ function TypeCard({
       {/* Price + arrow */}
       <div className="flex shrink-0 flex-col items-end gap-1.5">
         <div
-          className={`text-lg font-semibold tabular-nums ${isPaid ? "text-[var(--navy)]" : "text-emerald-600"}`}
+          className={`text-lg font-semibold tabular-nums ${isPaid ? "text-[#3D6FD8]" : "text-emerald-600"}`}
         >
           {formatFee(type.fee_cad)}
         </div>
-        <ArrowRight className="h-5 w-5 text-stone-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--navy)]" />
+        <ArrowRight className="h-5 w-5 text-stone-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[#3D6FD8]" />
       </div>
     </button>
   );
