@@ -26,6 +26,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 
+import { ContactForm } from './_contact/contact-form';
 import { dmMono, jakarta } from '@/components/marketing/fonts';
 import {
   Eyebrow,
@@ -551,8 +552,25 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Contact form */}
+      <section id='contact' className='scroll-mt-24 px-6 pb-16'>
+        <div className='mx-auto flex max-w-3xl flex-col items-center gap-4 text-center'>
+          <Eyebrow>GET IN TOUCH</Eyebrow>
+          <h2 className='text-balance text-[clamp(28px,3.5vw,42px)] font-extrabold leading-[1.1] tracking-[-.03em]'>
+            Tell us about your case
+          </h2>
+          <p className='max-w-xl text-base text-[#5A6A85]'>
+            Send us a message and a member of our team will get back to you,
+            typically within one business day.
+          </p>
+        </div>
+        <div className='mx-auto mt-8 max-w-3xl'>
+          <ContactForm />
+        </div>
+      </section>
+
       {/* Contact strip */}
-      <section id='contact' className='scroll-mt-24 px-6 pb-24'>
+      <section className='scroll-mt-24 px-6 pb-24'>
         <div className='mx-auto grid max-w-[1100px] items-center gap-6 rounded-2xl border border-[#D9E2EC] bg-[#F4F6F9] p-9 sm:grid-cols-2 lg:grid-cols-4'>
           <div>
             <div className='text-[22px] font-extrabold tracking-[-.02em]'>
