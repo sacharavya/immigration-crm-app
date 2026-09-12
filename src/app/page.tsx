@@ -252,7 +252,7 @@ const MVV = [
 export default function HomePage() {
   return (
     <main
-      className={`${jakarta.variable} ${dmMono.variable} flex min-h-dvh flex-col overflow-x-hidden bg-white font-[family-name:var(--font-jakarta)] text-[#1B365D] antialiased`}
+      className={`${jakarta.variable} ${dmMono.variable} marketing-radius flex min-h-dvh flex-col overflow-x-hidden bg-white font-[family-name:var(--font-jakarta)] text-[#1B365D] antialiased`}
     >
       <HeroBand deep>
         <MarketingNav
