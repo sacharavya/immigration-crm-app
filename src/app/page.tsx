@@ -256,19 +256,28 @@ export default function HomePage() {
     >
       <HeroBand deep>
         <MarketingNav
+          center={
+            <div className='hidden flex-wrap justify-center gap-5 text-[13px] font-medium text-[#5A6A85] md:flex'>
+              <a href='#about' className='hover:text-[#1B365D]'>About</a>
+              <a href='#services' className='hover:text-[#1B365D]'>Services</a>
+              <a href='#study' className='hover:text-[#1B365D]'>Study in Canada</a>
+              <a href='#testimonials' className='hover:text-[#1B365D]'>Testimonials</a>
+              <a href='#contact' className='hover:text-[#1B365D]'>Contact</a>
+            </div>
+          }
           actions={
             <>
               <Link
-                href='/book-an-appointment'
-                className='px-3.5 py-2 text-[13px] font-medium text-[#5A6A85] hover:text-[#1B365D]'
+                href='/immigration-crm-software'
+                className='hidden px-3.5 py-2 text-[13px] font-medium text-[#5A6A85] hover:text-[#1B365D] sm:block'
               >
-                Book appointment
+                For firms
               </Link>
               <Link
-                href='/login'
-                className='rounded-lg border border-[#D9E2EC] bg-white px-3.5 py-2 text-[13px] font-semibold text-[#1B365D] hover:border-[#3D6FD8]'
+                href='/book-an-appointment'
+                className='rounded-lg bg-[#3D6FD8] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#2F5BC0]'
               >
-                Staff login
+                Book a consultation
               </Link>
             </>
           }
@@ -346,7 +355,7 @@ export default function HomePage() {
       </section>
 
       {/* About */}
-      <section className='px-6 pb-28'>
+      <section id='about' className='scroll-mt-24 px-6 pb-28'>
         <div className='mx-auto grid max-w-[1100px] items-center gap-10 lg:grid-cols-2'>
           <div className='flex flex-col items-start gap-4'>
             <Eyebrow>ABOUT US</Eyebrow>
@@ -440,7 +449,7 @@ export default function HomePage() {
       </section>
 
       {/* Services */}
-      <section className='px-6 pb-28'>
+      <section id='services' className='scroll-mt-24 px-6 pb-28'>
         <div className='mx-auto flex max-w-[1100px] flex-col items-center gap-4'>
           <SectionHead eyebrow='POPULAR SERVICES' title='What we do' />
           <div className='mt-6 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
@@ -472,7 +481,7 @@ export default function HomePage() {
       </section>
 
       {/* Study in Canada */}
-      <section className='px-6 pb-28'>
+      <section id='study' className='scroll-mt-24 px-6 pb-28'>
         <GradientBlock className='mx-auto grid max-w-[1100px] items-center gap-10 p-8 sm:p-14 lg:grid-cols-2'>
           <div className='relative flex flex-col items-start gap-4'>
             <span className='rounded-full border border-white/50 bg-white/20 px-2.5 py-1.5 font-[family-name:var(--font-dm-mono)] text-[10.5px] tracking-[.16em]'>
@@ -509,7 +518,7 @@ export default function HomePage() {
       </section>
 
       {/* Testimonials */}
-      <section className='px-6 pb-28'>
+      <section id='testimonials' className='scroll-mt-24 px-6 pb-28'>
         <div className='mx-auto flex max-w-[1100px] flex-col items-center gap-4'>
           <SectionHead
             eyebrow='CLIENT TESTIMONIALS'
@@ -543,7 +552,7 @@ export default function HomePage() {
       </section>
 
       {/* Contact strip */}
-      <section className='px-6 pb-24'>
+      <section id='contact' className='scroll-mt-24 px-6 pb-24'>
         <div className='mx-auto grid max-w-[1100px] items-center gap-6 rounded-2xl border border-[#D9E2EC] bg-[#F4F6F9] p-9 sm:grid-cols-2 lg:grid-cols-4'>
           <div>
             <div className='text-[22px] font-extrabold tracking-[-.02em]'>

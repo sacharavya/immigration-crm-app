@@ -217,7 +217,6 @@ export default function CrmLandingPage() {
     >
       <HeroBand>
         <MarketingNav
-          crmTag
           center={
             <div className="hidden flex-wrap justify-center gap-5 text-[13px] font-medium text-[#5A6A85] md:flex">
               <a href="#features" className="hover:text-[#1B365D]">Features</a>
@@ -229,10 +228,10 @@ export default function CrmLandingPage() {
           actions={
             <>
               <Link
-                href="/login"
-                className="rounded-lg border border-[#D9E2EC] px-3.5 py-2 text-[13px] font-semibold text-[#1B365D]"
+                href="/"
+                className="hidden px-3.5 py-2 text-[13px] font-medium text-[#5A6A85] hover:text-[#1B365D] sm:block"
               >
-                Staff login
+                For applicants
               </Link>
               <a
                 href="#request"
@@ -447,6 +446,12 @@ export default function CrmLandingPage() {
                 Every active case by phase, with who owns it and what&apos;s
                 blocking it. Click a card to open the file.
               </p>
+              <a
+                href="#request"
+                className="flex items-center gap-1.5 text-[13px] font-semibold text-[#3D6FD8] hover:text-[#1B365D]"
+              >
+                Read more <span aria-hidden>&rarr;</span>
+              </a>
             </div>
             <div
               className="grid min-h-[300px] grid-cols-5 content-start gap-2 border-t border-[#D9E2EC] p-7 lg:border-l lg:border-t-0"
@@ -522,6 +527,12 @@ export default function CrmLandingPage() {
                 Per-document status, intake questionnaires with conditional
                 logic and e-signed retainers — no more email chains.
               </p>
+              <a
+                href="#request"
+                className="flex items-center gap-1.5 text-[13px] font-semibold text-[#3D6FD8] hover:text-[#1B365D]"
+              >
+                Read more <span aria-hidden>&rarr;</span>
+              </a>
             </div>
           </div>
 
@@ -538,6 +549,12 @@ export default function CrmLandingPage() {
                 Retainers tied to the CICC Code, supervision hierarchies, trust
                 records and a full access log — exportable in one click.
               </p>
+              <a
+                href="#request"
+                className="flex items-center gap-1.5 text-[13px] font-semibold text-[#3D6FD8] hover:text-[#1B365D]"
+              >
+                Read more <span aria-hidden>&rarr;</span>
+              </a>
             </div>
             <div
               className="flex min-h-[300px] flex-col gap-2.5 border-t border-[#D9E2EC] p-7 lg:border-l lg:border-t-0"

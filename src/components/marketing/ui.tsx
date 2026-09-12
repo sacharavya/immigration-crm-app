@@ -90,11 +90,9 @@ export function WhiteLink({
 export function MarketingNav({
   center,
   actions,
-  crmTag = false,
 }: {
   center?: React.ReactNode;
   actions: React.ReactNode;
-  crmTag?: boolean;
 }) {
   return (
     <div className="relative flex justify-center px-6 pt-5">
@@ -109,11 +107,6 @@ export function MarketingNav({
             unoptimized
             className="h-8 w-auto"
           />
-          {crmTag && (
-            <span className="border-l border-[#D9E2EC] pl-2.5 font-[family-name:var(--font-dm-mono)] text-[10.5px] tracking-[.14em] text-[#1B365D]">
-              CRM
-            </span>
-          )}
         </Link>
         {center}
         <div className="ml-auto flex flex-none items-center gap-2">{actions}</div>
