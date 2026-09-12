@@ -213,35 +213,35 @@ function DashboardMock() {
 export default function CrmLandingPage() {
   return (
     <main
-      className={`${jakarta.variable} ${dmMono.variable} marketing-radius flex min-h-dvh flex-col overflow-x-hidden bg-white font-[family-name:var(--font-jakarta)] text-[#1B365D] antialiased`}
+      className={`${jakarta.variable} ${dmMono.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-white font-[family-name:var(--font-jakarta)] text-[#1B365D] antialiased`}
     >
+      <MarketingNav
+        center={
+          <div className="hidden flex-wrap justify-center gap-5 text-[13px] font-medium text-[#5A6A85] md:flex">
+            <a href="#features" className="hover:text-[#1B365D]">Features</a>
+            <a href="#how" className="hover:text-[#1B365D]">How it works</a>
+            <a href="#trust" className="hover:text-[#1B365D]">Security</a>
+            <a href="#faq" className="hover:text-[#1B365D]">FAQ</a>
+          </div>
+        }
+        actions={
+          <>
+            <Link
+              href="/"
+              className="hidden px-3.5 py-2 text-[13px] font-medium text-[#5A6A85] hover:text-[#1B365D] sm:block"
+            >
+              For applicants
+            </Link>
+            <a
+              href="#request"
+              className="rounded-lg bg-[#D32F2F] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#1B365D]"
+            >
+              Request access
+            </a>
+          </>
+        }
+      />
       <HeroBand>
-        <MarketingNav
-          center={
-            <div className="hidden flex-wrap justify-center gap-5 text-[13px] font-medium text-[#5A6A85] md:flex">
-              <a href="#features" className="hover:text-[#1B365D]">Features</a>
-              <a href="#how" className="hover:text-[#1B365D]">How it works</a>
-              <a href="#trust" className="hover:text-[#1B365D]">Security</a>
-              <a href="#faq" className="hover:text-[#1B365D]">FAQ</a>
-            </div>
-          }
-          actions={
-            <>
-              <Link
-                href="/"
-                className="hidden px-3.5 py-2 text-[13px] font-medium text-[#5A6A85] hover:text-[#1B365D] sm:block"
-              >
-                For applicants
-              </Link>
-              <a
-                href="#request"
-                className="rounded-lg bg-[#D32F2F] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#1B365D]"
-              >
-                Request access
-              </a>
-            </>
-          }
-        />
         <header className="relative flex flex-col items-center gap-5 px-6 pt-16 text-center text-white sm:pt-20">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/45 bg-white/20 py-1 pl-1 pr-3 text-xs font-semibold">
             <span className="rounded-full bg-white px-1.5 py-0.5 font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#3D6FD8]">
