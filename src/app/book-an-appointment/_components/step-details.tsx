@@ -145,7 +145,7 @@ export function StepDetails({
         {/* ── Right: form ────────────────────────────────────── */}
         <div className="min-w-0 flex-1">
           <form
-            className="border border-stone-200 bg-white p-5"
+            className="border border-[#D9E2EC] bg-white p-5"
             onSubmit={handleSubmit}
           >
             <h2 className="text-sm font-medium text-stone-700">
@@ -159,7 +159,7 @@ export function StepDetails({
                   onChange={(e) => setName(e.target.value)}
                   autoComplete="name"
                   disabled={submitting}
-                  className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                  className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
                 />
               </FormField>
 
@@ -171,7 +171,7 @@ export function StepDetails({
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="email"
                     disabled={submitting}
-                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
                   />
                 </FormField>
                 <FormField label="Phone" required>
@@ -182,7 +182,7 @@ export function StepDetails({
                     autoComplete="tel"
                     placeholder="+1 416 555 0123"
                     disabled={submitting}
-                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
                   />
                 </FormField>
               </div>
@@ -197,8 +197,8 @@ export function StepDetails({
                       disabled={submitting}
                       className={`border px-3 py-1.5 text-sm capitalize ${
                         locationType === opt
-                          ? "border-[var(--navy)] bg-[var(--navy)] text-white"
-                          : "border-stone-200 bg-white text-stone-700"
+                          ? "border-[#3D6FD8] bg-[#3D6FD8] text-white"
+                          : "border-[#D9E2EC] bg-white text-stone-700"
                       }`}
                     >
                       {opt}
@@ -233,11 +233,11 @@ export function StepDetails({
                   disabled={submitting}
                   rows={4}
                   placeholder="Briefly describe what you'd like to discuss."
-                  className="w-full border border-stone-200 bg-white px-3 py-2 text-sm"
+                  className="w-full border border-[#D9E2EC] bg-white px-3 py-2 text-sm"
                 />
               </FormField>
 
-              <div className="border-t border-stone-100 pt-4">
+              <div className="border-t border-[#EDF1F7] pt-4">
                 <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">
                   About you
                 </p>
@@ -252,7 +252,7 @@ export function StepDetails({
                   onChange={(e) => setAddress(e.target.value)}
                   autoComplete="street-address"
                   disabled={submitting}
-                  className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                  className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
                 />
               </FormField>
               <div className="grid gap-4 sm:grid-cols-3">
@@ -261,7 +261,7 @@ export function StepDetails({
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
                   />
                 </FormField>
                 <FormField label="Province / State">
@@ -269,7 +269,7 @@ export function StepDetails({
                     value={province}
                     onChange={(e) => setProvince(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
                   />
                 </FormField>
                 <FormField label="Postal / ZIP">
@@ -277,7 +277,7 @@ export function StepDetails({
                     value={postal}
                     onChange={(e) => setPostal(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
                   />
                 </FormField>
               </div>
@@ -288,7 +288,7 @@ export function StepDetails({
                     value={dob}
                     onChange={(e) => setDob(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
                   />
                 </FormField>
                 <FormField label="Marital status">
@@ -296,7 +296,7 @@ export function StepDetails({
                     value={marital}
                     onChange={(e) => setMarital(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
                   >
                     <option value="">Select…</option>
                     {MARITAL_OPTIONS.map((m) => (
@@ -314,7 +314,7 @@ export function StepDetails({
                     onChange={(e) => setEducation(e.target.value)}
                     disabled={submitting}
                     placeholder="e.g. Bachelor's"
-                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
                   />
                 </FormField>
                 <FormField label="Language test">
@@ -322,7 +322,7 @@ export function StepDetails({
                     value={languageTest}
                     onChange={(e) => setLanguageTest(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
                   >
                     <option value="">Select…</option>
                     {LANGUAGE_TESTS.map((t) => (
@@ -338,7 +338,7 @@ export function StepDetails({
                     onChange={(e) => setLanguageScore(e.target.value)}
                     disabled={submitting}
                     placeholder="e.g. L8 R7 W7 S7 (or 7 each)"
-                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
                   />
                 </FormField>
                 <FormField label="Current occupation">
@@ -346,7 +346,7 @@ export function StepDetails({
                     value={occupation}
                     onChange={(e) => setOccupation(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
                   />
                 </FormField>
               </div>
@@ -376,7 +376,7 @@ export function StepDetails({
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex h-10 items-center gap-2 bg-[var(--navy)] px-5 text-sm font-medium text-white hover:bg-[var(--navy-light)] disabled:opacity-60"
+                className="inline-flex h-10 items-center gap-2 bg-[#3D6FD8] px-5 text-sm font-medium text-white hover:bg-[var(--navy-light)] disabled:opacity-60"
               >
                 {submitting ? (
                   <>

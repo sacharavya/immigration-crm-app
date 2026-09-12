@@ -179,9 +179,9 @@ export function CrsForm() {
   }
 
   return (
-    <div className="min-h-dvh bg-stone-50">
+    <div>
       {/* ── Mobile sticky total ─────────────────────────── */}
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-stone-200 bg-white px-4 py-2 lg:hidden">
+      <div className="sticky top-[74px] z-20 flex items-center justify-between rounded-xl border border-[#D9E2EC] bg-white px-4 py-2 lg:hidden">
         <span className="text-sm font-medium text-stone-600">CRS Score</span>
         <span
           className="text-2xl font-bold tabular-nums text-[var(--navy)]"
@@ -192,12 +192,6 @@ export function CrsForm() {
       </div>
 
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-        <Link
-          href="/"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-800"
-        >
-          <ArrowLeft className="h-4 w-4" /> Home
-        </Link>
 
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           {/* ── LEFT: Questions ────────────────────────── */}
@@ -461,7 +455,7 @@ export function CrsForm() {
                   Spouse has language test scores
                 </label>
                 <p className="mt-1 pl-6 text-xs text-stone-400">
-                  Your spouse's language scores can earn up to 20 additional
+                  Your spouse&apos;s language scores can earn up to 20 additional
                   points. CLB 5+ in each ability is the minimum to score.
                   Test must be from an IRCC-approved provider.
                 </p>

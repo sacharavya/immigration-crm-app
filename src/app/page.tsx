@@ -27,12 +27,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import { ContactForm } from './_contact/contact-form';
+import { SiteNav } from '@/components/marketing/shell';
+import { MarketingFooter } from '@/components/marketing/footer';
 import { dmMono, jakarta } from '@/components/marketing/fonts';
 import {
   Eyebrow,
   GradientBlock,
   HeroBand,
-  MarketingNav,
   PrimaryLink,
   SectionHead,
   WhiteLink,
@@ -255,33 +256,7 @@ export default function HomePage() {
     <main
       className={`${jakarta.variable} ${dmMono.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-white font-[family-name:var(--font-jakarta)] text-[#1B365D] antialiased`}
     >
-      <MarketingNav
-        center={
-          <div className='hidden flex-wrap justify-center gap-5 text-[13px] font-semibold text-[#1B365D]/80 md:flex'>
-            <a href='#about' className='hover:text-[#1B365D]'>About</a>
-            <a href='#services' className='hover:text-[#1B365D]'>Services</a>
-            <a href='#study' className='hover:text-[#1B365D]'>Study in Canada</a>
-            <a href='#testimonials' className='hover:text-[#1B365D]'>Testimonials</a>
-            <a href='#contact' className='hover:text-[#1B365D]'>Contact</a>
-          </div>
-        }
-        actions={
-          <>
-            <Link
-              href='/immigration-crm-software'
-              className='hidden px-3.5 py-2 text-[13px] font-semibold text-[#1B365D]/80 hover:text-[#1B365D] sm:block'
-            >
-              For firms
-            </Link>
-            <Link
-              href='/book-an-appointment'
-              className='rounded-lg bg-[#3D6FD8] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#2F5BC0]'
-            >
-              Book a consultation
-            </Link>
-          </>
-        }
-      />
+      <SiteNav />
       <HeroBand deep>
         <header className='relative flex flex-col items-center gap-6 px-6 pb-36 pt-32 text-center text-white sm:pt-36'>
           <div className='flex items-center rounded-xl bg-white/95 px-4 py-2.5 shadow-[0_10px_30px_-18px_rgba(27,54,93,.4)]'>
@@ -616,33 +591,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className='mt-auto border-t border-[#D9E2EC] px-6 py-7'>
-        <div className='mx-auto flex max-w-[1100px] flex-col items-center gap-2.5 text-center text-[12.5px] text-[#5A6A85]'>
-          <div className='flex flex-wrap justify-center gap-5'>
-            <Link href='/privacy-policy' className='hover:text-[#1B365D]'>
-              Privacy Policy
-            </Link>
-            <Link href='/data-usage' className='hover:text-[#1B365D]'>
-              Data Usage
-            </Link>
-            <Link href='/terms' className='hover:text-[#1B365D]'>
-              Terms of Use
-            </Link>
-            <Link
-              href='/immigration-crm-software'
-              className='hover:text-[#1B365D]'
-            >
-              BBI-CRM for firms
-            </Link>
-          </div>
-          <div>
-            © 2026 Big Bang Immigration Consulting Inc. · Licensed by the
-            College of Immigration and Citizenship Consultants (CICC) · RCIC#
-            R711181
-          </div>
-        </div>
-      </footer>
+      <MarketingFooter />
     </main>
   );
 }

@@ -1,0 +1,41 @@
+{
+  "styleChanged": false,
+  "anchorUsed": false,
+  "anchorReason": "not_provided",
+  "keyedBy": "renderHashes",
+  "unchanged": [],
+  "changed": [],
+  "added": [
+    "Badge",
+    "Button",
+    "Card",
+    "DateInput",
+    "Dialog",
+    "Field",
+    "Input",
+    "Label",
+    "Separator",
+    "Table"
+  ],
+  "removed": [],
+  "renderChurned": [],
+  "upload": {
+    "any": true,
+    "components": [
+      "Badge",
+      "Button",
+      "Card",
+      "DateInput",
+      "Dialog",
+      "Field",
+      "Input",
+      "Label",
+      "Separator",
+      "Table"
+    ],
+    "deletePaths": [],
+    "bundle": true,
+    "styling": true,
+    "aux": true
+  }
+}

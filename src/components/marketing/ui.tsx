@@ -132,8 +132,8 @@ export function HeroBand({
       className="relative"
       style={{
         background: deep
-          ? "linear-gradient(180deg,#4F7FE6 0%,#5F8CEA 55%,#7FA4F0 78%,#B9C9F5 92%,#FFFFFF 100%)"
-          : "linear-gradient(180deg,#4F7FE6 0%,#7FA4F0 42%,#DCE6FA 78%,#FFFFFF 100%)",
+          ? "linear-gradient(180deg,#4F7FE6 0%,#5F8CEA 58%,#7FA4F0 84%,#B9C9F5 96%,#FFFFFF 100%)"
+          : "linear-gradient(180deg,#4F7FE6 0%,#7FA4F0 52%,#DCE6FA 88%,#FFFFFF 100%)",
       }}
     >
       <div

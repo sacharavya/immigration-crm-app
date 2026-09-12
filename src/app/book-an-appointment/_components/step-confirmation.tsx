@@ -100,7 +100,7 @@ export function StepConfirmation({
       />
       <div className="min-w-0 flex-1">
         {result.consultation_sign_url && (
-          <div className="mb-4 border border-[var(--navy)]/30 bg-[var(--navy)]/5 p-4">
+          <div className="mb-4 border border-[#3D6FD8]/30 bg-[#3D6FD8]/5 p-4">
             <p className="text-sm font-semibold text-stone-900">
               One more step — sign your consultation agreement
             </p>
@@ -110,13 +110,13 @@ export function StepConfirmation({
             </p>
             <a
               href={result.consultation_sign_url}
-              className="mt-2 inline-flex h-9 items-center bg-[var(--navy)] px-4 text-sm font-medium text-white hover:bg-[var(--navy-light)]"
+              className="mt-2 inline-flex h-9 items-center bg-[#3D6FD8] px-4 text-sm font-medium text-white hover:bg-[var(--navy-light)]"
             >
               Sign now
             </a>
           </div>
         )}
-        <div className="border border-stone-200 bg-white p-6">
+        <div className="border border-[#D9E2EC] bg-white p-6">
           <div className="flex items-start gap-3">
             <CalendarCheck className="mt-1 h-6 w-6 text-emerald-600" />
             <div>
@@ -129,7 +129,7 @@ export function StepConfirmation({
             </div>
           </div>
 
-          <div className="mt-5 space-y-1 border border-stone-200 bg-stone-50 p-4">
+          <div className="mt-5 space-y-1 border border-[#D9E2EC] bg-[#F4F6F9] p-4">
             <div className="text-base font-semibold text-stone-900">
               {type.name}
             </div>
@@ -157,12 +157,12 @@ export function StepConfirmation({
             </div>
           </div>
 
-          <div className="mt-5 border-t border-stone-100 pt-4 text-sm">
+          <div className="mt-5 border-t border-[#EDF1F7] pt-4 text-sm">
             <p className="text-stone-600">Need to make changes?</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <a
                 href={manageHref}
-                className="inline-flex items-center border border-stone-200 bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100"
+                className="inline-flex items-center border border-[#D9E2EC] bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100"
               >
                 Manage appointment
               </a>
@@ -197,7 +197,7 @@ function ErrorView({
     <button
       type="button"
       onClick={onEditDetails}
-      className="inline-flex items-center border border-stone-200 bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100"
+      className="inline-flex items-center border border-[#D9E2EC] bg-white px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100"
     >
       Try again
     </button>
@@ -215,7 +215,7 @@ function ErrorView({
       <button
         type="button"
         onClick={onPickAnotherSlot}
-        className="inline-flex items-center bg-[var(--navy)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--navy-light)]"
+        className="inline-flex items-center bg-[#3D6FD8] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--navy-light)]"
       >
         Back to slot picker
       </button>
@@ -254,7 +254,7 @@ function ErrorView({
       <button
         type="button"
         onClick={onPickAnotherSlot}
-        className="inline-flex items-center bg-[var(--navy)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--navy-light)]"
+        className="inline-flex items-center bg-[#3D6FD8] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--navy-light)]"
       >
         Pick another time
       </button>
@@ -265,7 +265,7 @@ function ErrorView({
       <p>
         Please contact us directly at{" "}
         <a
-          className="text-[var(--navy)] underline-offset-2 hover:underline"
+          className="text-[#3D6FD8] underline-offset-2 hover:underline"
           href="mailto:info@bigbangimmigration.com"
         >
           info@bigbangimmigration.com
@@ -279,7 +279,7 @@ function ErrorView({
   }
 
   return (
-    <div className="border border-stone-200 bg-white p-6">
+    <div className="border border-[#D9E2EC] bg-white p-6">
       <h1 className="text-xl font-semibold text-stone-900">{title}</h1>
       <div className="mt-3 text-sm text-stone-700">{body}</div>
       {action && <div className="mt-4">{action}</div>}

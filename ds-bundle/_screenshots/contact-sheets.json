@@ -1,0 +1,17 @@
+[
+  {
+    "sheet": 1,
+    "components": [
+      "Badge",
+      "Button",
+      "Card",
+      "DateInput",
+      "Dialog",
+      "Field",
+      "Input",
+      "Label",
+      "Separator",
+      "Table"
+    ]
+  }
+]
