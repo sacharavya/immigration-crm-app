@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { MeetingSidebar } from "./meeting-sidebar";
 import type { LocationType, PublicBookingType, PublicSlot } from "./types";
+import { DateInput } from "@/components/ui/date-input";
 
 const LANGUAGE_TESTS = [
   "IELTS General",
@@ -272,8 +273,7 @@ export function StepDetails({
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField label="Date of birth">
-                  <input
-                    type="date"
+                  <DateInput
                     value={dob}
                     onChange={(e) => setDob(e.target.value)}
                     disabled={submitting}

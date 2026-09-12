@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Upload } from "lucide-react";
+import { Hourglass, Loader2, Upload } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 
 import { uploadPaymentProof } from "../actions";
@@ -117,7 +117,7 @@ export function PaymentUploadCard({
             </p>
             <a
               href={signUrl}
-              className="mt-2 inline-flex h-9 items-center bg-[#3D6FD8] px-4 text-sm font-medium text-white hover:bg-[#2F5BC0]"
+              className="mt-2 inline-flex h-9 items-center rounded-[10px] bg-[#3D6FD8] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#2F5BC0]"
             >
               Sign now
             </a>
@@ -128,11 +128,13 @@ export function PaymentUploadCard({
   }
 
   return (
-    <div className="space-y-5 border border-[#D9E2EC] bg-white p-6">
-      <div className="flex items-start gap-3">
-        <div className="text-2xl">⌛</div>
+    <div className="space-y-5 rounded-2xl border border-[#D9E2EC] bg-white p-6 shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)] sm:p-7">
+      <div className="flex items-start gap-3.5">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FBF3E4] text-[#C9A227]">
+          <Hourglass className="h-5 w-5" strokeWidth={1.75} />
+        </div>
         <div>
-          <h1 className="text-xl font-semibold text-stone-900">
+          <h1 className="text-xl font-extrabold tracking-[-.01em] text-[#1B365D]">
             Almost there. Your slot is held.
           </h1>
           <p className="mt-1 text-sm text-stone-700">
@@ -160,8 +162,8 @@ export function PaymentUploadCard({
         appointment is confirmed the moment your proof is submitted.
       </p>
 
-      <div className="rounded-md border border-[#D9E2EC] bg-[#F4F6F9] p-3">
-        <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+      <div className="rounded-xl border border-[#D9E2EC] bg-[#F4F6F9] p-4">
+        <div className="font-[family-name:var(--font-dm-mono)] text-[11px] font-medium uppercase tracking-[.14em] text-[#5A6A85]">
           Include this reference in the e-transfer message field
         </div>
         <div className="mt-1 flex items-center gap-2">
@@ -171,7 +173,7 @@ export function PaymentUploadCard({
           <button
             type="button"
             onClick={copyReference}
-            className="rounded-md border border-[#D9E2EC] bg-white px-2 py-0.5 text-[11px] font-medium text-stone-700 hover:bg-stone-100"
+            className="rounded-md border border-[#3D6FD8]/40 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#3D6FD8] transition-colors hover:bg-[#E9F0FC]"
           >
             {copied ? "Copied" : "Copy"}
           </button>
@@ -179,7 +181,7 @@ export function PaymentUploadCard({
       </div>
 
       <div className="space-y-2">
-        <label className="block text-xs font-semibold uppercase tracking-wider text-stone-500">
+        <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A6A85]">
           Upload payment screenshot or receipt
         </label>
         <input
@@ -188,7 +190,7 @@ export function PaymentUploadCard({
           accept={ALLOWED_MIME.join(",")}
           onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
           disabled={pending}
-          className="block w-full text-sm text-stone-600 file:mr-3 file:rounded-md file:border file:border-[#D9E2EC] file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-100"
+          className="block w-full text-sm text-stone-600 file:mr-3 file:rounded-lg file:border file:border-[#D9E2EC] file:bg-white file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-[#1B365D] hover:file:border-[#3D6FD8]/60"
         />
         <p className="text-[11px] text-stone-500">{ALLOWED_HUMAN}</p>
         {file && (
@@ -203,7 +205,7 @@ export function PaymentUploadCard({
           type="button"
           onClick={submit}
           disabled={pending || !file}
-          className="inline-flex h-10 items-center gap-2 rounded-md bg-[#3D6FD8] px-4 text-sm font-medium text-white shadow-sm hover:bg-[#2F5BC0] disabled:opacity-60"
+          className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#3D6FD8] px-5 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2F5BC0] disabled:opacity-50"
         >
           {pending ? (
             <>
@@ -225,7 +227,7 @@ export function PaymentUploadCard({
         not to retain our services, the payment will be kept as a consultation
         fee.
       </p>
-      <p className="text-xs leading-relaxed text-amber-700">
+      <p className="rounded-lg bg-[#FBEBD9] px-3.5 py-2.5 text-xs font-medium leading-relaxed text-[#9A5B12]">
         If we don&apos;t receive your payment proof by the end of the day, the
         slot will be released and your appointment cancelled.
       </p>
