@@ -162,6 +162,14 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* THE one radius setting for the public marketing surface. The app keeps
+   the sharp look via --radius: 0 above; marketing pages opt into the
+   rounded design-handoff scale by carrying this class on their root.
+   Change this single value to tune every corner on those pages. */
+.marketing-radius {
+  --radius: 10px;
+}
+
 /* Kill all shadows globally. Revert by removing this block. */
 *,
 *::before,
