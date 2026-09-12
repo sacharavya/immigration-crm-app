@@ -344,7 +344,7 @@ export default function HomePage() {
             </p>
             <div className='flex flex-wrap gap-2.5'>
               <PrimaryLink
-                href='https://bigbangimmigration.com/about-us'
+                href='/about-us'
                 className='px-4.5 py-2.5 text-[13.5px]'
               >
                 Learn more
