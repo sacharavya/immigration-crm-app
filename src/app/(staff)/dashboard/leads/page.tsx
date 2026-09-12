@@ -31,6 +31,7 @@ const INTENT_LABELS: Record<string, string> = {
 
 const SOURCE_LABELS: Record<string, string> = {
   noc_finder: "NOC finder",
+  website_contact: "Website contact",
   booking: "Booking",
   manual: "Manual entry",
 };
@@ -80,9 +81,16 @@ export default async function LeadsPage() {
   }>;
 
   const rows = (leads ?? []).map((l) => {
+    const responses = l.background_responses as Record<string, unknown> | null;
+    const noc = (responses?.noc_inquiry as NocInquiry | undefined) ?? null;
+    const web = responses?.website_inquiry as
+      | { service?: string; message?: string | null }
+      | undefined;
+    // Website inquiries reuse the same display slots: service as intent,
+    // message as note.
     const inquiry =
-      ((l.background_responses as Record<string, unknown> | null)
-        ?.noc_inquiry as NocInquiry | undefined) ?? null;
+      noc ??
+      (web ? { intent: web.service, note: web.message ?? null } : null);
     return { ...l, inquiry };
   });
 
