@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import { MeetingSidebar } from "./meeting-sidebar";
@@ -32,14 +32,12 @@ export function StepDetails({
   slot,
   clientTimezone,
   submitting,
-  onBack,
   onSubmit,
 }: {
   type: PublicBookingType;
   slot: PublicSlot;
   clientTimezone: string;
   submitting: boolean;
-  onBack: () => void;
   onSubmit: (input: {
     name: string;
     email: string;
@@ -125,15 +123,6 @@ export function StepDetails({
 
   return (
     <div className="space-y-4">
-      <button
-        type="button"
-        onClick={onBack}
-        disabled={submitting}
-        className="inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-800 disabled:opacity-50"
-      >
-        <ChevronLeft className="h-4 w-4" /> Back
-      </button>
-
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
         {/* ── Left sidebar: meeting summary ──────────────────── */}
         <MeetingSidebar

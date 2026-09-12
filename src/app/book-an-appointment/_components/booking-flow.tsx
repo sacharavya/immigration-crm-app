@@ -57,21 +57,6 @@ export function BookingFlow({
     }
   }, [types, state.step]);
 
-  function back() {
-    if (state.step === "pick-slot") {
-      // If we auto-skipped (single type), there's nowhere to go back to.
-      if (types.length > 1) setState({ step: "pick-type" });
-    } else if (state.step === "details") {
-      setState({ step: "pick-slot", type: state.type });
-    } else if (state.step === "result" && state.result.ok === false) {
-      if (state.result.error === "slot_taken") {
-        setState({ step: "pick-slot", type: state.type });
-      } else {
-        setState({ step: "details", type: state.type, slot: state.slot });
-      }
-    }
-  }
-
   async function submit(input: {
     name: string;
     email: string;
@@ -155,7 +140,6 @@ export function BookingFlow({
         slot={state.slot}
         clientTimezone={clientTimezone}
         submitting={state.step === "submitting"}
-        onBack={back}
         onSubmit={submit}
       />
     );
