@@ -160,19 +160,23 @@ export function StepPickSlot({
     [allSlots, selectedDate, firmTimezone],
   );
 
+  // Time-range buckets (visitor's timezone). Empty ranges are hidden, so
+  // days without evening hours simply never show one.
   const PERIODS = [
-    { key: "morning", label: "Morning", from: 0, to: 12 },
-    { key: "noon", label: "Noon", from: 12, to: 17 },
-    { key: "evening", label: "Evening", from: 17, to: 24 },
+    { key: "9-12", label: "9 - 12", from: 0, to: 12 },
+    { key: "12-2", label: "12 - 2", from: 12, to: 14 },
+    { key: "2-5", label: "2 - 5", from: 14, to: 17 },
+    { key: "after-5", label: "After 5", from: 17, to: 24 },
   ] as const;
   type PeriodKey = (typeof PERIODS)[number]["key"];
-  const [period, setPeriod] = useState<PeriodKey>("morning");
+  const [period, setPeriod] = useState<PeriodKey>("9-12");
 
   const slotsByPeriod = useMemo(() => {
     const map: Record<PeriodKey, PublicSlot[]> = {
-      morning: [],
-      noon: [],
-      evening: [],
+      "9-12": [],
+      "12-2": [],
+      "2-5": [],
+      "after-5": [],
     };
     for (const s of daySlots) {
       const h = hourOf(s);
@@ -443,7 +447,7 @@ export function StepPickSlot({
                   </p>
                 ) : periodSlots.length === 0 ? (
                   <p className="py-8 text-center text-sm text-[#5A6A85]">
-                    No {period} times this day. Try another period above.
+                    No times in this range today. Try another range above.
                   </p>
                 ) : (
                   periodSlots.map((s) => {
