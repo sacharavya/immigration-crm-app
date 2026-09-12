@@ -279,6 +279,8 @@ export default function HomePage() {
               src='/RCIC.png'
               alt='RCIC - Regulated Canadian Immigration Consultant'
               width={280}
+              priority
+              unoptimized
               height={100}
               className='h-14 w-auto'
             />
