@@ -256,7 +256,7 @@ export default function HomePage() {
     >
       <MarketingNav
         center={
-          <div className='hidden flex-wrap justify-center gap-5 text-[13px] font-medium text-[#5A6A85] md:flex'>
+          <div className='hidden flex-wrap justify-center gap-5 text-[13px] font-semibold text-[#1B365D]/80 md:flex'>
             <a href='#about' className='hover:text-[#1B365D]'>About</a>
             <a href='#services' className='hover:text-[#1B365D]'>Services</a>
             <a href='#study' className='hover:text-[#1B365D]'>Study in Canada</a>
@@ -268,7 +268,7 @@ export default function HomePage() {
           <>
             <Link
               href='/immigration-crm-software'
-              className='hidden px-3.5 py-2 text-[13px] font-medium text-[#5A6A85] hover:text-[#1B365D] sm:block'
+              className='hidden px-3.5 py-2 text-[13px] font-semibold text-[#1B365D]/80 hover:text-[#1B365D] sm:block'
             >
               For firms
             </Link>
