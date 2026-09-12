@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { BandHeader, type Crumb } from "@/components/marketing/shell";
+
 import { bookAppointment } from "../actions";
 
 import { StepConfirmation } from "./step-confirmation";
@@ -105,32 +107,49 @@ export function BookingFlow({
     });
   }
 
+  const bookCrumb: Crumb = { label: "Book an appointment", href: "/book-an-appointment" };
+  const band =
+    state.step === "pick-type"
+      ? {
+          crumbs: [{ label: "Book an appointment" }],
+          title: "Book an appointment",
+          subtitle:
+            "Pick the consultation that fits your situation, then choose a time that works for you.",
+        }
+      : state.step === "pick-slot"
+        ? {
+            crumbs: [bookCrumb, { label: state.type.name }],
+            title: `Book a ${state.type.name}`,
+            subtitle: `Pick a date and time that suits you. All times are ${firmTimezone}.`,
+          }
+        : {
+            crumbs: [bookCrumb, { label: state.type.name }],
+            title: `Book a ${state.type.name}`,
+            subtitle: "Tell us a little about yourself so we can confirm your booking.",
+          };
+
+  let stepEl: React.ReactNode;
   if (state.step === "pick-type") {
-    return (
+    stepEl = (
       <StepPickType
         types={types}
+        firmTimezone={firmTimezone}
         onSelect={(t) => setState({ step: "pick-slot", type: t })}
       />
     );
-  }
-
-  if (state.step === "pick-slot") {
-    return (
+  } else if (state.step === "pick-slot") {
+    stepEl = (
       <StepPickSlot
         type={state.type}
         firmTimezone={firmTimezone}
         clientTimezone={clientTimezone}
-        canGoBack={types.length > 1}
-        onBack={back}
         onSelect={(slot) =>
           setState({ step: "details", type: state.type, slot })
         }
       />
     );
-  }
-
-  if (state.step === "details" || state.step === "submitting") {
-    return (
+  } else if (state.step === "details" || state.step === "submitting") {
+    stepEl = (
       <StepDetails
         type={state.type}
         slot={state.slot}
@@ -140,22 +159,30 @@ export function BookingFlow({
         onSubmit={submit}
       />
     );
+  } else {
+    stepEl = (
+      <StepConfirmation
+        result={state.result}
+        type={state.type}
+        slot={state.slot}
+        clientTimezone={clientTimezone}
+        officeAddress={officeAddress}
+        onPickAnotherSlot={() =>
+          setState({ step: "pick-slot", type: state.type })
+        }
+        onEditDetails={() =>
+          setState({ step: "details", type: state.type, slot: state.slot })
+        }
+      />
+    );
   }
 
-  // result
   return (
-    <StepConfirmation
-      result={state.result}
-      type={state.type}
-      slot={state.slot}
-      clientTimezone={clientTimezone}
-      officeAddress={officeAddress}
-      onPickAnotherSlot={() =>
-        setState({ step: "pick-slot", type: state.type })
-      }
-      onEditDetails={() =>
-        setState({ step: "details", type: state.type, slot: state.slot })
-      }
-    />
+    <>
+      <BandHeader {...band} />
+      <main className="relative z-10 -mt-12 flex-1 px-6 pb-24">
+        <div className="mx-auto w-full max-w-[1100px]">{stepEl}</div>
+      </main>
+    </>
   );
 }

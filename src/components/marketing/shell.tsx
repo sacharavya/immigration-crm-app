@@ -69,9 +69,52 @@ export function Breadcrumb({ crumbs }: { crumbs: Crumb[] }) {
   );
 }
 
-// Shared chrome for public subpages: sticky glass nav, compact gradient
-// band with breadcrumb + title, content, shared footer. Home and the CRM
-// landing keep their bespoke heroes; everything else public uses this.
+// Gradient band with breadcrumb + title. Pure (no hooks), so client
+// components like the booking flow can render it with step-driven content.
+export function BandHeader({
+  crumbs,
+  title,
+  subtitle,
+}: {
+  crumbs: Crumb[];
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <HeroBand>
+      <header className="relative flex flex-col items-start gap-3 px-6 pb-28 pt-28 text-white sm:pt-32">
+        <div className="mx-auto w-full max-w-[1100px]">
+          <Breadcrumb crumbs={crumbs} />
+          <h1 className="mt-4 text-balance text-[clamp(28px,4vw,44px)] font-extrabold leading-[1.08] tracking-[-.03em] [text-shadow:0_2px_16px_rgba(27,54,93,.35)]">
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-white [text-shadow:0_2px_16px_rgba(27,54,93,.35)]">
+              {subtitle}
+            </p>
+          )}
+        </div>
+      </header>
+    </HeroBand>
+  );
+}
+
+// Nav + footer only; the page owns everything between (the booking flow
+// renders its own step-driven BandHeader).
+export function PublicChrome({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className={`${jakarta.variable} ${dmMono.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-white font-[family-name:var(--font-jakarta)] text-[#1B365D] antialiased`}
+    >
+      <SiteNav />
+      {children}
+      <MarketingFooter />
+    </div>
+  );
+}
+
+// Shared chrome for public subpages with a static title: sticky glass nav,
+// gradient breadcrumb band, content, shared footer.
 export function MarketingShell({
   crumbs,
   title,
@@ -84,29 +127,11 @@ export function MarketingShell({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      className={`${jakarta.variable} ${dmMono.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-white font-[family-name:var(--font-jakarta)] text-[#1B365D] antialiased`}
-    >
-      <SiteNav />
-      <HeroBand>
-        <header className="relative flex flex-col items-start gap-3 px-6 pb-28 pt-28 text-white sm:pt-32">
-          <div className="mx-auto w-full max-w-[1100px]">
-            <Breadcrumb crumbs={crumbs} />
-            <h1 className="mt-4 text-balance text-[clamp(28px,4vw,44px)] font-extrabold leading-[1.08] tracking-[-.03em] [text-shadow:0_2px_16px_rgba(27,54,93,.35)]">
-              {title}
-            </h1>
-            {subtitle && (
-              <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-white [text-shadow:0_2px_16px_rgba(27,54,93,.35)]">
-                {subtitle}
-              </p>
-            )}
-          </div>
-        </header>
-      </HeroBand>
+    <PublicChrome>
+      <BandHeader crumbs={crumbs} title={title} subtitle={subtitle} />
       <main className="relative z-10 -mt-8 flex-1 px-6">
         <div className="mx-auto w-full max-w-[1100px]">{children}</div>
       </main>
-      <MarketingFooter />
-    </div>
+    </PublicChrome>
   );
 }

@@ -1,158 +1,96 @@
 "use client";
 
-import {
-  ArrowRight,
-  Clock,
-  FolderOpen,
-  MessageSquare,
-} from "lucide-react";
-import Image from "next/image";
+import { ArrowRight, Clock, FolderOpen, Info } from "lucide-react";
 
 import type { PublicBookingType } from "./types";
 
-function formatFee(fee: number | null): string {
-  if (fee === null) return "Free";
-  if (fee === 0) return "Free";
-  return new Intl.NumberFormat("en-CA", {
-    style: "currency",
-    currency: "CAD",
-    maximumFractionDigits: 0,
-  }).format(fee);
-}
+// Step 1: full-width type rows per the design reference. Gold icon tile,
+// title (+ Existing clients pill for case reviews), meta line, description,
+// Interac notice for paid types, price + Select on the right.
 
-function cardMeta(code: string): {
-  icon: React.ReactNode;
-  badge: string | null;
-  badgeColor: string;
-} {
-  const iconClass = "h-5 w-5 text-[var(--gold)]";
-  switch (code) {
-    case "initial_consultation":
-      return {
-        icon: <MessageSquare className={iconClass} />,
-        badge: "New clients",
-        badgeColor: "bg-sky-50 text-sky-700 border-sky-200",
-      };
-    case "case_review":
-      return {
-        icon: <FolderOpen className={iconClass} />,
-        badge: "Existing clients",
-        badgeColor: "bg-violet-50 text-violet-700 border-violet-200",
-      };
-    default:
-      return {
-        icon: <Clock className={iconClass} />,
-        badge: null,
-        badgeColor: "",
-      };
-  }
+function locationLabel(t: PublicBookingType): string {
+  return t.default_location_type === "online"
+    ? "Online meeting"
+    : "Online or in person";
 }
 
 export function StepPickType({
   types,
+  firmTimezone,
   onSelect,
 }: {
   types: PublicBookingType[];
+  firmTimezone: string;
   onSelect: (t: PublicBookingType) => void;
 }) {
   return (
-    <div className="space-y-6">
-      {/* Licence strip: the shell's band carries the page title, so this
-          stays compact next to the type cards. */}
-      <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-[#D9E2EC] bg-white px-5 py-4">
-        <Image
-          src="/RCIC.png"
-          alt="RCIC — Regulated Canadian Immigration Consultant"
-          width={579}
-          height={189}
-          unoptimized
-          className="h-12 w-auto object-contain"
-        />
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#1B365D]">
-            Big Bang Immigration Consulting
-          </p>
-          <p className="text-xs text-[#5A6A85]">
-            Regulated Canadian Immigration Consultant · RCIC# R711181 ·
-            Licensed by the CICC
-          </p>
-        </div>
-      </div>
+    <div className="space-y-4">
+      {types.map((t) => {
+        const paid = (t.fee_cad ?? 0) > 0;
+        const Icon = t.code === "case_review" ? FolderOpen : Clock;
+        return (
+          <div
+            key={t.id}
+            className="flex flex-col gap-5 rounded-2xl border border-[#D9E2EC] bg-white p-6 shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)] sm:flex-row sm:items-start sm:p-7"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FBF3E4] text-[#C9A227]">
+              <Icon className="h-5 w-5" strokeWidth={1.75} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-[21px] font-bold tracking-[-.01em]">
+                  {t.name}
+                </h2>
+                {t.code === "case_review" && (
+                  <span className="rounded-full bg-[#F4EBFC] px-2.5 py-0.5 text-xs font-semibold text-[#8A4FD3]">
+                    Existing clients
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 text-sm text-[#5A6A85]">
+                {t.duration_minutes} minutes
+                <span className="mx-2 text-[#B9C9F5]">·</span>
+                {locationLabel(t)}
+              </div>
+              {t.description && (
+                <p className="mt-2.5 text-[15px] leading-relaxed text-[#1B365D]/90">
+                  {t.description}
+                </p>
+              )}
+              {paid && (
+                <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#FBEBD9] px-3.5 py-2 text-sm font-medium text-[#9A5B12]">
+                  <Info className="h-4 w-4 shrink-0" strokeWidth={2} />
+                  Payment via Interac e-Transfer required to confirm booking.
+                </div>
+              )}
+            </div>
+            <div className="flex shrink-0 flex-row items-center gap-4 sm:flex-col sm:items-end sm:gap-3">
+              <div
+                className={
+                  paid
+                    ? "text-[26px] font-extrabold tracking-[-.02em] text-[#3D6FD8]"
+                    : "text-[26px] font-extrabold tracking-[-.02em] text-[#1F7A3E]"
+                }
+              >
+                {paid ? `$${t.fee_cad} CAD` : "Free"}
+              </div>
+              <button
+                type="button"
+                onClick={() => onSelect(t)}
+                className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#3D6FD8] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2F5BC0]"
+              >
+                Select <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        );
+      })}
 
-      {/* ── Meeting type cards ─────────────────────────────────── */}
-      <ul className="space-y-3">
-        {types.map((t) => (
-          <li key={t.id}>
-            <TypeCard type={t} onSelect={() => onSelect(t)} />
-          </li>
-        ))}
-      </ul>
+      <div className="flex items-center gap-2.5 rounded-xl bg-[#E9F0FC] px-4 py-3.5 text-sm text-[#1B365D]">
+        <Clock className="h-4 w-4 shrink-0 text-[#3D6FD8]" strokeWidth={2} />
+        All appointments are in {firmTimezone}{" "}time. You&apos;ll receive a
+        confirmation email with a meeting link or office directions.
+      </div>
     </div>
-  );
-}
-
-function TypeCard({
-  type,
-  onSelect,
-}: {
-  type: PublicBookingType;
-  onSelect: () => void;
-}) {
-  const isPaid = type.fee_cad !== null && type.fee_cad > 0;
-  const meta = cardMeta(type.code);
-
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className="group flex w-full items-start gap-4 border border-[#D9E2EC] bg-white p-5 text-left"
-      style={{ borderLeftWidth: 4, borderLeftColor: "var(--navy)" }}
-    >
-      {/* Icon */}
-      <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#3D6FD8]/[0.06]">
-        {meta.icon}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-base font-semibold text-stone-900">
-            {type.name}
-          </h2>
-          {meta.badge && (
-            <span
-              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${meta.badgeColor}`}
-            >
-              {meta.badge}
-            </span>
-          )}
-        </div>
-
-        <p className="mt-1 text-xs text-stone-500">
-          {type.duration_minutes} minutes
-        </p>
-
-        {type.description && (
-          <p className="mt-1.5 text-sm leading-relaxed text-stone-600">
-            {type.description}
-          </p>
-        )}
-
-        {isPaid && (
-          <p className="mt-2 text-xs font-medium text-amber-800">
-            Payment via Interac e-Transfer required to confirm booking.
-          </p>
-        )}
-      </div>
-
-      {/* Price + arrow */}
-      <div className="flex shrink-0 flex-col items-end gap-1.5">
-        <div
-          className={`text-lg font-semibold tabular-nums ${isPaid ? "text-[#3D6FD8]" : "text-emerald-600"}`}
-        >
-          {formatFee(type.fee_cad)}
-        </div>
-        <ArrowRight className="h-5 w-5 text-stone-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[#3D6FD8]" />
-      </div>
-    </button>
   );
 }
