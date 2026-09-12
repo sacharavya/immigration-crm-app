@@ -404,39 +404,37 @@ export function StepPickSlot({
               <div className="text-sm font-bold text-[#1B365D]">
                 Available times · {fmtDayLong(selectedDate)}
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-1.5">
-                {PERIODS.map((p) => {
-                  const n = slotsByPeriod[p.key].length;
-                  return (
-                    <button
-                      key={p.key}
-                      type="button"
-                      disabled={n === 0}
-                      onClick={() => {
-                        setPeriod(p.key);
-                        setSelectedSlot(null);
-                      }}
-                      className={`rounded-lg border px-2 py-2 text-center text-[13px] font-semibold transition-colors ${
-                        period === p.key && n > 0
-                          ? "border-[#3D6FD8] bg-[#3D6FD8] text-white"
-                          : n === 0
-                            ? "cursor-default border-[#EDF1F7] bg-[#F4F6F9] text-[#B9C9F5]"
+              {/* Only periods that actually have times are offered. */}
+              <div className="mt-3 flex gap-1.5">
+                {PERIODS.filter((p) => slotsByPeriod[p.key].length > 0).map(
+                  (p) => {
+                    const n = slotsByPeriod[p.key].length;
+                    return (
+                      <button
+                        key={p.key}
+                        type="button"
+                        onClick={() => {
+                          setPeriod(p.key);
+                          setSelectedSlot(null);
+                        }}
+                        className={`flex-1 rounded-lg border px-2 py-2 text-center text-[13px] font-semibold transition-colors ${
+                          period === p.key
+                            ? "border-[#3D6FD8] bg-[#3D6FD8] text-white"
                             : "border-[#D9E2EC] bg-white text-[#1B365D] hover:border-[#3D6FD8]/60"
-                      }`}
-                    >
-                      {p.label}
-                      <span
-                        className={`ml-1.5 text-[11px] font-medium ${
-                          period === p.key && n > 0
-                            ? "text-white/75"
-                            : "text-[#5A6A85]"
                         }`}
                       >
-                        {n}
-                      </span>
-                    </button>
-                  );
-                })}
+                        {p.label}
+                        <span
+                          className={`ml-1.5 text-[11px] font-medium ${
+                            period === p.key ? "text-white/75" : "text-[#5A6A85]"
+                          }`}
+                        >
+                          {n}
+                        </span>
+                      </button>
+                    );
+                  },
+                )}
               </div>
               <div className="mt-3 flex max-h-[300px] flex-col gap-2 overflow-y-auto pr-1">
                 {daySlots.length === 0 ? (
