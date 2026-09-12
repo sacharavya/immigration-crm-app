@@ -160,6 +160,42 @@ export function StepPickSlot({
     [allSlots, selectedDate, firmTimezone],
   );
 
+  const PERIODS = [
+    { key: "morning", label: "Morning", from: 0, to: 12 },
+    { key: "noon", label: "Noon", from: 12, to: 17 },
+    { key: "evening", label: "Evening", from: 17, to: 24 },
+  ] as const;
+  type PeriodKey = (typeof PERIODS)[number]["key"];
+  const [period, setPeriod] = useState<PeriodKey>("morning");
+
+  const slotsByPeriod = useMemo(() => {
+    const map: Record<PeriodKey, PublicSlot[]> = {
+      morning: [],
+      noon: [],
+      evening: [],
+    };
+    for (const s of daySlots) {
+      const h = hourOf(s);
+      const p = PERIODS.find((x) => h >= x.from && h < x.to)!;
+      map[p.key].push(s);
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [daySlots]);
+
+  // Keep the active period useful: if it has no times for the selected
+  // day, jump to the first period that does.
+  useEffect(() => {
+    if (slotsByPeriod[period].length > 0) return;
+    const first = PERIODS.find((p) => slotsByPeriod[p.key].length > 0);
+    if (first) {
+      queueMicrotask(() => setPeriod(first.key));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slotsByPeriod]);
+
+  const periodSlots = slotsByPeriod[period];
+
   function selectDate(d: string) {
     if (d < today) return;
     setSelectedDate(d);
@@ -181,6 +217,16 @@ export function StepPickSlot({
     } else {
       setCalMonth(calMonth + 1);
     }
+  }
+
+  function hourOf(s: PublicSlot): number {
+    return Number(
+      new Date(s.start_utc).toLocaleTimeString("en-CA", {
+        timeZone: displayTz,
+        hour: "2-digit",
+        hour12: false,
+      }).slice(0, 2),
+    );
   }
 
   function timeLabel(s: PublicSlot): string {
@@ -358,13 +404,51 @@ export function StepPickSlot({
               <div className="text-sm font-bold text-[#1B365D]">
                 Available times · {fmtDayLong(selectedDate)}
               </div>
-              <div className="mt-3 flex max-h-[340px] flex-col gap-2 overflow-y-auto pr-1">
+              <div className="mt-3 grid grid-cols-3 gap-1.5">
+                {PERIODS.map((p) => {
+                  const n = slotsByPeriod[p.key].length;
+                  return (
+                    <button
+                      key={p.key}
+                      type="button"
+                      disabled={n === 0}
+                      onClick={() => {
+                        setPeriod(p.key);
+                        setSelectedSlot(null);
+                      }}
+                      className={`rounded-lg border px-2 py-2 text-center text-[13px] font-semibold transition-colors ${
+                        period === p.key && n > 0
+                          ? "border-[#3D6FD8] bg-[#3D6FD8] text-white"
+                          : n === 0
+                            ? "cursor-default border-[#EDF1F7] bg-[#F4F6F9] text-[#B9C9F5]"
+                            : "border-[#D9E2EC] bg-white text-[#1B365D] hover:border-[#3D6FD8]/60"
+                      }`}
+                    >
+                      {p.label}
+                      <span
+                        className={`ml-1.5 text-[11px] font-medium ${
+                          period === p.key && n > 0
+                            ? "text-white/75"
+                            : "text-[#5A6A85]"
+                        }`}
+                      >
+                        {n}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-3 flex max-h-[300px] flex-col gap-2 overflow-y-auto pr-1">
                 {daySlots.length === 0 ? (
                   <p className="py-8 text-center text-sm text-[#5A6A85]">
                     No times available this day. Pick a day with a gold dot.
                   </p>
+                ) : periodSlots.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-[#5A6A85]">
+                    No {period} times this day. Try another period above.
+                  </p>
                 ) : (
-                  daySlots.map((s) => {
+                  periodSlots.map((s) => {
                     const isSel = selectedSlot?.start_utc === s.start_utc;
                     return (
                       <button
