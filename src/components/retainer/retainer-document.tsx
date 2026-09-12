@@ -54,7 +54,7 @@ export type RetainerData = {
   client_signature_image_url: string | null;
 
   // Letterhead asset (base64 data URL). Inlined so the PDF renderer
-  // doesn't need a base URL to resolve /logo.png.
+  // doesn't need a base URL to resolve /genzdatalabs-logo.png.
   letterhead_logo_url: string;
 };
 
@@ -463,7 +463,7 @@ export function RetainerDocument({
       {data.letterhead_logo_url && (
         <header className="retainer-letterhead">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={data.letterhead_logo_url} alt="Big Bang Immigration" />
+          <img src={data.letterhead_logo_url} alt="genzdatalabs Immigration" />
         </header>
       )}
 
@@ -962,9 +962,9 @@ export function RetainerDocument({
       </div>
 
       <div className="retainer-footer">
-        www.bigbangimmigration.com
+        www.genzdatalabs.com
         <br />
-        info@bigbangimmigration.com
+        info@genzdatalabs.com
         <br />
         211-2390 Eglinton Avenue East
         <br />

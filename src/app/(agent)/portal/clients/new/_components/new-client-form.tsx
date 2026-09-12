@@ -140,7 +140,7 @@ export function NewClientForm({ countries }: { countries: Country[] }) {
             className="rounded-md border border-stone-200 bg-white px-3 py-2 text-sm focus:border-[var(--gold)] focus:outline-none focus:ring-2 focus:ring-[var(--gold)]/30"
           />
           <FieldDescription>
-            Anything the Big Bang team should know about this referral.
+            Anything the genzdatalabs Immigration team should know about this referral.
           </FieldDescription>
         </Field>
 

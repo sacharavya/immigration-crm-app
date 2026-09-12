@@ -2770,7 +2770,7 @@ export async function linkBiometricRecord(
 
 // Same recipient address the appointment payment-pending email uses
 // for consultations. Centralised so a future change picks both up.
-const CASE_PAYMENT_RECIPIENT_EMAIL = "info@bigbangimmigration.com";
+const CASE_PAYMENT_RECIPIENT_EMAIL = "info@genzdatalabs.com";
 
 const notifyPaymentSchema = z.object({
   caseId: z.string().uuid(),

@@ -13,10 +13,10 @@ export function InvalidLinkCard() {
         The intake link may have been revoked or replaced with a newer one.
         Please reply to the email it came from, or contact our office at{" "}
         <a
-          href="mailto:info@bigbangimmigration.com"
+          href="mailto:info@genzdatalabs.com"
           className="text-[var(--navy)] underline-offset-2 hover:underline"
         >
-          info@bigbangimmigration.com
+          info@genzdatalabs.com
         </a>{" "}
         for a fresh link.
       </p>

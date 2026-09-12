@@ -40,9 +40,9 @@ import {
 } from '@/components/marketing/ui';
 
 export const metadata: Metadata = {
-  title: 'Big Bang Immigration Consulting Inc | Your pathway to Canada',
+  title: 'genzdatalabs Immigration Consulting Inc | Your pathway to Canada',
   description:
-    'A regulated Canadian immigration firm (RCIC# R711181) guiding individuals and families through study, work and permanent residence, from Toronto and Kathmandu.',
+    'A regulated Canadian immigration firm (RCIC# R7111111) guiding individuals and families through study, work and permanent residence, from Toronto and Kathmandu.',
 };
 
 const TILES = [
@@ -78,7 +78,7 @@ const TILES = [
   },
 ];
 
-const SERVICE_BASE = 'https://bigbangimmigration.com/service-details';
+const SERVICE_BASE = 'https://genzdatalabs.com/service-details';
 const SERVICES = [
   {
     slug: 'express-entry',
@@ -226,8 +226,8 @@ const STAT_TILES = [
   },
   {
     big: 'RCIC',
-    small: 'Licensed by CICC · R711181',
-    bg: 'linear-gradient(180deg,#FBF3E4,#fff)',
+    small: 'Licensed by CICC · R7111111',
+    bg: 'linear-gradient(180deg,#E4F7EF,#fff)',
   },
   {
     big: 'Since 2021',
@@ -254,11 +254,11 @@ const MVV = [
 export default function HomePage() {
   return (
     <main
-      className={`${jakarta.variable} ${dmMono.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-white font-[family-name:var(--font-jakarta)] text-[#1B365D] antialiased`}
+      className={`${jakarta.variable} ${dmMono.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-white font-[family-name:var(--font-jakarta)] text-[#1E2136] antialiased`}
     >
       <SiteNav />
       <HeroBand deep>
-        <header className='relative flex flex-col items-center gap-6 px-6 pb-36 pt-32 text-center text-white sm:pt-36'>
+        <header className='relative flex flex-col items-center gap-6 px-6 pb-36 pt-32 text-center text-[#1E2136] sm:pt-36'>
           <div className='flex items-center rounded-xl bg-white/95 px-4 py-2.5 shadow-[0_10px_30px_-18px_rgba(27,54,93,.4)]'>
             <Image
               src='/RCIC.png'
@@ -270,10 +270,10 @@ export default function HomePage() {
               className='h-14 w-auto'
             />
           </div>
-          <h1 className='max-w-[820px] text-balance text-[clamp(38px,5.4vw,64px)] font-extrabold leading-[1.04] tracking-[-.03em] [text-shadow:0_2px_16px_rgba(27,54,93,.35)]'>
+          <h1 className='max-w-[820px] text-balance text-[clamp(38px,5.4vw,64px)] font-extrabold leading-[1.04] tracking-[-.03em]'>
             Your pathway to Canada starts here.
           </h1>
-          <p className='max-w-[640px] text-[17px] leading-relaxed text-white [text-shadow:0_2px_16px_rgba(27,54,93,.35)]'>
+          <p className='max-w-[640px] text-[17px] leading-relaxed text-[#1E2136]'>
             A regulated Canadian immigration firm guiding individuals and
             families through every step, with clarity, honesty and care.
           </p>
@@ -283,9 +283,9 @@ export default function HomePage() {
             </PrimaryLink>
             <WhiteLink href='#tools'>Find your pathway</WhiteLink>
           </div>
-          <div className='text-[12.5px] font-medium text-white [text-shadow:0_2px_16px_rgba(27,54,93,.35)]'>
+          <div className='text-[12.5px] font-medium text-[#1E2136]'>
             Licensed by the College of Immigration and Citizenship Consultants
-            (CICC) · RCIC# R711181
+            (CICC) · RCIC# R7111111
           </div>
         </header>
       </HeroBand>
@@ -297,13 +297,13 @@ export default function HomePage() {
             <Link
               key={title}
               href={href}
-              className='group flex flex-col gap-3.5 rounded-2xl border border-[#D9E2EC] bg-white p-7 shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)] transition-all hover:border-[#3D6FD8] hover:shadow-[0_24px_48px_-28px_rgba(27,54,93,.45)]'
+              className='group flex flex-col gap-3.5 rounded-2xl border border-[#D9E2EC] bg-white p-7 shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)] transition-all hover:border-[#1E2136] hover:shadow-[0_24px_48px_-28px_rgba(27,54,93,.45)]'
             >
               <div className='flex items-center justify-between'>
-                <div className='flex h-11 w-11 items-center justify-center rounded-xl bg-[#FBF3E4] text-[#C9A227]'>
+                <div className='flex h-11 w-11 items-center justify-center rounded-xl bg-[#E4F7EF] text-[#62D4A6]'>
                   <Icon className='h-5.5 w-5.5' strokeWidth={1.75} />
                 </div>
-                <ArrowRight className='h-4.5 w-4.5 text-[#B9C9F5] transition-transform group-hover:translate-x-0.5' />
+                <ArrowRight className='h-4.5 w-4.5 text-[#B9BDD2] transition-transform group-hover:translate-x-0.5' />
               </div>
               <div className='text-[17px] font-bold'>{title}</div>
               <p className='text-sm leading-relaxed text-[#5A6A85]'>{body}</p>
@@ -322,7 +322,7 @@ export default function HomePage() {
             </div>
             <Link
               href='/immigration-crm-software'
-              className='relative self-start rounded-lg bg-white px-3.5 py-2 text-[13px] font-semibold text-[#1B365D]'
+              className='relative self-start rounded-lg bg-white px-3.5 py-2 text-[13px] font-semibold text-[#1E2136]'
             >
               Learn more →
             </Link>
@@ -351,7 +351,7 @@ export default function HomePage() {
               </PrimaryLink>
               <Link
                 href='https://www.youtube-nocookie.com/embed/iDo3mRevQLU'
-                className='rounded-lg border border-[#D9E2EC] px-4.5 py-2.5 text-[13.5px] font-semibold text-[#1B365D] hover:border-[#3D6FD8]'
+                className='rounded-lg border border-[#D9E2EC] px-4.5 py-2.5 text-[13.5px] font-semibold text-[#1E2136] hover:border-[#1E2136]'
               >
                 Watch our story
               </Link>
@@ -390,7 +390,7 @@ export default function HomePage() {
                 className='flex flex-col gap-3 rounded-2xl border border-[#D9E2EC] p-7'
                 style={{ background: m.bg }}
               >
-                <div className='font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#3D6FD8]'>
+                <div className='font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#1E2136]'>
                   {m.eyebrow}
                 </div>
                 <div className='text-lg font-bold leading-snug'>{m.title}</div>
@@ -401,9 +401,9 @@ export default function HomePage() {
             ))}
             <div
               className='flex flex-col gap-3 rounded-2xl border border-[#D9E2EC] p-7'
-              style={{ background: 'linear-gradient(180deg,#FBF3E4,#fff)' }}
+              style={{ background: 'linear-gradient(180deg,#E4F7EF,#fff)' }}
             >
-              <div className='font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#3D6FD8]'>
+              <div className='font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#1E2136]'>
                 OUR VALUES
               </div>
               <div className='text-lg font-bold leading-snug'>
@@ -433,9 +433,9 @@ export default function HomePage() {
               <Link
                 key={slug}
                 href={`${SERVICE_BASE}/${slug}`}
-                className='flex flex-col gap-3 rounded-[14px] border border-[#D9E2EC] bg-white p-5.5 transition-colors hover:border-[#3D6FD8]'
+                className='flex flex-col gap-3 rounded-[14px] border border-[#D9E2EC] bg-white p-5.5 transition-colors hover:border-[#1E2136]'
               >
-                <div className='flex h-10 w-10 items-center justify-center rounded-[10px] bg-[#E9F0FC] text-[#3D6FD8]'>
+                <div className='flex h-10 w-10 items-center justify-center rounded-[10px] bg-[#F0F1F6] text-[#1E2136]'>
                   <Icon className='h-5 w-5' strokeWidth={1.75} />
                 </div>
                 <div className='text-[15px] font-bold leading-snug'>
@@ -448,8 +448,8 @@ export default function HomePage() {
             ))}
           </div>
           <Link
-            href='https://bigbangimmigration.com/services'
-            className='mt-2 rounded-lg border border-[#D9E2EC] px-4.5 py-2.5 text-[13.5px] font-semibold text-[#1B365D] hover:border-[#3D6FD8]'
+            href='https://genzdatalabs.com/services'
+            className='mt-2 rounded-lg border border-[#D9E2EC] px-4.5 py-2.5 text-[13.5px] font-semibold text-[#1E2136] hover:border-[#1E2136]'
           >
             Explore all services
           </Link>
@@ -471,7 +471,7 @@ export default function HomePage() {
               Canadian lender.
             </p>
             <WhiteLink
-              href='https://bigbangimmigration.com/study-in-cananda'
+              href='https://genzdatalabs.com/study-in-cananda'
               className='px-4.5 py-2.5 text-[13.5px]'
             >
               Learn more →
@@ -481,9 +481,9 @@ export default function HomePage() {
             {STUDY_STEPS.map((label, i) => (
               <div
                 key={label}
-                className='flex items-center gap-2.5 rounded-xl bg-white/95 px-4 py-3.5 text-[#1B365D]'
+                className='flex items-center gap-2.5 rounded-xl bg-white/95 px-4 py-3.5 text-[#1E2136]'
               >
-                <span className='font-[family-name:var(--font-dm-mono)] text-[10.5px] text-[#3D6FD8]'>
+                <span className='font-[family-name:var(--font-dm-mono)] text-[10.5px] text-[#1E2136]'>
                   0{i + 1}
                 </span>
                 <span className='text-[13.5px] font-semibold'>{label}</span>
@@ -506,14 +506,14 @@ export default function HomePage() {
                 key={t.ini}
                 className='flex flex-col gap-3.5 rounded-2xl border border-[#D9E2EC] bg-white p-6.5'
               >
-                <div className='text-[13px] tracking-[.1em] text-[#C9A227]'>
+                <div className='text-[13px] tracking-[.1em] text-[#62D4A6]'>
                   ★★★★★
                 </div>
                 <p className='text-sm leading-relaxed text-[#5A6A85]'>
                   {t.quote}
                 </p>
                 <div className='mt-auto flex items-center gap-2.5'>
-                  <div className='flex h-9 w-9 items-center justify-center rounded-full bg-[#E9F0FC] text-xs font-bold text-[#3D6FD8]'>
+                  <div className='flex h-9 w-9 items-center justify-center rounded-full bg-[#F0F1F6] text-xs font-bold text-[#1E2136]'>
                     {t.ini}
                   </div>
                   <div>
@@ -558,7 +558,7 @@ export default function HomePage() {
           </div>
           <div className='flex items-start gap-3 text-sm leading-relaxed text-[#5A6A85]'>
             <MapPin
-              className='mt-0.5 h-4.5 w-4.5 flex-none text-[#C9A227]'
+              className='mt-0.5 h-4.5 w-4.5 flex-none text-[#62D4A6]'
               strokeWidth={1.75}
             />
             <span>
@@ -569,23 +569,23 @@ export default function HomePage() {
           </div>
           <div className='flex items-center gap-3 text-sm text-[#5A6A85]'>
             <Phone
-              className='h-4.5 w-4.5 flex-none text-[#C9A227]'
+              className='h-4.5 w-4.5 flex-none text-[#62D4A6]'
               strokeWidth={1.75}
             />
-            <a href='tel:+14163865351' className='hover:text-[#1B365D]'>
+            <a href='tel:+14163865351' className='hover:text-[#1E2136]'>
               +1 (416) 386-5351
             </a>
           </div>
           <div className='flex items-center gap-3 text-sm text-[#5A6A85]'>
             <Mail
-              className='h-4.5 w-4.5 flex-none text-[#C9A227]'
+              className='h-4.5 w-4.5 flex-none text-[#62D4A6]'
               strokeWidth={1.75}
             />
             <a
-              href='mailto:info@bigbangimmigration.com'
-              className='hover:text-[#1B365D]'
+              href='mailto:info@genzdatalabs.com'
+              className='hover:text-[#1E2136]'
             >
-              info@bigbangimmigration.com
+              info@genzdatalabs.com
             </a>
           </div>
         </div>

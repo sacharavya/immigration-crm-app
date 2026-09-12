@@ -65,12 +65,12 @@ export function StaffSidebar() {
       <div className="flex h-24 items-center justify-center border-b border-stone-200 px-3">
         <Link
           href="/dashboard"
-          aria-label="Big Bang Immigration CRM"
+          aria-label="genzdatalabs Immigration CRM"
           className="block h-full w-full transition-opacity hover:opacity-80"
         >
           <Image
-            src="/logo.png"
-            alt="Big Bang Immigration"
+            src="/genzdatalabs-logo.png"
+            alt="genzdatalabs Immigration"
             width={400}
             height={200}
             priority

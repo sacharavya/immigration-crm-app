@@ -98,7 +98,7 @@ export function ConsultationAgreementPdfDocument({
     <Document>
       <Page size="A4" style={s.page}>
         <View style={s.center}>
-          <Text style={s.title}>The Big Bang Immigration Consulting Inc</Text>
+          <Text style={s.title}>The genzdatalabs Immigration Consulting Inc</Text>
           <Text style={s.subtitle}>Initial Consultation Agreement</Text>
         </View>
 

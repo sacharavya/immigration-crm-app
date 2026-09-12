@@ -39,7 +39,7 @@ export function appointmentRescheduleEmail(
   const locationHtml =
     args.locationType === "online"
       ? onlineLocationHtml(args)
-      : `<p style="margin:0 0 12px 0;"><strong>Location:</strong> ${escapeHtml(args.onsiteAddress ?? "Big Bang Immigration office")}</p>`;
+      : `<p style="margin:0 0 12px 0;"><strong>Location:</strong> ${escapeHtml(args.onsiteAddress ?? "genzdatalabs Immigration office")}</p>`;
 
   const bodyHtml = `
 <p style="margin:0 0 12px 0;">Hello ${escapeHtml(args.clientName)},</p>
@@ -74,7 +74,7 @@ ${args.managementUrl ? buttonHtml("Manage appointment", args.managementUrl) : ""
       ? args.teamsJoinUrl
         ? `Teams meeting (same link as before): ${args.teamsJoinUrl}`
         : `Online meeting: ${args.onlineLink ?? "A link will be sent shortly before your appointment."}`
-      : `Location: ${args.onsiteAddress ?? "Big Bang Immigration office"}`,
+      : `Location: ${args.onsiteAddress ?? "genzdatalabs Immigration office"}`,
     "",
     args.managementUrl
       ? `Manage appointment: ${args.managementUrl}`

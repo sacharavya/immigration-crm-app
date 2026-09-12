@@ -379,7 +379,7 @@ export function NocFinder({ onSelect }: NocFinderProps) {
                   lastVerified={sowpLastVerified}
                 />
 
-                {/* Apply with Big Bang: the verdict just landed - this is the
+                {/* Apply with genzdatalabs Immigration: the verdict just landed - this is the
                     conversion moment. Keyed so a new selection resets state. */}
                 <div className="mt-4">
                   <ApplyForm

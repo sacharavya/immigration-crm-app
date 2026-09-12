@@ -47,7 +47,7 @@ export default async function ConsultationSignPage({
       ) : expired ? (
         <StateCard
           title="This link has expired"
-          body="Please contact us at info@bigbangimmigration.com for a new signing link."
+          body="Please contact us at info@genzdatalabs.com for a new signing link."
         />
       ) : (
         <div className="space-y-4">

@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { LegalPage, LegalSection } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
-  title: "Terms of Use - Big Bang Immigration",
+  title: "Terms of Use - genzdatalabs Immigration",
   description:
-    "Terms governing the use of the Big Bang Immigration website, free tools, and online booking.",
+    "Terms governing the use of the genzdatalabs Immigration website, free tools, and online booking.",
 };
 
 const UPDATED = "August 29, 2026";
@@ -14,7 +14,7 @@ export default function TermsPage() {
   return (
     <LegalPage title="Terms of Use" updated={UPDATED}>
       <p>
-        These terms govern your use of the Big Bang Immigration Consulting Inc
+        These terms govern your use of the genzdatalabs Immigration Consulting Inc
         website, including our free tools and online booking. By using this
         site you agree to them. They are governed by the laws of Ontario and
         Canada.
@@ -22,7 +22,7 @@ export default function TermsPage() {
 
       <LegalSection heading="1. Who we are">
         <p>
-          Big Bang Immigration Consulting Inc provides Canadian immigration
+          genzdatalabs Immigration Consulting Inc provides Canadian immigration
           consulting services through Regulated Canadian Immigration
           Consultants (RCICs) who are members in good standing of the College
           of Immigration and Citizenship Consultants (CICC), the federal
@@ -57,7 +57,7 @@ export default function TermsPage() {
         <p>
           Using this website, its tools, or submitting an inquiry form does not
           make you a client and does not create a consultant-client
-          relationship. A relationship begins only when you and Big Bang
+          relationship. A relationship begins only when you and genzdatalabs Immigration
           Immigration sign a consultation agreement or retainer agreement, and
           it is governed by that agreement. Until then, do not send us
           confidential material beyond what our forms request.
@@ -87,7 +87,7 @@ export default function TermsPage() {
 
       <LegalSection heading="6. Intellectual property">
         <p>
-          The content of this site (text, design, tools) belongs to Big Bang
+          The content of this site (text, design, tools) belongs to genzdatalabs Immigration
           Immigration Consulting Inc or its licensors. You may use it for
           personal, non-commercial purposes; any other use requires our
           written permission.
@@ -96,7 +96,7 @@ export default function TermsPage() {
 
       <LegalSection heading="7. Limitation of liability">
         <p>
-          To the maximum extent permitted by law, Big Bang Immigration is not
+          To the maximum extent permitted by law, genzdatalabs Immigration is not
           liable for losses arising from your use of this website or its free
           tools, including decisions made in reliance on tool results.
           Services provided under a signed agreement are governed by that
@@ -133,9 +133,9 @@ export default function TermsPage() {
           Questions about these terms: {" "}
           <a
             className="text-[var(--navy)] hover:underline"
-            href="mailto:info@bigbangimmigration.com"
+            href="mailto:info@genzdatalabs.com"
           >
-            info@bigbangimmigration.com
+            info@genzdatalabs.com
           </a>{" "}
           or 211-2390 Eglinton Avenue East, Toronto, ON M1K 2P5.
         </p>

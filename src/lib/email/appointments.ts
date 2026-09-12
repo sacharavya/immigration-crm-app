@@ -30,12 +30,12 @@ import { appointmentRescheduleEmail } from "./templates/appointment-reschedule";
 
 export type EmailResult = { ok: true } | { ok: false; reason: string };
 
-const FIRM_NAME = "Big Bang Immigration";
-const FIRM_EMAIL = "info@bigbangimmigration.com";
+const FIRM_NAME = "genzdatalabs Immigration";
+const FIRM_EMAIL = "info@genzdatalabs.com";
 // Fallback recipient when an appointment has no assigned RCIC (e.g. global
 // public bookings). The prompt allows this to be hardcoded for v1; a
 // settings-driven address can come later.
-const INTERNAL_FALLBACK_EMAIL = "info@bigbangimmigration.com";
+const INTERNAL_FALLBACK_EMAIL = "info@genzdatalabs.com";
 
 type AppointmentEmailRow = {
   id: string;
@@ -138,7 +138,7 @@ function locationLineForIcs(row: AppointmentEmailRow): string {
   if (row.location_type === "online") {
     return row.online_link ? `Online: ${row.online_link}` : "Online";
   }
-  return row.onsite_address ?? "Big Bang Immigration office";
+  return row.onsite_address ?? "genzdatalabs Immigration office";
 }
 
 function attachmentForRow(
@@ -510,7 +510,7 @@ export async function sendInternalNotification(
 //      pending_payment row aged past the cutoff.
 // ---------------------------------------------------------------------------
 
-const PAYMENT_RECIPIENT_EMAIL = "info@bigbangimmigration.com";
+const PAYMENT_RECIPIENT_EMAIL = "info@genzdatalabs.com";
 
 export async function sendPaymentPending(
   supabase: SupabaseClient<Database>,

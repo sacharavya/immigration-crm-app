@@ -12,10 +12,10 @@ export function staffInviteEmail(args: Args): {
   html: string;
   text: string;
 } {
-  const subject = `Welcome to Big Bang Immigration`;
+  const subject = `Welcome to genzdatalabs Immigration`;
 
   const bodyHtml = `<p style="margin:0 0 12px 0;">Hi ${escapeHtml(args.firstName)},</p>
-<p style="margin:0 0 12px 0;">Your account on the Big Bang Immigration CRM is ready. Sign in with the credentials below — you'll be asked to set a new password on first login.</p>
+<p style="margin:0 0 12px 0;">Your account on the genzdatalabs Immigration CRM is ready. Sign in with the credentials below — you'll be asked to set a new password on first login.</p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0;background:#fafaf9;border:1px solid #e7e5e4;border-radius:8px;">
   <tr>
     <td style="padding:16px 20px;font-size:14px;color:#1c1917;">
@@ -29,7 +29,7 @@ ${buttonHtml("Sign in", args.loginUrl)}
 
   const text = `Hi ${args.firstName},
 
-Your account on the Big Bang Immigration CRM is ready.
+Your account on the genzdatalabs Immigration CRM is ready.
 
 Sign in at: ${args.loginUrl}
 Email: ${args.email}
@@ -39,12 +39,12 @@ You'll be asked to set a new password on first login.
 
 If you weren't expecting this email, please contact your administrator.
 
-Big Bang Immigration Consulting Inc.`;
+genzdatalabs Immigration Consulting Inc.`;
 
   return {
     subject,
     html: emailLayout({
-      previewText: "Your Big Bang Immigration CRM account is ready.",
+      previewText: "Your genzdatalabs Immigration CRM account is ready.",
       bodyHtml,
     }),
     text,

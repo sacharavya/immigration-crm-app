@@ -158,10 +158,10 @@ function TokenInvalid() {
         your most recent confirmation email, or contact us directly.
       </p>
       <a
-        href="mailto:info@bigbangimmigration.com"
+        href="mailto:info@genzdatalabs.com"
         className="mt-4 inline-block text-sm text-[var(--navy)] underline-offset-2 hover:underline"
       >
-        info@bigbangimmigration.com
+        info@genzdatalabs.com
       </a>
     </div>
   );
@@ -176,10 +176,10 @@ function TokenExpired() {
         appointment time. Please email us to make changes.
       </p>
       <a
-        href="mailto:info@bigbangimmigration.com"
+        href="mailto:info@genzdatalabs.com"
         className="mt-4 inline-block text-sm text-[var(--navy)] underline-offset-2 hover:underline"
       >
-        info@bigbangimmigration.com
+        info@genzdatalabs.com
       </a>
     </div>
   );

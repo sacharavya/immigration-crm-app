@@ -4,12 +4,12 @@ import Link from "next/link";
 import { cn } from "@/lib/utils/index";
 
 // Shared primitives for the marketing visual system (home + CRM landing).
-// Tokens from the design handoff: navy #1B365D text, primary #3D6FD8,
+// Tokens from the design handoff: navy #1E2136 text, primary #1E2136,
 // border #D9E2EC, secondary text #5A6A85, hero gradient blues.
 
 export function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full bg-[#E9F0FC] px-2.5 py-1.5 font-[family-name:var(--font-dm-mono)] text-[10.5px] font-medium uppercase tracking-[.16em] text-[#3D6FD8]">
+    <span className="rounded-full bg-[#F0F1F6] px-2.5 py-1.5 font-[family-name:var(--font-dm-mono)] text-[10.5px] font-medium uppercase tracking-[.16em] text-[#1E2136]">
       {children}
     </span>
   );
@@ -54,8 +54,8 @@ export function PrimaryLink({
       className={cn(
         "inline-flex items-center gap-2 rounded-[10px] px-5 py-3 text-sm font-semibold text-white transition-colors",
         tone === "primary"
-          ? "bg-[#3D6FD8] shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] hover:bg-[#2F5BC0]"
-          : "bg-[#D32F2F] shadow-[0_12px_30px_-14px_rgba(211,47,47,.7)] hover:bg-[#1B365D]",
+          ? "bg-[#1E2136] shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] hover:bg-[#2E3252]"
+          : "bg-[#62D4A6] text-[#1E2136] hover:bg-[#1E2136] hover:text-white",
         className,
       )}
     >
@@ -77,7 +77,7 @@ export function WhiteLink({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center gap-2 rounded-[10px] bg-white/95 px-5 py-3 text-sm font-semibold text-[#1B365D] transition-colors hover:bg-white",
+        "inline-flex items-center gap-2 rounded-[10px] border border-[#1E2136]/15 bg-white/95 px-5 py-3 text-sm font-semibold text-[#1E2136] transition-colors hover:bg-white",
         className,
       )}
     >
@@ -103,8 +103,8 @@ export function MarketingNav({
       <nav className="flex w-full max-w-[1100px] items-center justify-between gap-5 rounded-[14px] border border-white/60 bg-white/85 py-2.5 pl-4 pr-3 shadow-[0_8px_30px_-18px_rgba(27,54,93,.35)] backdrop-blur-xl">
         <Link href="/" className="flex shrink-0 items-center gap-2.5">
           <Image
-            src="/logo.png"
-            alt="Big Bang Immigration Consulting Inc"
+            src="/genzdatalabs-logo.png"
+            alt="genzdatalabs Immigration Consulting Inc"
             width={200}
             height={64}
             priority
@@ -132,8 +132,8 @@ export function HeroBand({
       className="relative"
       style={{
         background: deep
-          ? "linear-gradient(180deg,#4F7FE6 0%,#5F8CEA 58%,#7FA4F0 84%,#B9C9F5 96%,#FFFFFF 100%)"
-          : "linear-gradient(180deg,#4F7FE6 0%,#7FA4F0 52%,#DCE6FA 88%,#FFFFFF 100%)",
+          ? "linear-gradient(180deg,#D5F3E6 0%,#E4F7EF 45%,#F0F1F6 80%,#FFFFFF 100%)"
+          : "linear-gradient(180deg,#D5F3E6 0%,#E4F7EF 40%,#F0F1F6 75%,#FFFFFF 100%)",
       }}
     >
       <div
@@ -141,7 +141,7 @@ export function HeroBand({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(50% 30% at 15% 70%,rgba(255,255,255,.55),transparent 70%),radial-gradient(45% 28% at 85% 62%,rgba(255,255,255,.5),transparent 70%),radial-gradient(35% 22% at 50% 85%,rgba(240,225,250,.6),transparent 70%)",
+            "radial-gradient(50% 30% at 15% 70%,rgba(98,212,166,.22),transparent 70%),radial-gradient(45% 28% at 85% 62%,rgba(98,212,166,.18),transparent 70%),radial-gradient(35% 22% at 50% 85%,rgba(255,255,255,.12),transparent 70%)",
         }}
       />
       {children}
@@ -165,7 +165,7 @@ export function GradientBlock({
       )}
       style={{
         background:
-          "linear-gradient(135deg,#4F7FE6 0%,#7FA4F0 55%,#B9C9F5 100%)",
+          "linear-gradient(135deg,#1E2136 0%,#2E3252 55%,#3B4066 100%)",
       }}
     >
       <div
@@ -173,7 +173,7 @@ export function GradientBlock({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(40% 50% at 90% 90%,rgba(255,255,255,.35),transparent 70%)",
+            "radial-gradient(40% 50% at 90% 90%,rgba(98,212,166,.45),transparent 70%)",
         }}
       />
       {children}

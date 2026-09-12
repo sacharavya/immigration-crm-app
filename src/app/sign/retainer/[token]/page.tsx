@@ -22,7 +22,7 @@ export const runtime = "nodejs";
 type Props = { params: Promise<{ token: string }> };
 
 const FIRM_CONTACT = {
-  email: "info@bigbangimmigration.com",
+  email: "info@genzdatalabs.com",
   phone: "+1 416-386-5351",
 };
 
@@ -57,15 +57,15 @@ export default async function PublicSigningPage({ params }: Props) {
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
           <Image
-            src="/logo.png"
-            alt="Big Bang Immigration"
+            src="/genzdatalabs-logo.png"
+            alt="genzdatalabs Immigration"
             width={1933}
             height={537}
             className="h-10 w-auto"
           />
           <div>
             <div className="text-sm font-semibold text-[var(--navy)]">
-              Big Bang Immigration Consulting Inc.
+              genzdatalabs Immigration Consulting Inc.
             </div>
             <div className="text-xs text-stone-500">
               Retainer Agreement · Case {data.case_number}

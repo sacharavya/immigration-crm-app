@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { LegalPage, LegalSection } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
-  title: "Data Usage Summary - Big Bang Immigration",
+  title: "Data Usage Summary - genzdatalabs Immigration",
   description:
-    "A plain-language summary of what Big Bang Immigration collects, why, who sees it, and how long we keep it.",
+    "A plain-language summary of what genzdatalabs Immigration collects, why, who sees it, and how long we keep it.",
 };
 
 const UPDATED = "August 29, 2026";
@@ -111,9 +111,9 @@ export default function DataUsagePage() {
           For any of these, email{" "}
           <a
             className="text-[var(--navy)] hover:underline"
-            href="mailto:info@bigbangimmigration.com"
+            href="mailto:info@genzdatalabs.com"
           >
-            info@bigbangimmigration.com
+            info@genzdatalabs.com
           </a>
           .
         </p>

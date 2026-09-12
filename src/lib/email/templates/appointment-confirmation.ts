@@ -39,11 +39,11 @@ export function appointmentConfirmationEmail(
   const locationHtml =
     args.locationType === "online"
       ? onlineLocationHtml(args)
-      : `<p style="margin:0 0 12px 0;"><strong>Location:</strong> ${escapeHtml(args.onsiteAddress ?? "Big Bang Immigration office")}</p>`;
+      : `<p style="margin:0 0 12px 0;"><strong>Location:</strong> ${escapeHtml(args.onsiteAddress ?? "genzdatalabs Immigration office")}</p>`;
 
   const manageHtml = args.managementUrl
     ? `<p style="margin:24px 0 0 0;color:#57534e;font-size:14px;">Need to make changes? <a href="${escapeHtml(args.managementUrl)}">Reschedule or cancel</a>.</p>`
-    : `<p style="margin:24px 0 0 0;color:#57534e;font-size:14px;">Need to make changes? Email us at info@bigbangimmigration.com or call us.</p>`;
+    : `<p style="margin:24px 0 0 0;color:#57534e;font-size:14px;">Need to make changes? Email us at info@genzdatalabs.com or call us.</p>`;
 
   const bodyHtml = `
 <p style="margin:0 0 12px 0;">Hello ${escapeHtml(args.clientName)},</p>
@@ -71,11 +71,11 @@ ${manageHtml}`;
     "",
     args.locationType === "online"
       ? onlineText
-      : `Location: ${args.onsiteAddress ?? "Big Bang Immigration office"}`,
+      : `Location: ${args.onsiteAddress ?? "genzdatalabs Immigration office"}`,
     "",
     args.managementUrl
       ? `Manage appointment: ${args.managementUrl}`
-      : `Need to make changes? Email us at info@bigbangimmigration.com or call us.`,
+      : `Need to make changes? Email us at info@genzdatalabs.com or call us.`,
     "",
     "A calendar invite is attached.",
   ].join("\n");

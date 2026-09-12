@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ token: string }> };
 
-const PAYMENT_RECIPIENT_EMAIL = "info@bigbangimmigration.com";
+const PAYMENT_RECIPIENT_EMAIL = "info@genzdatalabs.com";
 
 function formatCad(cad: number): string {
   return new Intl.NumberFormat("en-CA", {
@@ -35,10 +35,10 @@ export default async function PublicPayPage({ params }: Props) {
           have moved past the payment phase. Please reply to the email it
           came from, or contact our office at{" "}
           <a
-            href="mailto:info@bigbangimmigration.com"
+            href="mailto:info@genzdatalabs.com"
             className="text-[var(--navy)] underline-offset-2 hover:underline"
           >
-            info@bigbangimmigration.com
+            info@genzdatalabs.com
           </a>
           .
         </p>

@@ -43,10 +43,10 @@ export function Faq() {
             type="button"
             onClick={() => setOpen(open === i ? -1 : i)}
             aria-expanded={open === i}
-            className="flex w-full items-center justify-between gap-4 px-5.5 py-4.5 text-left text-[15px] font-semibold text-[#1B365D]"
+            className="flex w-full items-center justify-between gap-4 px-5.5 py-4.5 text-left text-[15px] font-semibold text-[#1E2136]"
           >
             {q}
-            <span className="flex-none font-[family-name:var(--font-dm-mono)] text-[#3D6FD8]">
+            <span className="flex-none font-[family-name:var(--font-dm-mono)] text-[#1E2136]">
               {open === i ? "−" : "+"}
             </span>
           </button>

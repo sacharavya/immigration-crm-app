@@ -15,8 +15,8 @@ export function ExpiredCard() {
       <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-8 shadow-sm">
         <div className="flex justify-center">
           <Image
-            src="/logo.png"
-            alt="Big Bang Immigration"
+            src="/genzdatalabs-logo.png"
+            alt="genzdatalabs Immigration"
             width={400}
             height={200}
             className="h-16 w-auto object-contain"
@@ -34,7 +34,7 @@ export function ExpiredCard() {
           Please contact our office for help:
         </p>
         <p className="mt-1 text-center text-sm font-medium text-foreground">
-          info@bigbangimmigration.com{" "}
+          info@genzdatalabs.com{" "}
           <span className="text-[var(--subtle-foreground)]">·</span>{" "}
           +1 416-386-5351
         </p>

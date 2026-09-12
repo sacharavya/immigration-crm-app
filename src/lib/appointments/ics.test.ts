@@ -11,13 +11,13 @@ import { buildIcs } from "./ics";
 
 const baseInput = {
   uid: "00000000-0000-0000-0000-000000000001",
-  subject: "Initial Consultation with Big Bang Immigration",
+  subject: "Initial Consultation with genzdatalabs Immigration",
   description: "Your Initial Consultation appointment.",
   starts_at: "2026-06-02T14:00:00Z", // 10:00 EDT
   ends_at: "2026-06-02T14:30:00Z",
   location: "Online: https://teams.microsoft.com/abc",
-  organizer_email: "info@bigbangimmigration.com",
-  organizer_name: "Big Bang Immigration",
+  organizer_email: "info@genzdatalabs.com",
+  organizer_name: "genzdatalabs Immigration",
   attendee_email: "jane@example.com",
   attendee_name: "Jane Doe",
 };
@@ -42,11 +42,11 @@ describe("buildIcs", () => {
     const ics = buildIcs(baseInput);
     assert.match(
       ics,
-      /\r\nUID:00000000-0000-0000-0000-000000000001@bigbangimmigration\.com\r\n/,
+      /\r\nUID:00000000-0000-0000-0000-000000000001@genzdatalabs\.com\r\n/,
     );
     assert.match(
       ics,
-      /\r\nORGANIZER;CN=Big Bang Immigration:mailto:info@bigbangimmigration\.com\r\n/,
+      /\r\nORGANIZER;CN=genzdatalabs Immigration:mailto:info@genzdatalabs\.com\r\n/,
     );
     assert.match(
       ics,

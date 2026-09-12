@@ -8,7 +8,7 @@ import { uploadPaymentProof } from "../actions";
 const ALLOWED_MIME = ["image/png", "image/jpeg", "image/heic", "application/pdf"];
 const ALLOWED_HUMAN = "PNG, JPG, HEIC, or PDF · max 5 MB";
 const MAX_BYTES = 5 * 1024 * 1024;
-const FIRM_EMAIL = "info@bigbangimmigration.com";
+const FIRM_EMAIL = "info@genzdatalabs.com";
 
 export type PaymentUploadCardProps = {
   token: string;
@@ -117,7 +117,7 @@ export function PaymentUploadCard({
             </p>
             <a
               href={signUrl}
-              className="mt-2 inline-flex h-9 items-center rounded-[10px] bg-[#3D6FD8] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#2F5BC0]"
+              className="mt-2 inline-flex h-9 items-center rounded-[10px] bg-[#1E2136] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#2E3252]"
             >
               Sign now
             </a>
@@ -130,11 +130,11 @@ export function PaymentUploadCard({
   return (
     <div className="space-y-5 rounded-2xl border border-[#D9E2EC] bg-white p-6 shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)] sm:p-7">
       <div className="flex items-start gap-3.5">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FBF3E4] text-[#C9A227]">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E4F7EF] text-[#62D4A6]">
           <Hourglass className="h-5 w-5" strokeWidth={1.75} />
         </div>
         <div>
-          <h1 className="text-xl font-extrabold tracking-[-.01em] text-[#1B365D]">
+          <h1 className="text-xl font-extrabold tracking-[-.01em] text-[#1E2136]">
             Almost there. Your slot is held.
           </h1>
           <p className="mt-1 text-sm text-stone-700">
@@ -154,7 +154,7 @@ export function PaymentUploadCard({
         for <strong>{formatFee(feeCad)}</strong> to{" "}
         <a
           href={`mailto:${FIRM_EMAIL}`}
-          className="text-[#3D6FD8] underline-offset-2 hover:underline"
+          className="text-[#1E2136] underline-offset-2 hover:underline"
         >
           {FIRM_EMAIL}
         </a>{" "}
@@ -173,7 +173,7 @@ export function PaymentUploadCard({
           <button
             type="button"
             onClick={copyReference}
-            className="rounded-md border border-[#3D6FD8]/40 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#3D6FD8] transition-colors hover:bg-[#E9F0FC]"
+            className="rounded-md border border-[#1E2136]/40 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#1E2136] transition-colors hover:bg-[#F0F1F6]"
           >
             {copied ? "Copied" : "Copy"}
           </button>
@@ -190,7 +190,7 @@ export function PaymentUploadCard({
           accept={ALLOWED_MIME.join(",")}
           onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
           disabled={pending}
-          className="block w-full text-sm text-stone-600 file:mr-3 file:rounded-lg file:border file:border-[#D9E2EC] file:bg-white file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-[#1B365D] hover:file:border-[#3D6FD8]/60"
+          className="block w-full text-sm text-stone-600 file:mr-3 file:rounded-lg file:border file:border-[#D9E2EC] file:bg-white file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-[#1E2136] hover:file:border-[#1E2136]/60"
         />
         <p className="text-[11px] text-stone-500">{ALLOWED_HUMAN}</p>
         {file && (
@@ -205,7 +205,7 @@ export function PaymentUploadCard({
           type="button"
           onClick={submit}
           disabled={pending || !file}
-          className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#3D6FD8] px-5 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2F5BC0] disabled:opacity-50"
+          className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#1E2136] px-5 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2E3252] disabled:opacity-50"
         >
           {pending ? (
             <>

@@ -252,22 +252,22 @@ export function StepPickSlot({
     <div className="grid items-start gap-5 lg:grid-cols-[380px_minmax(0,1fr)]">
       {/* ── Details card ─────────────────────────────────────── */}
       <div className="rounded-2xl border border-[#D9E2EC] bg-white p-6 shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)] sm:p-7">
-        <span className="rounded-full bg-[#E9F0FC] px-2.5 py-1.5 font-[family-name:var(--font-dm-mono)] text-[10.5px] font-medium uppercase tracking-[.16em] text-[#3D6FD8]">
+        <span className="rounded-full bg-[#F0F1F6] px-2.5 py-1.5 font-[family-name:var(--font-dm-mono)] text-[10.5px] font-medium uppercase tracking-[.16em] text-[#1E2136]">
           {paid ? "Paid consultation" : "Free consultation"}
         </span>
         <h2 className="mt-4 text-[26px] font-extrabold tracking-[-.02em]">
           {type.name}
         </h2>
-        <div className="mt-4 space-y-2.5 text-[15px] text-[#1B365D]">
+        <div className="mt-4 space-y-2.5 text-[15px] text-[#1E2136]">
           <div className="flex items-center gap-3">
-            <Clock className="h-4.5 w-4.5 text-[#C9A227]" strokeWidth={1.75} />
+            <Clock className="h-4.5 w-4.5 text-[#62D4A6]" strokeWidth={1.75} />
             {type.duration_minutes} minutes
           </div>
           <div className="flex items-center gap-3">
             {type.default_location_type === "online" ? (
-              <Video className="h-4.5 w-4.5 text-[#C9A227]" strokeWidth={1.75} />
+              <Video className="h-4.5 w-4.5 text-[#62D4A6]" strokeWidth={1.75} />
             ) : (
-              <MapPin className="h-4.5 w-4.5 text-[#C9A227]" strokeWidth={1.75} />
+              <MapPin className="h-4.5 w-4.5 text-[#62D4A6]" strokeWidth={1.75} />
             )}
             {type.default_location_type === "online"
               ? "Online meeting"
@@ -275,7 +275,7 @@ export function StepPickSlot({
           </div>
           {paid && (
             <div className="flex items-center gap-3">
-              <DollarSign className="h-4.5 w-4.5 text-[#C9A227]" strokeWidth={1.75} />
+              <DollarSign className="h-4.5 w-4.5 text-[#62D4A6]" strokeWidth={1.75} />
               ${type.fee_cad} CAD
             </div>
           )}
@@ -284,7 +284,7 @@ export function StepPickSlot({
         {type.description && (
           <>
             <div className="my-5 border-t border-[#EDF1F7]" />
-            <p className="text-[15px] leading-relaxed text-[#1B365D]/90">
+            <p className="text-[15px] leading-relaxed text-[#1E2136]/90">
               {type.description}
             </p>
           </>
@@ -297,8 +297,8 @@ export function StepPickSlot({
             </div>
             <ul className="mt-3 space-y-2.5">
               {section.items.map((item) => (
-                <li key={item} className="flex gap-2.5 text-[15px] leading-snug text-[#1B365D]/90">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#C9A227]" strokeWidth={2.5} />
+                <li key={item} className="flex gap-2.5 text-[15px] leading-snug text-[#1E2136]/90">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#62D4A6]" strokeWidth={2.5} />
                   {item}
                 </li>
               ))}
@@ -316,7 +316,7 @@ export function StepPickSlot({
             </h2>
             <p className="mt-0.5 text-sm text-[#5A6A85]">{displayTz}</p>
           </div>
-          <span className="rounded-full bg-[#E9F0FC] px-3.5 py-1.5 text-sm font-semibold text-[#1B365D]">
+          <span className="rounded-full bg-[#F0F1F6] px-3.5 py-1.5 text-sm font-semibold text-[#1E2136]">
             {fmtDayLong(selectedDate)}
             {selectedSlot ? ` · ${timeLabel(selectedSlot)}` : ""}
           </span>
@@ -343,7 +343,7 @@ export function StepPickSlot({
                     type="button"
                     onClick={prevMonth}
                     aria-label="Previous month"
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] text-[#5A6A85] hover:border-[#3D6FD8] hover:text-[#3D6FD8]"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] text-[#5A6A85] hover:border-[#1E2136] hover:text-[#1E2136]"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
@@ -351,7 +351,7 @@ export function StepPickSlot({
                     type="button"
                     onClick={nextMonth}
                     aria-label="Next month"
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] text-[#5A6A85] hover:border-[#3D6FD8] hover:text-[#3D6FD8]"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] text-[#5A6A85] hover:border-[#1E2136] hover:text-[#1E2136]"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </button>
@@ -381,11 +381,11 @@ export function StepPickSlot({
                       onClick={() => selectDate(iso)}
                       className={`relative mx-auto flex h-10 w-10 flex-col items-center justify-center rounded-lg text-sm font-medium transition-colors ${
                         isSelected
-                          ? "bg-[#3D6FD8] text-white"
+                          ? "bg-[#1E2136] text-white"
                           : isPast
-                            ? "cursor-default text-[#B9C9F5]"
+                            ? "cursor-default text-[#B9BDD2]"
                             : has
-                              ? "text-[#1B365D] hover:bg-[#E9F0FC]"
+                              ? "text-[#1E2136] hover:bg-[#F0F1F6]"
                               : "text-[#8CA0B8] hover:bg-[#F4F6F9]"
                       }`}
                     >
@@ -393,7 +393,7 @@ export function StepPickSlot({
                       {has && !isPast && (
                         <span
                           className={`absolute bottom-1 h-1 w-1 rounded-full ${
-                            isSelected ? "bg-white" : "bg-[#C9A227]"
+                            isSelected ? "bg-white" : "bg-[#62D4A6]"
                           }`}
                         />
                       )}
@@ -405,7 +405,7 @@ export function StepPickSlot({
 
             {/* Time slots */}
             <div className="flex flex-col">
-              <div className="text-sm font-bold text-[#1B365D]">
+              <div className="text-sm font-bold text-[#1E2136]">
                 Available times · {fmtDayLong(selectedDate)}
               </div>
               {/* Only periods that actually have times are offered. */}
@@ -423,8 +423,8 @@ export function StepPickSlot({
                         }}
                         className={`flex-1 rounded-lg border px-2 py-2 text-center text-[13px] font-semibold transition-colors ${
                           period === p.key
-                            ? "border-[#3D6FD8] bg-[#3D6FD8] text-white"
-                            : "border-[#D9E2EC] bg-white text-[#1B365D] hover:border-[#3D6FD8]/60"
+                            ? "border-[#1E2136] bg-[#1E2136] text-white"
+                            : "border-[#D9E2EC] bg-white text-[#1E2136] hover:border-[#1E2136]/60"
                         }`}
                       >
                         {p.label}
@@ -459,8 +459,8 @@ export function StepPickSlot({
                         onClick={() => setSelectedSlot(s)}
                         className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left text-[15px] font-semibold transition-colors ${
                           isSel
-                            ? "border-[#3D6FD8] bg-[#E9F0FC] text-[#1B365D] ring-1 ring-[#3D6FD8]/40"
-                            : "border-[#D9E2EC] bg-white text-[#1B365D] hover:border-[#3D6FD8]/60"
+                            ? "border-[#1E2136] bg-[#F0F1F6] text-[#1E2136] ring-1 ring-[#1E2136]/40"
+                            : "border-[#D9E2EC] bg-white text-[#1E2136] hover:border-[#1E2136]/60"
                         }`}
                       >
                         {timeLabel(s)}
@@ -476,7 +476,7 @@ export function StepPickSlot({
                 type="button"
                 disabled={!selectedSlot}
                 onClick={() => selectedSlot && onSelect(selectedSlot)}
-                className="mt-4 rounded-[10px] bg-[#3D6FD8] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2F5BC0] disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-4 rounded-[10px] bg-[#1E2136] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2E3252] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Continue →
               </button>

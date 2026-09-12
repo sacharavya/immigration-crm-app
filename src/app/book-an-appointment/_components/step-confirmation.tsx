@@ -100,7 +100,7 @@ export function StepConfirmation({
       />
       <div className="min-w-0 flex-1">
         {result.consultation_sign_url && (
-          <div className="mb-4 border border-[#3D6FD8]/30 bg-[#3D6FD8]/5 p-4">
+          <div className="mb-4 border border-[#1E2136]/30 bg-[#1E2136]/5 p-4">
             <p className="text-sm font-semibold text-stone-900">
               One more step — sign your consultation agreement
             </p>
@@ -110,7 +110,7 @@ export function StepConfirmation({
             </p>
             <a
               href={result.consultation_sign_url}
-              className="mt-2 inline-flex h-9 items-center bg-[#3D6FD8] px-4 text-sm font-medium text-white hover:bg-[var(--navy-light)]"
+              className="mt-2 inline-flex h-9 items-center bg-[#1E2136] px-4 text-sm font-medium text-white hover:bg-[var(--navy-light)]"
             >
               Sign now
             </a>
@@ -215,7 +215,7 @@ function ErrorView({
       <button
         type="button"
         onClick={onPickAnotherSlot}
-        className="inline-flex items-center bg-[#3D6FD8] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--navy-light)]"
+        className="inline-flex items-center bg-[#1E2136] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--navy-light)]"
       >
         Back to slot picker
       </button>
@@ -254,7 +254,7 @@ function ErrorView({
       <button
         type="button"
         onClick={onPickAnotherSlot}
-        className="inline-flex items-center bg-[#3D6FD8] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--navy-light)]"
+        className="inline-flex items-center bg-[#1E2136] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--navy-light)]"
       >
         Pick another time
       </button>
@@ -265,10 +265,10 @@ function ErrorView({
       <p>
         Please contact us directly at{" "}
         <a
-          className="text-[#3D6FD8] underline-offset-2 hover:underline"
-          href="mailto:info@bigbangimmigration.com"
+          className="text-[#1E2136] underline-offset-2 hover:underline"
+          href="mailto:info@genzdatalabs.com"
         >
-          info@bigbangimmigration.com
+          info@genzdatalabs.com
         </a>{" "}
         to schedule.
       </p>

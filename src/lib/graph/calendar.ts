@@ -9,7 +9,7 @@ import { GraphApiError, graphFetch } from "./client";
 // false this iteration; the isOnlineMeeting flag is added in a later prompt
 // once OnlineMeetings.ReadWrite.All (Application) is granted in Azure.
 
-const CALENDAR_OWNER = "info@bigbangimmigration.com";
+const CALENDAR_OWNER = "info@genzdatalabs.com";
 
 export type BusyInterval = {
   start: string; // ISO datetime, UTC

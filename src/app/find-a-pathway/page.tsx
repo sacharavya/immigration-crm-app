@@ -5,7 +5,7 @@ import Link from "next/link";
 import { MarketingShell } from "@/components/marketing/shell";
 
 export const metadata: Metadata = {
-  title: "Find a Pathway — Big Bang Immigration",
+  title: "Find a Pathway — genzdatalabs Immigration",
   description:
     "Discover which Canadian immigration program best matches your profile and goals.",
 };
@@ -18,7 +18,7 @@ export default function FindAPathwayPage() {
       subtitle="Discover which immigration program best matches your profile and goals."
     >
       <div className="flex flex-col items-center gap-4 rounded-2xl border border-[#D9E2EC] bg-white px-6 py-20 text-center shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)]">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E9F0FC] text-[#3D6FD8]">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F0F1F6] text-[#1E2136]">
           <Compass className="h-6 w-6" strokeWidth={1.75} />
         </div>
         <h2 className="text-xl font-extrabold tracking-[-.02em]">
@@ -31,7 +31,7 @@ export default function FindAPathwayPage() {
         </p>
         <Link
           href="/book-an-appointment"
-          className="mt-2 rounded-[10px] bg-[#3D6FD8] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2F5BC0]"
+          className="mt-2 rounded-[10px] bg-[#1E2136] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2E3252]"
         >
           Book a consultation
         </Link>

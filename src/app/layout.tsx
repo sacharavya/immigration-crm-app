@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Big Bang Immigration Consulting Inc.",
+  title: "genzdatalabs Immigration Consulting Inc.",
   description: "Internal case management system — coming soon.",
   icons: {
     icon: "/Maple_Leaf.svg",

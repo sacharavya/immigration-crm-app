@@ -10,7 +10,7 @@ export function consultationAgreementSignedEmail(args: Args): {
   html: string;
   text: string;
 } {
-  const subject = "Your signed consultation agreement — Big Bang Immigration";
+  const subject = "Your signed consultation agreement — genzdatalabs Immigration";
 
   const bodyHtml = `
 <p style="margin:0 0 12px 0;">Hello ${escapeHtml(args.clientName)},</p>
@@ -23,7 +23,7 @@ Thank you — we've received your signed Initial Consultation Agreement. A copy 
 
 We look forward to your consultation.
 
-Big Bang Immigration`;
+genzdatalabs Immigration`;
 
   return {
     subject,

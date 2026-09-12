@@ -99,9 +99,9 @@ export function ApplyForm({
     <form onSubmit={submit} className="border border-stone-200 bg-white p-5">
       <h3 className="text-sm font-semibold text-stone-900">
         {sowpEligible
-          ? "Apply for your spouse's open work permit with Big Bang"
+          ? "Apply for your spouse's open work permit with genzdatalabs Immigration"
           : expressEligible
-            ? "Start your Express Entry application with Big Bang"
+            ? "Start your Express Entry application with genzdatalabs Immigration"
             : "This occupation lost SOWP eligibility - talk to us about your alternatives"}
       </h3>
       <p className="mt-1 text-xs text-stone-500">

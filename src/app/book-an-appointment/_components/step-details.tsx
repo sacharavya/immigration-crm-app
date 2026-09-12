@@ -138,7 +138,7 @@ export function StepDetails({
             className="rounded-2xl border border-[#D9E2EC] bg-white p-6 shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)] sm:p-7"
             onSubmit={handleSubmit}
           >
-            <h2 className="text-xl font-extrabold tracking-[-.01em] text-[#1B365D]">
+            <h2 className="text-xl font-extrabold tracking-[-.01em] text-[#1E2136]">
               Enter your details
             </h2>
 
@@ -149,7 +149,7 @@ export function StepDetails({
                   onChange={(e) => setName(e.target.value)}
                   autoComplete="name"
                   disabled={submitting}
-                  className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
+                  className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
                 />
               </FormField>
 
@@ -161,7 +161,7 @@ export function StepDetails({
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="email"
                     disabled={submitting}
-                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
                   />
                 </FormField>
                 <FormField label="Phone" required>
@@ -172,7 +172,7 @@ export function StepDetails({
                     autoComplete="tel"
                     placeholder="+1 416 555 0123"
                     disabled={submitting}
-                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
                   />
                 </FormField>
               </div>
@@ -187,8 +187,8 @@ export function StepDetails({
                       disabled={submitting}
                       className={`rounded-lg border px-4 py-2 text-sm font-semibold capitalize transition-colors ${
                         locationType === opt
-                          ? "border-[#3D6FD8] bg-[#3D6FD8] text-white"
-                          : "border-[#D9E2EC] bg-white text-[#1B365D] hover:border-[#3D6FD8]/60"
+                          ? "border-[#1E2136] bg-[#1E2136] text-white"
+                          : "border-[#D9E2EC] bg-white text-[#1E2136] hover:border-[#1E2136]/60"
                       }`}
                     >
                       {opt}
@@ -223,7 +223,7 @@ export function StepDetails({
                   disabled={submitting}
                   rows={4}
                   placeholder="Briefly describe what you'd like to discuss."
-                  className="w-full rounded-lg border border-[#D9E2EC] bg-white px-3 py-2 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
+                  className="w-full rounded-lg border border-[#D9E2EC] bg-white px-3 py-2 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
                 />
               </FormField>
 
@@ -242,7 +242,7 @@ export function StepDetails({
                   onChange={(e) => setAddress(e.target.value)}
                   autoComplete="street-address"
                   disabled={submitting}
-                  className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
+                  className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
                 />
               </FormField>
               <div className="grid gap-4 sm:grid-cols-3">
@@ -251,7 +251,7 @@ export function StepDetails({
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
                   />
                 </FormField>
                 <FormField label="Province / State">
@@ -259,7 +259,7 @@ export function StepDetails({
                     value={province}
                     onChange={(e) => setProvince(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
                   />
                 </FormField>
                 <FormField label="Postal / ZIP">
@@ -267,7 +267,7 @@ export function StepDetails({
                     value={postal}
                     onChange={(e) => setPostal(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
                   />
                 </FormField>
               </div>
@@ -277,7 +277,7 @@ export function StepDetails({
                     value={dob}
                     onChange={(e) => setDob(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
                   />
                 </FormField>
                 <FormField label="Marital status">
@@ -285,7 +285,7 @@ export function StepDetails({
                     value={marital}
                     onChange={(e) => setMarital(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
                   >
                     <option value="">Select…</option>
                     {MARITAL_OPTIONS.map((m) => (
@@ -303,7 +303,7 @@ export function StepDetails({
                     onChange={(e) => setEducation(e.target.value)}
                     disabled={submitting}
                     placeholder="e.g. Bachelor's"
-                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
                   />
                 </FormField>
                 <FormField label="Language test">
@@ -311,7 +311,7 @@ export function StepDetails({
                     value={languageTest}
                     onChange={(e) => setLanguageTest(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
                   >
                     <option value="">Select…</option>
                     {LANGUAGE_TESTS.map((t) => (
@@ -327,7 +327,7 @@ export function StepDetails({
                     onChange={(e) => setLanguageScore(e.target.value)}
                     disabled={submitting}
                     placeholder="e.g. L8 R7 W7 S7 (or 7 each)"
-                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
                   />
                 </FormField>
                 <FormField label="Current occupation">
@@ -335,7 +335,7 @@ export function StepDetails({
                     value={occupation}
                     onChange={(e) => setOccupation(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
                   />
                 </FormField>
               </div>
@@ -349,7 +349,7 @@ export function StepDetails({
                   className="mt-1 h-4 w-4 border-stone-300"
                 />
                 <span>
-                  I agree to be contacted by Big Bang Immigration regarding this
+                  I agree to be contacted by genzdatalabs Immigration regarding this
                   appointment.
                 </span>
               </label>
@@ -365,7 +365,7 @@ export function StepDetails({
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#3D6FD8] px-6 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2F5BC0] disabled:opacity-60"
+                className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#1E2136] px-6 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2E3252] disabled:opacity-60"
               >
                 {submitting ? (
                   <>

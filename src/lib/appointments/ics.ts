@@ -56,11 +56,11 @@ export function buildIcs(input: IcsInput): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Big Bang Immigration//CRM//EN",
+    "PRODID:-//genzdatalabs Immigration//CRM//EN",
     `METHOD:${method}`,
     "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT",
-    `UID:${input.uid}@bigbangimmigration.com`,
+    `UID:${input.uid}@genzdatalabs.com`,
     `DTSTAMP:${fmtUtc(new Date().toISOString())}`,
     `DTSTART:${fmtUtc(input.starts_at)}`,
     `DTEND:${fmtUtc(input.ends_at)}`,

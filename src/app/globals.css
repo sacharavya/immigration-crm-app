@@ -10,27 +10,27 @@
    ================================================================ */
 :root {
   /* ── Brand scales ─────────────────────────────────────────── */
-  /* The "navy" scale is now derived from the primary colour (#3266ad): the
+  /* The "navy" scale is now derived from the primary colour (#1E2136): the
      brand/action shades equal primary / primary-hover, and the tints are
      primary-hued light washes. Re-pointed here so every var(--navy*) consumer
      switches to primary in one place. */
-  --navy: #3266ad;
-  --navy-light: #5380bf;
-  --navy-50: #eef3fb;
-  --navy-100: #d6e2f4;
-  --navy-200: #b0c8ea;
-  --navy-400: #6189c5;
-  --navy-600: #2a5693;
-  --navy-700: #3266ad;
-  --navy-800: #28507f;
-  --navy-900: #1f3d68;
+  --navy: #1E2136;
+  --navy-light: #3B4066;
+  --navy-50: #F0F1F6;
+  --navy-100: #DCDEE8;
+  --navy-200: #B9BDD2;
+  --navy-400: #6B6F93;
+  --navy-600: #2E3252;
+  --navy-700: #1E2136;
+  --navy-800: #171A2C;
+  --navy-900: #111321;
   --maple-50: #FCEBE9;
   --maple-100: #F8D5D0;
   --maple-500: #D8453A;
   --maple-600: #C5362C;
   --maple-700: #9F2920;
-  --gold: #c9a84c;
-  --gold-light: #e8c97a;
+  --gold: #62D4A6;
+  --gold-light: #9AE5C8;
 
   /* ── Semantic tokens ──────────────────────────────────────── */
   --background: #FFFFFF;
@@ -45,14 +45,14 @@
   /* Slightly stronger divider for dashed ghost controls (e.g. "Add another"). */
   --border-secondary: #D2D6DB;
   --input: #D2D6DB;
-  --ring: #3266ad;
-  --primary: #3266ad;
+  --ring: #1E2136;
+  --primary: #1E2136;
   --primary-foreground: #FFFFFF;
-  --primary-hover: #2a5693;
+  --primary-hover: #2E3252;
   --secondary: #EEF0F2;
   --secondary-foreground: #3A414B;
-  --accent: #eef3fb;
-  --accent-foreground: #3266ad;
+  --accent: #F0F1F6;
+  --accent-foreground: #1E2136;
   --destructive: #C5362C;
   --destructive-foreground: #FFFFFF;
   /* Safe stop: the darker maple used for destructive *text* on light
@@ -79,9 +79,9 @@
   --surface-sunken: #F6F7F9;
 
   /* ── Charts ───────────────────────────────────────────────── */
-  --chart-1: #3266ad;
-  --chart-2: #6189c5;
-  --chart-3: #b0c8ea;
+  --chart-1: #1E2136;
+  --chart-2: #62D4A6;
+  --chart-3: #B9BDD2;
   --chart-4: #2E7D4F;
   --chart-5: #B97D12;
 
@@ -89,14 +89,14 @@
   --radius: 0;
 
   /* ── Sidebar (dark primary) ───────────────────────────────── */
-  --sidebar: #28507f;
-  --sidebar-foreground: #C7D2E6;
+  --sidebar: #1E2136;
+  --sidebar-foreground: #C5C8D8;
   --sidebar-primary: #FFFFFF;
-  --sidebar-primary-foreground: #28507f;
+  --sidebar-primary-foreground: #1E2136;
   --sidebar-accent: rgba(255, 255, 255, 0.08);
   --sidebar-accent-foreground: #FFFFFF;
   --sidebar-border: rgba(255, 255, 255, 0.10);
-  --sidebar-ring: #4A6FB0;
+  --sidebar-ring: #62D4A6;
 }
 
 @theme inline {
@@ -197,28 +197,28 @@
   --muted-foreground: #9BA1AA;
   --border: #272C34;
   --input: #2D333B;
-  --ring: #4A6FB0;
-  --primary: #4A6FB0;
+  --ring: #62D4A6;
+  --primary: #62D4A6;
   --primary-foreground: #0F1217;
   --secondary: #1C2128;
   --secondary-foreground: #C5CAD2;
-  --accent: #1B2536;
-  --accent-foreground: #C7D5EE;
+  --accent: #1E2136;
+  --accent-foreground: #DCDEE8;
   --destructive: #E0584C;
   --destructive-foreground: #0F1217;
-  --chart-1: #4A6FB0;
-  --chart-2: #7FA0D8;
-  --chart-3: #B0C2E0;
+  --chart-1: #62D4A6;
+  --chart-2: #9DA2C4;
+  --chart-3: #B9BDD2;
   --chart-4: #4FB07A;
   --chart-5: #E0A33A;
-  --sidebar: #0E1B33;
-  --sidebar-foreground: #A9B6CE;
-  --sidebar-primary: #4A6FB0;
+  --sidebar: #14162A;
+  --sidebar-foreground: #C5C8D8;
+  --sidebar-primary: #62D4A6;
   --sidebar-primary-foreground: #E8EBEF;
-  --sidebar-accent: #1B2536;
-  --sidebar-accent-foreground: #C7D5EE;
+  --sidebar-accent: #1E2136;
+  --sidebar-accent-foreground: #DCDEE8;
   --sidebar-border: rgba(255, 255, 255, 0.10);
-  --sidebar-ring: #4A6FB0;
+  --sidebar-ring: #62D4A6;
 }
 
 @layer base {
