@@ -6,6 +6,41 @@ import { HeroBand, MarketingNav } from "./ui";
 
 export type Crumb = { label: string; href?: string };
 
+// THE public navbar: identical on every public page except the CRM
+// landing (which keeps its firm-audience nav). Menu anchors are absolute
+// so they work from subpages too.
+export function SiteNav() {
+  return (
+    <MarketingNav
+      center={
+        <div className="hidden flex-wrap justify-center gap-5 text-[13px] font-semibold text-[#1B365D]/80 md:flex">
+          <Link href="/#about" className="hover:text-[#1B365D]">About</Link>
+          <Link href="/#services" className="hover:text-[#1B365D]">Services</Link>
+          <Link href="/#study" className="hover:text-[#1B365D]">Study in Canada</Link>
+          <Link href="/#testimonials" className="hover:text-[#1B365D]">Testimonials</Link>
+          <Link href="/#contact" className="hover:text-[#1B365D]">Contact</Link>
+        </div>
+      }
+      actions={
+        <>
+          <Link
+            href="/immigration-crm-software"
+            className="hidden px-3.5 py-2 text-[13px] font-semibold text-[#1B365D]/80 hover:text-[#1B365D] sm:block"
+          >
+            For firms
+          </Link>
+          <Link
+            href="/book-an-appointment"
+            className="rounded-lg bg-[#3D6FD8] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#2F5BC0]"
+          >
+            Book a consultation
+          </Link>
+        </>
+      }
+    />
+  );
+}
+
 // Breadcrumb inside the gradient band: Home > Section > Current, last item
 // as a translucent white pill.
 export function Breadcrumb({ crumbs }: { crumbs: Crumb[] }) {
@@ -52,24 +87,7 @@ export function MarketingShell({
     <div
       className={`${jakarta.variable} ${dmMono.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-white font-[family-name:var(--font-jakarta)] text-[#1B365D] antialiased`}
     >
-      <MarketingNav
-        actions={
-          <>
-            <Link
-              href="/immigration-crm-software"
-              className="hidden px-3.5 py-2 text-[13px] font-semibold text-[#1B365D]/80 hover:text-[#1B365D] sm:block"
-            >
-              For firms
-            </Link>
-            <Link
-              href="/book-an-appointment"
-              className="rounded-lg bg-[#3D6FD8] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#2F5BC0]"
-            >
-              Book a consultation
-            </Link>
-          </>
-        }
-      />
+      <SiteNav />
       <HeroBand>
         <header className="relative flex flex-col items-start gap-3 px-6 pb-28 pt-28 text-white sm:pt-32">
           <div className="mx-auto w-full max-w-[1100px]">
