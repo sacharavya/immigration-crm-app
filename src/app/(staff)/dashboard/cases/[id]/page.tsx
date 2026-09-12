@@ -41,6 +41,8 @@ import {
   AdditionalDocumentsSection,
   type AdditionalDocsGroup,
 } from "./_components/additional-documents-section";
+import { FormFillsSection } from "./_components/form-fills-section";
+import { GenerateFormDialog } from "./_components/generate-form-dialog";
 import { NewAppointmentDialog } from "../../appointments/_components/new-appointment-dialog";
 import type {
   AppointmentRow,
@@ -1380,7 +1382,10 @@ export default async function CasePage({ params, searchParams }: Props) {
           <div className="space-y-4">
             {/* Assemble the client's uploads into a merged, compressed
                 submission package (opens the browser-side PDF tool). */}
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              {me && staffCan(me, "edit_cases") && (
+                <GenerateFormDialog caseId={caseRow.id} />
+              )}
               <Link
                 href={`/dashboard/pdf-tool?case=${caseRow.id}`}
                 className="inline-flex h-9 items-center gap-1.5 rounded-md bg-[var(--navy)] px-3 text-sm font-medium text-white hover:bg-[var(--navy-800)]"
@@ -1415,6 +1420,7 @@ export default async function CasePage({ params, searchParams }: Props) {
               canUpload={me ? staffCan(me, "upload_documents") : false}
               canReview={me ? staffCan(me, "review_documents") : false}
             />
+            <FormFillsSection caseId={caseRow.id} />
           </div>
         ) : tab === "activity" ? (
           <Card>

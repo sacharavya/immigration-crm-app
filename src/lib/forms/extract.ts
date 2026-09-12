@@ -40,7 +40,7 @@ function fieldType(field: unknown): FormFieldType {
 // The /XFA entry is either an array of alternating packet-name strings and
 // stream refs, or a single stream holding the whole XDP. Returns the XML of
 // the requested packet, or of the whole XDP for the single-stream shape.
-function readXfaPacket(doc: PDFDocument, packetName: string): string | null {
+export function readXfaPacket(doc: PDFDocument, packetName: string): string | null {
   const acroForm = doc.catalog.lookupMaybe(PDFName.of("AcroForm"), PDFDict);
   if (!acroForm) return null;
   const xfa = acroForm.get(PDFName.of("XFA"));
