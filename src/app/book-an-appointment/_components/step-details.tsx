@@ -145,10 +145,10 @@ export function StepDetails({
         {/* ── Right: form ────────────────────────────────────── */}
         <div className="min-w-0 flex-1">
           <form
-            className="border border-[#D9E2EC] bg-white p-5"
+            className="rounded-2xl border border-[#D9E2EC] bg-white p-6 shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)] sm:p-7"
             onSubmit={handleSubmit}
           >
-            <h2 className="text-sm font-medium text-stone-700">
+            <h2 className="text-xl font-extrabold tracking-[-.01em] text-[#1B365D]">
               Enter your details
             </h2>
 
@@ -159,7 +159,7 @@ export function StepDetails({
                   onChange={(e) => setName(e.target.value)}
                   autoComplete="name"
                   disabled={submitting}
-                  className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
+                  className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
                 />
               </FormField>
 
@@ -171,7 +171,7 @@ export function StepDetails({
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="email"
                     disabled={submitting}
-                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
                   />
                 </FormField>
                 <FormField label="Phone" required>
@@ -182,7 +182,7 @@ export function StepDetails({
                     autoComplete="tel"
                     placeholder="+1 416 555 0123"
                     disabled={submitting}
-                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
                   />
                 </FormField>
               </div>
@@ -195,10 +195,10 @@ export function StepDetails({
                       type="button"
                       onClick={() => setLocationType(opt)}
                       disabled={submitting}
-                      className={`border px-3 py-1.5 text-sm capitalize ${
+                      className={`rounded-lg border px-4 py-2 text-sm font-semibold capitalize transition-colors ${
                         locationType === opt
                           ? "border-[#3D6FD8] bg-[#3D6FD8] text-white"
-                          : "border-[#D9E2EC] bg-white text-stone-700"
+                          : "border-[#D9E2EC] bg-white text-[#1B365D] hover:border-[#3D6FD8]/60"
                       }`}
                     >
                       {opt}
@@ -233,12 +233,12 @@ export function StepDetails({
                   disabled={submitting}
                   rows={4}
                   placeholder="Briefly describe what you'd like to discuss."
-                  className="w-full border border-[#D9E2EC] bg-white px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-[#D9E2EC] bg-white px-3 py-2 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
                 />
               </FormField>
 
               <div className="border-t border-[#EDF1F7] pt-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+                <p className="font-[family-name:var(--font-dm-mono)] text-[11px] font-medium uppercase tracking-[.14em] text-[#5A6A85]">
                   About you
                 </p>
                 <p className="mt-0.5 text-xs text-stone-500">
@@ -252,7 +252,7 @@ export function StepDetails({
                   onChange={(e) => setAddress(e.target.value)}
                   autoComplete="street-address"
                   disabled={submitting}
-                  className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
+                  className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
                 />
               </FormField>
               <div className="grid gap-4 sm:grid-cols-3">
@@ -261,7 +261,7 @@ export function StepDetails({
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
                   />
                 </FormField>
                 <FormField label="Province / State">
@@ -269,7 +269,7 @@ export function StepDetails({
                     value={province}
                     onChange={(e) => setProvince(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
                   />
                 </FormField>
                 <FormField label="Postal / ZIP">
@@ -277,7 +277,7 @@ export function StepDetails({
                     value={postal}
                     onChange={(e) => setPostal(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
                   />
                 </FormField>
               </div>
@@ -288,7 +288,7 @@ export function StepDetails({
                     value={dob}
                     onChange={(e) => setDob(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
                   />
                 </FormField>
                 <FormField label="Marital status">
@@ -296,7 +296,7 @@ export function StepDetails({
                     value={marital}
                     onChange={(e) => setMarital(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
                   >
                     <option value="">Select…</option>
                     {MARITAL_OPTIONS.map((m) => (
@@ -314,7 +314,7 @@ export function StepDetails({
                     onChange={(e) => setEducation(e.target.value)}
                     disabled={submitting}
                     placeholder="e.g. Bachelor's"
-                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
                   />
                 </FormField>
                 <FormField label="Language test">
@@ -322,7 +322,7 @@ export function StepDetails({
                     value={languageTest}
                     onChange={(e) => setLanguageTest(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
                   >
                     <option value="">Select…</option>
                     {LANGUAGE_TESTS.map((t) => (
@@ -338,7 +338,7 @@ export function StepDetails({
                     onChange={(e) => setLanguageScore(e.target.value)}
                     disabled={submitting}
                     placeholder="e.g. L8 R7 W7 S7 (or 7 each)"
-                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
                   />
                 </FormField>
                 <FormField label="Current occupation">
@@ -346,7 +346,7 @@ export function StepDetails({
                     value={occupation}
                     onChange={(e) => setOccupation(e.target.value)}
                     disabled={submitting}
-                    className="h-10 w-full border border-[#D9E2EC] bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
                   />
                 </FormField>
               </div>
@@ -376,7 +376,7 @@ export function StepDetails({
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex h-10 items-center gap-2 bg-[#3D6FD8] px-5 text-sm font-medium text-white hover:bg-[var(--navy-light)] disabled:opacity-60"
+                className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#3D6FD8] px-6 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2F5BC0] disabled:opacity-60"
               >
                 {submitting ? (
                   <>
@@ -405,7 +405,7 @@ function FormField({
 }) {
   return (
     <div>
-      <label className="block text-xs font-semibold uppercase tracking-wider text-stone-500">
+      <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A6A85]">
         {label}
         {required && <span className="ml-0.5 text-rose-500">*</span>}
       </label>

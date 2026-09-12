@@ -152,7 +152,7 @@ function PrepNotesDisplay({ notes }: { notes: string }) {
             return (
               <h3
                 key={idx}
-                className="text-sm font-semibold text-stone-800"
+                className="text-sm font-bold text-[#1B365D]"
               >
                 {section.text}
               </h3>
@@ -224,7 +224,7 @@ export function MeetingSidebar({
 
   return (
     <div className="shrink-0 lg:w-80 lg:sticky lg:top-6">
-      <div className="border border-[#D9E2EC] bg-white p-5">
+      <div className="rounded-2xl border border-[#D9E2EC] bg-white p-6 shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)]">
         {/* Type label */}
         {isPaid && (
           <p className="text-xs font-medium text-stone-400">
@@ -233,7 +233,7 @@ export function MeetingSidebar({
         )}
 
         <h2
-          className={`text-lg font-semibold text-stone-900 ${isPaid ? "mt-1" : ""}`}
+          className={`text-[22px] font-extrabold tracking-[-.01em] text-[#1B365D] ${isPaid ? "mt-1" : ""}`}
         >
           {type.name}
         </h2>
@@ -241,14 +241,14 @@ export function MeetingSidebar({
         {/* Meta */}
         <div className="mt-3 space-y-2 text-sm text-stone-700">
           <div className="flex items-center gap-2.5">
-            <Clock className="h-4 w-4 text-stone-400" />
+            <Clock className="h-4 w-4 text-[#C9A227]" />
             <span className="font-medium">{type.duration_minutes} minutes</span>
           </div>
           <div className="flex items-center gap-2.5">
             {type.default_location_type === "online" ? (
-              <Video className="h-4 w-4 text-stone-400" />
+              <Video className="h-4 w-4 text-[#C9A227]" />
             ) : (
-              <MapPin className="h-4 w-4 text-stone-400" />
+              <MapPin className="h-4 w-4 text-[#C9A227]" />
             )}
             <span className="font-medium">
               {type.default_location_type === "online"
@@ -257,7 +257,7 @@ export function MeetingSidebar({
             </span>
           </div>
           <div className="flex items-center gap-2.5">
-            <DollarSign className="h-4 w-4 text-stone-400" />
+            <DollarSign className="h-4 w-4 text-[#C9A227]" />
             <span className="font-medium">
               {formatFee(type.fee_cad)} CAD
             </span>
@@ -274,10 +274,10 @@ export function MeetingSidebar({
         {/* Selected time (shown on details + confirmation steps) */}
         {slot && clientTimezone && (
           <div className="mt-4 border-t border-[#EDF1F7] pt-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
+            <p className="font-[family-name:var(--font-dm-mono)] text-[11px] font-medium uppercase tracking-[.14em] text-[#5A6A85]">
               Selected time
             </p>
-            <p className="mt-1 text-sm font-medium text-stone-800">
+            <p className="mt-1 text-[15px] font-bold text-[#1B365D]">
               {formatSlot(slot.start_utc, clientTimezone)}
             </p>
             <p className="mt-0.5 text-xs text-stone-500">
@@ -289,7 +289,7 @@ export function MeetingSidebar({
         {/* Preparation notes — structured */}
         {type.preparation_notes?.trim() && (
           <div className="mt-4 border-t border-[#EDF1F7] pt-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
+            <p className="font-[family-name:var(--font-dm-mono)] text-[11px] font-medium uppercase tracking-[.14em] text-[#5A6A85]">
               What to expect
             </p>
             <div className="mt-3">
@@ -300,9 +300,9 @@ export function MeetingSidebar({
 
         {/* Payment notice */}
         {isPaid && (
-          <div className="mt-4 flex items-start gap-2 rounded-md bg-[#F4F6F9] px-3 py-2.5">
-            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
-            <p className="text-xs leading-relaxed text-stone-600">
+          <div className="mt-4 flex items-start gap-2 rounded-lg bg-[#FBEBD9] px-3 py-2.5">
+            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[#9A5B12]" />
+            <p className="text-xs leading-relaxed text-[#9A5B12]">
               Payment via Interac e-Transfer is required to confirm your
               booking.
             </p>
