@@ -100,7 +100,7 @@ export function MarketingNav({
     // inside the band; page roots use overflow-x-clip (not hidden), which
     // is what keeps position:sticky working.
     <div className="sticky top-0 z-50 -mb-[72px] flex justify-center px-6 pt-4">
-      <nav className="flex w-full max-w-[1100px] items-center justify-between gap-5 rounded-[14px] border border-white/60 bg-white/70 py-2.5 pl-4 pr-3 shadow-[0_8px_30px_-18px_rgba(27,54,93,.35)] backdrop-blur-xl">
+      <nav className="flex w-full max-w-[1100px] items-center justify-between gap-5 rounded-[14px] border border-white/60 bg-white/85 py-2.5 pl-4 pr-3 shadow-[0_8px_30px_-18px_rgba(27,54,93,.35)] backdrop-blur-xl">
         <Link href="/" className="flex shrink-0 items-center gap-2.5">
           <Image
             src="/logo.png"

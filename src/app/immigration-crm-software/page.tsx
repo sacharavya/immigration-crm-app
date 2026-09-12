@@ -217,7 +217,7 @@ export default function CrmLandingPage() {
     >
       <MarketingNav
         center={
-          <div className="hidden flex-wrap justify-center gap-5 text-[13px] font-medium text-[#5A6A85] md:flex">
+          <div className="hidden flex-wrap justify-center gap-5 text-[13px] font-semibold text-[#1B365D]/80 md:flex">
             <a href="#features" className="hover:text-[#1B365D]">Features</a>
             <a href="#how" className="hover:text-[#1B365D]">How it works</a>
             <a href="#trust" className="hover:text-[#1B365D]">Security</a>
@@ -228,7 +228,7 @@ export default function CrmLandingPage() {
           <>
             <Link
               href="/"
-              className="hidden px-3.5 py-2 text-[13px] font-medium text-[#5A6A85] hover:text-[#1B365D] sm:block"
+              className="hidden px-3.5 py-2 text-[13px] font-semibold text-[#1B365D]/80 hover:text-[#1B365D] sm:block"
             >
               For applicants
             </Link>
