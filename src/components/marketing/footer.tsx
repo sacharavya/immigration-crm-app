@@ -40,9 +40,9 @@ export function MarketingFooter() {
         </div>
         <div className="flex flex-col gap-2.5 text-[13px]">
           <div className="font-bold text-[#1B365D]">Firm</div>
-          <a href="https://bigbangimmigration.com/about-us" className="text-[#5A6A85] hover:text-[#1B365D]">
+          <Link href="/about-us" className="text-[#5A6A85] hover:text-[#1B365D]">
             About us
-          </a>
+          </Link>
           <Link href="/immigration-crm-software" className="text-[#5A6A85] hover:text-[#1B365D]">
             BBI-CRM for firms
           </Link>
