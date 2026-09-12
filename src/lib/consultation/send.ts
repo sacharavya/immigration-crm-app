@@ -9,7 +9,7 @@ type Admin = ReturnType<typeof adminClient>;
 const TOKEN_TTL_DAYS = 14;
 
 // A client is "existing" (no consultation agreement needed) once they've signed
-// a Big Bang retainer — they agreed to terms there. Matches by email.
+// a genzdatalabs Immigration retainer — they agreed to terms there. Matches by email.
 async function clientHasSignedRetainer(
   supabase: Admin,
   email: string,

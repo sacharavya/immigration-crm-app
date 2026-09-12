@@ -182,7 +182,7 @@ export function caseEventNotificationEmail(args: Args): {
     ${attachmentLine}
     <p style="margin:16px 0;font-size:14px;color:#6b7280;">
       If you have any questions, please contact your consultant or email
-      us at info@bigbangimmigration.com.
+      us at info@genzdatalabs.com.
     </p>
   `;
 

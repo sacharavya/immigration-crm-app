@@ -12,15 +12,15 @@ export function escapeHtml(s: string): string {
 
 // Logo must be an absolute URL — email clients refuse relative paths and
 // most strip data URIs. Resolved from NEXT_PUBLIC_APP_URL so dev (Vercel
-// preview / localhost-tunnel) and prod each point at their own /logo.png.
+// preview / localhost-tunnel) and prod each point at their own /genzdatalabs-logo.png.
 function logoUrl(): string {
   // Sync env-only read because emailLayout itself is sync. The fallback
-  // must point at the actual prod domain — crm.bigbangimmigration.com
+  // must point at the actual prod domain — crm.genzdatalabs.com
   // does not resolve, so a missing NEXT_PUBLIC_APP_URL there means the
   // logo never loads in any client.
   const base =
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://app.bigbangimmigration.com";
-  return `${base.replace(/\/$/, "")}/logo.png`;
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://app.genzdatalabs.com";
+  return `${base.replace(/\/$/, "")}/genzdatalabs-logo.png`;
 }
 
 export function emailLayout(args: { previewText?: string; bodyHtml: string }): string {
@@ -33,7 +33,7 @@ export function emailLayout(args: { previewText?: string; bodyHtml: string }): s
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
-    <title>Big Bang Immigration</title>
+    <title>genzdatalabs Immigration</title>
   </head>
   <body style="margin:0;padding:0;background:#f5f5f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#1c1917;">
     ${preview}
@@ -43,7 +43,7 @@ export function emailLayout(args: { previewText?: string; bodyHtml: string }): s
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;border-radius:12px;border:1px solid #e7e5e4;overflow:hidden;">
             <tr>
               <td style="padding:28px 32px 16px 32px;">
-                <img src="${escapeHtml(logo)}" alt="Big Bang Immigration" width="180" height="50" style="display:block;border:0;outline:none;text-decoration:none;width:auto;max-width:220px;height:50px;" />
+                <img src="${escapeHtml(logo)}" alt="genzdatalabs Immigration" width="180" height="50" style="display:block;border:0;outline:none;text-decoration:none;width:auto;max-width:220px;height:50px;" />
               </td>
             </tr>
             <tr>
@@ -53,9 +53,9 @@ export function emailLayout(args: { previewText?: string; bodyHtml: string }): s
             </tr>
             <tr>
               <td style="padding:24px 32px;background:#fafaf9;border-top:1px solid #e7e5e4;font-size:12px;color:#78716c;line-height:1.6;">
-                Big Bang Immigration Consulting Inc.<br />
+                genzdatalabs Immigration Consulting Inc.<br />
                 211-2390 Eglinton Avenue East, Toronto, ON M1K 2P5<br />
-                +1 416-386-5351 &nbsp;&middot;&nbsp; info@bigbangimmigration.com
+                +1 416-386-5351 &nbsp;&middot;&nbsp; info@genzdatalabs.com
               </td>
             </tr>
           </table>

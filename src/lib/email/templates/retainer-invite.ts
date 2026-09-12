@@ -19,8 +19,8 @@ export function retainerInviteEmail(args: Args): {
     day: "numeric",
   });
   const subject = args.isResend
-    ? `Reminder: your retainer agreement is ready to sign — Big Bang Immigration`
-    : `Your retainer agreement is ready to sign — Big Bang Immigration`;
+    ? `Reminder: your retainer agreement is ready to sign — genzdatalabs Immigration`
+    : `Your retainer agreement is ready to sign — genzdatalabs Immigration`;
 
   const greeting = args.isResend
     ? `<p style="margin:0 0 12px 0;">Hello ${escapeHtml(args.clientName)},</p>
@@ -31,7 +31,7 @@ export function retainerInviteEmail(args: Args): {
   const bodyHtml = `${greeting}
 ${buttonHtml("Sign retainer agreement", args.signingUrl)}
 <p style="margin:0 0 12px 0;color:#57534e;font-size:14px;">This link expires on <strong>${escapeHtml(expiry)}</strong>.</p>
-<p style="margin:24px 0 0 0;">If you have any questions, email us at info@bigbangimmigration.com or contact Shasi at +1 416-386-5351.</p>`;
+<p style="margin:24px 0 0 0;">If you have any questions, email us at info@genzdatalabs.com or contact Shasi at +1 416-386-5351.</p>`;
 
   const text = `Hello ${args.clientName},
 
@@ -41,9 +41,9 @@ Sign here: ${args.signingUrl}
 
 This link expires on ${expiry}.
 
-If you have any questions, email us at info@bigbangimmigration.com or contact Shasi at +1 416-386-5351.
+If you have any questions, email us at info@genzdatalabs.com or contact Shasi at +1 416-386-5351.
 
-Big Bang Immigration Consulting Inc.
+genzdatalabs Immigration Consulting Inc.
 211-2390 Eglinton Avenue East
 Toronto, ON M1K 2P5`;
 

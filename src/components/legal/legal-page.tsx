@@ -26,15 +26,15 @@ export function LegalPage({
         </div>
         <div className="mt-12 border-t border-[#D9E2EC] pt-6 text-sm text-[#5A6A85]">
           Related:{" "}
-          <Link href="/privacy-policy" className="text-[#3D6FD8] hover:underline">
+          <Link href="/privacy-policy" className="text-[#1E2136] hover:underline">
             Privacy Policy
           </Link>
           {" · "}
-          <Link href="/data-usage" className="text-[#3D6FD8] hover:underline">
+          <Link href="/data-usage" className="text-[#1E2136] hover:underline">
             Data Usage Summary
           </Link>
           {" · "}
-          <Link href="/terms" className="text-[#3D6FD8] hover:underline">
+          <Link href="/terms" className="text-[#1E2136] hover:underline">
             Terms of Use
           </Link>
         </div>

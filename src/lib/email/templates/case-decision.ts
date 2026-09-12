@@ -61,7 +61,7 @@ function approvedEmail(
       <li>Keep this email and the attached letter for your records.</li>
     </ul>
     <p style="margin:16px 0;font-size:14px;line-height:1.6;color:#374151;">
-      Thank you for trusting Big Bang Immigration Consulting with your
+      Thank you for trusting genzdatalabs Immigration Consulting with your
       immigration journey. We are thrilled to see this positive outcome
       for you and your family.
     </p>
@@ -86,7 +86,7 @@ function approvedEmail(
     "- Our team will guide you through any remaining steps.",
     "- Keep this email and the attached letter for your records.",
     "",
-    "Thank you for trusting Big Bang Immigration Consulting.",
+    "Thank you for trusting genzdatalabs Immigration Consulting.",
   ]
     .filter(Boolean)
     .join("\n");

@@ -30,7 +30,7 @@ import { RequestForm } from "./_components/request-form";
 
 export const metadata: Metadata = {
   title:
-    "Immigration CRM Software for Canadian Firms | BBI-CRM by Big Bang Immigration",
+    "Immigration CRM Software for Canadian Firms | BBI-CRM by genzdatalabs Immigration",
   description:
     "Immigration case management software built inside a CICC-regulated firm: submission package builder, IRCC form autofill, client portal, compliance, billing, and Canadian data residency. Free through alpha and beta testing, with a week of hands-on training.",
 };
@@ -49,7 +49,7 @@ const PROGRAMS = [
 const CHECKLIST = [
   { label: "Passport", status: "Accepted", color: "#1F7A3E", filled: true },
   { label: "ECA report", status: "Accepted", color: "#1F7A3E", filled: true },
-  { label: "IELTS results", status: "Uploaded", color: "#3D6FD8", filled: false },
+  { label: "IELTS results", status: "Uploaded", color: "#1E2136", filled: false },
   { label: "Police certificate", status: "Requested", color: "#9A5B12", filled: false },
 ];
 
@@ -74,17 +74,17 @@ const PACKAGE_FILES = [
 ];
 
 const PIPELINE = [
-  { name: "Retainer", n: 2, cards: [{ name: "R. Gurung", type: "Study permit", pct: "10%", color: "#B9C9F5" }, { name: "S. Okafor", type: "Visitor", pct: "20%", color: "#B9C9F5" }] },
-  { name: "Documents", n: 5, cards: [{ name: "P. Anand", type: "EE · CEC", pct: "75%", color: "#3D6FD8" }, { name: "B. Khatiwada", type: "Family", pct: "60%", color: "#3D6FD8" }] },
-  { name: "Review", n: 1, cards: [{ name: "F. Al-Rashid", type: "Study permit", pct: "90%", color: "#3D6FD8" }] },
-  { name: "Submitted", n: 3, cards: [{ name: "M. Santos", type: "WP · LMIA", pct: "100%", color: "#7FA4F0" }, { name: "C. Wei", type: "Spousal", pct: "100%", color: "#7FA4F0" }] },
+  { name: "Retainer", n: 2, cards: [{ name: "R. Gurung", type: "Study permit", pct: "10%", color: "#B9BDD2" }, { name: "S. Okafor", type: "Visitor", pct: "20%", color: "#B9BDD2" }] },
+  { name: "Documents", n: 5, cards: [{ name: "P. Anand", type: "EE · CEC", pct: "75%", color: "#1E2136" }, { name: "B. Khatiwada", type: "Family", pct: "60%", color: "#1E2136" }] },
+  { name: "Review", n: 1, cards: [{ name: "F. Al-Rashid", type: "Study permit", pct: "90%", color: "#1E2136" }] },
+  { name: "Submitted", n: 3, cards: [{ name: "M. Santos", type: "WP · LMIA", pct: "100%", color: "#9AE5C8" }, { name: "C. Wei", type: "Spousal", pct: "100%", color: "#9AE5C8" }] },
   { name: "Decision", n: 9, cards: [{ name: "A. Mainali", type: "PNP · Approved", pct: "100%", color: "#1F7A3E" }, { name: "D. Khatiwada", type: "Business · Refused", pct: "100%", color: "#D32F2F" }] },
 ];
 
 const PORTAL_DOCS = [
   { doc: "Passport (all pages)", date: "Sep 2", status: "Accepted", bg: "#DDF3E4", fg: "#1F7A3E" },
   { doc: "ECA report - WES", date: "Sep 4", status: "Accepted", bg: "#DDF3E4", fg: "#1F7A3E" },
-  { doc: "IELTS test report", date: "Sep 8", status: "Under review", bg: "#E9F0FC", fg: "#3D6FD8" },
+  { doc: "IELTS test report", date: "Sep 8", status: "Under review", bg: "#F0F1F6", fg: "#1E2136" },
   { doc: "Police certificate", date: "—", status: "Requested", bg: "#FBEBD9", fg: "#9A5B12" },
   { doc: "Retainer agreement", date: "Aug 28", status: "Signed", bg: "#DDF3E4", fg: "#1F7A3E" },
 ];
@@ -132,7 +132,7 @@ function FeatureCard({
     >
       <div className="flex min-h-[210px] flex-col gap-2 p-5.5">{children}</div>
       <div className="flex flex-col gap-1.5 px-5.5 pb-6 pt-1.5">
-        <div className="font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#3D6FD8]">
+        <div className="font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#1E2136]">
           {number}
         </div>
         <div className="text-base font-bold">{title}</div>
@@ -145,28 +145,28 @@ function FeatureCard({
 export default function CrmLandingPage() {
   return (
     <main
-      className={`${jakarta.variable} ${dmMono.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-white font-[family-name:var(--font-jakarta)] text-[#1B365D] antialiased`}
+      className={`${jakarta.variable} ${dmMono.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-white font-[family-name:var(--font-jakarta)] text-[#1E2136] antialiased`}
     >
       <MarketingNav
         center={
-          <div className="hidden flex-wrap justify-center gap-5 text-[13px] font-semibold text-[#1B365D]/80 md:flex">
-            <a href="#features" className="hover:text-[#1B365D]">Features</a>
-            <a href="#how" className="hover:text-[#1B365D]">How it works</a>
-            <a href="#trust" className="hover:text-[#1B365D]">Security</a>
-            <a href="#faq" className="hover:text-[#1B365D]">FAQ</a>
+          <div className="hidden flex-wrap justify-center gap-5 text-[13px] font-semibold text-[#1E2136]/80 md:flex">
+            <a href="#features" className="hover:text-[#1E2136]">Features</a>
+            <a href="#how" className="hover:text-[#1E2136]">How it works</a>
+            <a href="#trust" className="hover:text-[#1E2136]">Security</a>
+            <a href="#faq" className="hover:text-[#1E2136]">FAQ</a>
           </div>
         }
         actions={
           <>
             <Link
               href="/"
-              className="hidden px-3.5 py-2 text-[13px] font-semibold text-[#1B365D]/80 hover:text-[#1B365D] sm:block"
+              className="hidden px-3.5 py-2 text-[13px] font-semibold text-[#1E2136]/80 hover:text-[#1E2136] sm:block"
             >
               For applicants
             </Link>
             <a
               href="#request"
-              className="rounded-lg bg-[#D32F2F] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#1B365D]"
+              className="rounded-lg bg-[#62D4A6] px-3.5 py-2 text-[13px] font-semibold text-[#1E2136] transition-colors hover:bg-[#1E2136] hover:text-white"
             >
               Request access
             </a>
@@ -174,17 +174,17 @@ export default function CrmLandingPage() {
         }
       />
       <HeroBand>
-        <header className="relative flex flex-col items-center gap-6 px-6 pt-32 text-center text-white sm:pt-36">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/45 bg-white/20 py-1 pl-1 pr-3 text-xs font-semibold">
-            <span className="rounded-full bg-white px-1.5 py-0.5 font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#3D6FD8]">
+        <header className="relative flex flex-col items-center gap-6 px-6 pt-32 text-center text-[#1E2136] sm:pt-36">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[#1E2136]/15 bg-white/70 py-1 pl-1 pr-3 text-xs font-semibold">
+            <span className="rounded-full bg-[#1E2136] px-1.5 py-0.5 font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-white">
               ALPHA
             </span>
             Built inside a CICC-regulated firm · Toronto
           </span>
-          <h1 className="max-w-[820px] text-balance text-[clamp(36px,5vw,60px)] font-extrabold leading-[1.05] tracking-[-.03em] [text-shadow:0_2px_16px_rgba(27,54,93,.35)]">
+          <h1 className="max-w-[820px] text-balance text-[clamp(36px,5vw,60px)] font-extrabold leading-[1.05] tracking-[-.03em]">
             The all-in-one CRM for Canadian immigration practices
           </h1>
-          <p className="max-w-[600px] text-[17px] leading-relaxed text-white [text-shadow:0_2px_16px_rgba(27,54,93,.35)]">
+          <p className="max-w-[600px] text-[17px] leading-relaxed text-[#1E2136]">
             Case management, IRCC forms, submission packages, compliance and
             billing in one place — hosted in Canada, used daily by our own
             consultants.
@@ -195,15 +195,15 @@ export default function CrmLandingPage() {
             </PrimaryLink>
             <WhiteLink href="#features">See what&apos;s inside</WhiteLink>
           </div>
-          <div className="text-[12.5px] text-white [text-shadow:0_2px_16px_rgba(27,54,93,.35)]">
+          <div className="text-[12.5px] text-[#1E2136]">
             Free through alpha &amp; beta · One week of hands-on training ·
             Canadian data residency
           </div>
-          <div className="relative z-[1] mt-8 w-full max-w-[1120px] pb-0 text-[#1B365D]">
-            <BrowserFrame url="app.bigbangimmigration.com/dashboard">
+          <div className="relative z-[1] mt-8 w-full max-w-[1120px] pb-0 text-[#1E2136]">
+            <BrowserFrame url="app.genzdatalabs.com/dashboard">
               <Image
                 src="/dashboard-preview.png"
-                alt="BBI CRM dashboard"
+                alt="genzdatalabs Immigration CRM dashboard"
                 width={2778}
                 height={1706}
                 priority
@@ -260,8 +260,8 @@ export default function CrmLandingPage() {
                 <span
                   className="h-3 w-3 border"
                   style={{
-                    borderColor: "#3D6FD8",
-                    background: c.filled ? "#3D6FD8" : "#fff",
+                    borderColor: "#1E2136",
+                    background: c.filled ? "#1E2136" : "#fff",
                   }}
                 />
                 <span className="flex-1">{c.label}</span>
@@ -320,7 +320,7 @@ export default function CrmLandingPage() {
                 </div>
               ))}
             </div>
-            <div className="mt-auto flex items-center gap-1.5 text-[11.5px] font-semibold text-[#3D6FD8]">
+            <div className="mt-auto flex items-center gap-1.5 text-[11.5px] font-semibold text-[#1E2136]">
               <Check className="h-3 w-3" strokeWidth={2.5} />
               92 fields filled from client profile
             </div>
@@ -334,7 +334,7 @@ export default function CrmLandingPage() {
           >
             <div className="text-xs font-bold">Submission package</div>
             <div className="flex flex-wrap gap-1.5">
-              <span className="rounded-full bg-[#3D6FD8] px-2 py-0.5 text-[10.5px] text-white">
+              <span className="rounded-full bg-[#1E2136] px-2 py-0.5 text-[10.5px] text-white">
                 IRCC 4 MB
               </span>
               <span className="rounded-full border border-[#D9E2EC] bg-white px-2 py-0.5 text-[10.5px]">
@@ -357,7 +357,7 @@ export default function CrmLandingPage() {
             </div>
             <div className="mt-auto flex items-center gap-2 text-[11px]">
               <div className="h-1.5 flex-1 bg-[#E3EAF3]">
-                <div className="h-full w-[93%] bg-[#3D6FD8]" />
+                <div className="h-full w-[93%] bg-[#1E2136]" />
               </div>
               <span className="font-[family-name:var(--font-dm-mono)]">3.7 / 4 MB</span>
             </div>
@@ -376,7 +376,7 @@ export default function CrmLandingPage() {
           {/* Cases */}
           <div className="grid items-stretch overflow-hidden rounded-2xl border border-[#D9E2EC] bg-white lg:grid-cols-2">
             <div className="flex flex-col justify-center gap-3.5 p-8 sm:p-11">
-              <span className="self-start rounded-full bg-[#E9F0FC] px-2.5 py-1 text-[11px] font-semibold text-[#3D6FD8]">
+              <span className="self-start rounded-full bg-[#F0F1F6] px-2.5 py-1 text-[11px] font-semibold text-[#1E2136]">
                 Cases
               </span>
               <div className="text-2xl font-extrabold leading-tight tracking-[-.02em]">
@@ -388,7 +388,7 @@ export default function CrmLandingPage() {
               </p>
               <a
                 href="#request"
-                className="flex items-center gap-1.5 text-[13px] font-semibold text-[#3D6FD8] hover:text-[#1B365D]"
+                className="flex items-center gap-1.5 text-[13px] font-semibold text-[#1E2136] hover:text-[#1E2136]"
               >
                 Read more <span aria-hidden>&rarr;</span>
               </a>
@@ -433,7 +433,7 @@ export default function CrmLandingPage() {
             >
               <div className="flex justify-between text-xs font-bold">
                 <span>Client portal · Priya Anand</span>
-                <span className="rounded-full bg-[#E9F0FC] px-1.5 py-0.5 text-[10.5px] font-semibold text-[#3D6FD8]">
+                <span className="rounded-full bg-[#F0F1F6] px-1.5 py-0.5 text-[10.5px] font-semibold text-[#1E2136]">
                   Signed in
                 </span>
               </div>
@@ -452,12 +452,12 @@ export default function CrmLandingPage() {
                   </span>
                 </div>
               ))}
-              <div className="mt-auto rounded-[10px] border border-dashed border-[#3D6FD8] bg-white p-3 text-center text-[11.5px] text-[#5A6A85]">
-                Drop files here or <strong className="text-[#3D6FD8]">browse</strong>
+              <div className="mt-auto rounded-[10px] border border-dashed border-[#1E2136] bg-white p-3 text-center text-[11.5px] text-[#5A6A85]">
+                Drop files here or <strong className="text-[#1E2136]">browse</strong>
               </div>
             </div>
             <div className="order-1 flex flex-col justify-center gap-3.5 p-8 sm:p-11 lg:order-2">
-              <span className="self-start rounded-full bg-[#E9F0FC] px-2.5 py-1 text-[11px] font-semibold text-[#3D6FD8]">
+              <span className="self-start rounded-full bg-[#F0F1F6] px-2.5 py-1 text-[11px] font-semibold text-[#1E2136]">
                 Client portal
               </span>
               <div className="text-2xl font-extrabold leading-tight tracking-[-.02em]">
@@ -469,7 +469,7 @@ export default function CrmLandingPage() {
               </p>
               <a
                 href="#request"
-                className="flex items-center gap-1.5 text-[13px] font-semibold text-[#3D6FD8] hover:text-[#1B365D]"
+                className="flex items-center gap-1.5 text-[13px] font-semibold text-[#1E2136] hover:text-[#1E2136]"
               >
                 Read more <span aria-hidden>&rarr;</span>
               </a>
@@ -479,7 +479,7 @@ export default function CrmLandingPage() {
           {/* Compliance */}
           <div className="grid items-stretch overflow-hidden rounded-2xl border border-[#D9E2EC] bg-white lg:grid-cols-2">
             <div className="flex flex-col justify-center gap-3.5 p-8 sm:p-11">
-              <span className="self-start rounded-full bg-[#E9F0FC] px-2.5 py-1 text-[11px] font-semibold text-[#3D6FD8]">
+              <span className="self-start rounded-full bg-[#F0F1F6] px-2.5 py-1 text-[11px] font-semibold text-[#1E2136]">
                 Compliance
               </span>
               <div className="text-2xl font-extrabold leading-tight tracking-[-.02em]">
@@ -491,7 +491,7 @@ export default function CrmLandingPage() {
               </p>
               <a
                 href="#request"
-                className="flex items-center gap-1.5 text-[13px] font-semibold text-[#3D6FD8] hover:text-[#1B365D]"
+                className="flex items-center gap-1.5 text-[13px] font-semibold text-[#1E2136] hover:text-[#1E2136]"
               >
                 Read more <span aria-hidden>&rarr;</span>
               </a>
@@ -546,7 +546,7 @@ export default function CrmLandingPage() {
               key={title}
               className="flex flex-col items-center gap-3 rounded-2xl border border-[#D9E2EC] bg-white p-7 text-center"
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#E9F0FC] text-[#3D6FD8]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F0F1F6] text-[#1E2136]">
                 <Icon className="h-5 w-5" strokeWidth={1.75} />
               </div>
               <div className="text-base font-bold">{title}</div>
@@ -584,15 +584,15 @@ export default function CrmLandingPage() {
               <PrimaryLink href="#request" tone="red">
                 Request alpha access <ArrowRight className="h-4 w-4" />
               </PrimaryLink>
-              <WhiteLink href="mailto:info@bigbangimmigration.com">
+              <WhiteLink href="mailto:info@genzdatalabs.com">
                 Talk to us
               </WhiteLink>
             </div>
           </div>
-          <div className="relative flex flex-col gap-3 rounded-2xl border border-white/80 bg-white p-5 text-[#1B365D] shadow-[0_30px_60px_-30px_rgba(27,54,93,.5)]">
+          <div className="relative flex flex-col gap-3 rounded-2xl border border-white/80 bg-white p-5 text-[#1E2136] shadow-[0_30px_60px_-30px_rgba(27,54,93,.5)]">
             <div className="flex items-center justify-between">
               <div className="text-[13px] font-bold">Upcoming appointments</div>
-              <span className="rounded-full bg-[#E9F0FC] px-2 py-0.5 text-[10.5px] font-semibold text-[#3D6FD8]">
+              <span className="rounded-full bg-[#F0F1F6] px-2 py-0.5 text-[10.5px] font-semibold text-[#1E2136]">
                 3
               </span>
             </div>
@@ -602,7 +602,7 @@ export default function CrmLandingPage() {
                 className="grid grid-cols-[44px_1fr_auto] items-center gap-3 rounded-[10px] border border-[#D9E2EC] px-3 py-2.5"
               >
                 <div className="bg-[#F4F6F9] py-1.5 text-center">
-                  <div className="text-[9px] font-bold text-[#3D6FD8]">{a.mon}</div>
+                  <div className="text-[9px] font-bold text-[#1E2136]">{a.mon}</div>
                   <div className="text-base font-extrabold leading-none">{a.day}</div>
                 </div>
                 <div>

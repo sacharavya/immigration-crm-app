@@ -135,7 +135,7 @@ export default async function FormsPage({ searchParams }: Props) {
               <Link
                 key={t}
                 href={filterHref({ tag: filterTag === t ? null : t })}
-                className={`rounded-full border px-2.5 py-1 ${filterTag === t ? "border-[var(--gold,#b8860b)] bg-amber-50 text-amber-800" : "border-stone-200 bg-white text-stone-600 hover:border-stone-300"}`}
+                className={`rounded-full border px-2.5 py-1 ${filterTag === t ? "border-[var(--gold)] bg-[var(--accent)] text-[var(--primary)]" : "border-stone-200 bg-white text-stone-600 hover:border-stone-300"}`}
               >
                 {t}
               </Link>

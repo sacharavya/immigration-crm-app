@@ -385,7 +385,7 @@ export function RetainerPdfDocument({
   return (
     <Document
       title={`Retainer Agreement — ${data.case_number}`}
-      author="Big Bang Immigration Consulting Inc."
+      author="genzdatalabs Immigration Consulting Inc."
     >
       <Page size="A4" style={styles.page} wrap>
         {watermarkText && <Watermark text={watermarkText} />}
@@ -954,8 +954,8 @@ export function RetainerPdfDocument({
         </View>
 
         <Text style={styles.footer}>
-          www.bigbangimmigration.com{"\n"}
-          info@bigbangimmigration.com{"\n"}
+          www.genzdatalabs.com{"\n"}
+          info@genzdatalabs.com{"\n"}
           211-2390 Eglinton Avenue East{"\n"}
           Toronto, ON M1K 2P5{"\n"}
           Tel: +1 416-386-5351

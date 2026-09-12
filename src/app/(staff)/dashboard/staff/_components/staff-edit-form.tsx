@@ -362,7 +362,7 @@ export function StaffEditForm({
                     id="rcic_membership_number"
                     value={rcicMembership}
                     onChange={(e) => setRcicMembership(e.target.value)}
-                    placeholder="e.g. R711181"
+                    placeholder="e.g. R7111111"
                     aria-invalid={Boolean(fieldErrors.rcic_membership_number)}
                   />
                   {fieldErrors.rcic_membership_number && (

@@ -214,8 +214,8 @@ export default async function ClientUploadPage({ params }: Props) {
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-2xl items-center gap-4 px-5 py-5">
           <Image
-            src="/logo.png"
-            alt="Big Bang Immigration"
+            src="/genzdatalabs-logo.png"
+            alt="genzdatalabs Immigration"
             width={400}
             height={200}
             className="h-11 w-auto object-contain"

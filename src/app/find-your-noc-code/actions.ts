@@ -4,7 +4,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { z } from "zod";
 
 // Public lead capture from the NOC finder: someone just saw their SOWP or
-// Express Entry verdict and wants Big Bang to handle the application. Creates
+// Express Entry verdict and wants genzdatalabs Immigration to handle the application. Creates
 // or updates a lead client; the new-lead notification trigger tells staff.
 
 const applySchema = z.object({

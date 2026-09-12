@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     nocache: true,
     googleBot: { index: false, follow: false },
   },
-  title: "Intake form · Big Bang Immigration",
+  title: "Intake form · genzdatalabs Immigration",
 };
 
 export default function IntakePortalLayout({
@@ -30,8 +30,8 @@ export default function IntakePortalLayout({
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-6 py-4">
           <Image
-            src="/logo.png"
-            alt="Big Bang Immigration"
+            src="/genzdatalabs-logo.png"
+            alt="genzdatalabs Immigration"
             width={1933}
             height={537}
             priority

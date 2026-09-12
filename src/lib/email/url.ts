@@ -20,8 +20,8 @@ export async function getBaseUrl(): Promise<string> {
   }
 
   // Last-resort fallback. Must point at the actual prod app — earlier
-  // this was crm.bigbangimmigration.com, which doesn't resolve. If
+  // this was crm.genzdatalabs.com, which doesn't resolve. If
   // NEXT_PUBLIC_APP_URL is somehow missing AND we're outside a
   // request context, this is what every link in every email points at.
-  return "https://app.bigbangimmigration.com";
+  return "https://app.genzdatalabs.com";
 }

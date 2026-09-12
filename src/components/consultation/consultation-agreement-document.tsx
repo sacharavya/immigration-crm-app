@@ -62,7 +62,7 @@ export function ConsultationAgreementDocument({
   return (
     <div className="mx-auto max-w-[680px] bg-white px-8 py-6 font-serif text-[13px] leading-relaxed text-stone-900">
       <div className="text-center">
-        <div className="text-lg font-bold">The Big Bang Immigration Consulting Inc</div>
+        <div className="text-lg font-bold">The genzdatalabs Immigration Consulting Inc</div>
         <div className="font-semibold">Initial Consultation Agreement</div>
       </div>
 

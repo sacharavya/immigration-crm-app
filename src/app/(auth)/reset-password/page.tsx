@@ -43,8 +43,8 @@ export default function ResetPasswordPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="space-y-3 text-center">
           <Image
-            src="/logo.png"
-            alt="Big Bang Immigration"
+            src="/genzdatalabs-logo.png"
+            alt="genzdatalabs Immigration"
             width={1933}
             height={537}
             priority

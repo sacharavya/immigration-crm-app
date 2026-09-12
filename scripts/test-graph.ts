@@ -34,7 +34,7 @@ async function main(): Promise<void> {
   const userId = process.env.GRAPH_ONEDRIVE_USER;
   if (!userId) {
     throw new Error(
-      "GRAPH_ONEDRIVE_USER is not set. Add the email or UPN of the user whose OneDrive the CRM should write to (e.g. info@bigbangimmigration.com).",
+      "GRAPH_ONEDRIVE_USER is not set. Add the email or UPN of the user whose OneDrive the CRM should write to (e.g. info@genzdatalabs.com).",
     );
   }
 

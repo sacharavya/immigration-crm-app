@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { LegalPage, LegalSection } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy - Big Bang Immigration",
+  title: "Privacy Policy - genzdatalabs Immigration",
   description:
-    "How Big Bang Immigration Consulting Inc collects, uses, stores, and protects your personal information under PIPEDA.",
+    "How genzdatalabs Immigration Consulting Inc collects, uses, stores, and protects your personal information under PIPEDA.",
 };
 
 const UPDATED = "August 29, 2026";
@@ -14,7 +14,7 @@ export default function PrivacyPolicyPage() {
   return (
     <LegalPage title="Privacy Policy" updated={UPDATED}>
       <p>
-        Big Bang Immigration Consulting Inc (&quot;Big Bang Immigration&quot;,
+        genzdatalabs Immigration Consulting Inc (&quot;genzdatalabs Immigration&quot;,
         &quot;we&quot;, &quot;us&quot;) is committed to protecting your personal
         information. This policy explains what we collect, why we collect it,
         how we protect it, and the rights you have over it. It is written to
@@ -29,9 +29,9 @@ export default function PrivacyPolicyPage() {
           reached at{" "}
           <a
             className="text-[var(--navy)] hover:underline"
-            href="mailto:info@bigbangimmigration.com"
+            href="mailto:info@genzdatalabs.com"
           >
-            info@bigbangimmigration.com
+            info@genzdatalabs.com
           </a>{" "}
           or by mail at 211-2390 Eglinton Avenue East, Toronto, ON M1K 2P5.
         </p>

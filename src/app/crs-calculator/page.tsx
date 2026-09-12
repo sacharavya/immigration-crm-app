@@ -5,7 +5,7 @@ import { MarketingShell } from "@/components/marketing/shell";
 import { CrsForm } from "./_components/crs-form";
 
 export const metadata: Metadata = {
-  title: "CRS Score Calculator — Big Bang Immigration",
+  title: "CRS Score Calculator — genzdatalabs Immigration",
   description:
     "Estimate your Comprehensive Ranking System (CRS) score for Express Entry immigration to Canada.",
 };

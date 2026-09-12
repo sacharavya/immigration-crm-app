@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     nocache: true,
     googleBot: { index: false, follow: false },
   },
-  title: "Upload payment proof · Big Bang Immigration",
+  title: "Upload payment proof · genzdatalabs Immigration",
 };
 
 export default function PayLayout({
@@ -27,8 +27,8 @@ export default function PayLayout({
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-6 py-4">
           <Image
-            src="/logo.png"
-            alt="Big Bang Immigration"
+            src="/genzdatalabs-logo.png"
+            alt="genzdatalabs Immigration"
             width={1933}
             height={537}
             priority

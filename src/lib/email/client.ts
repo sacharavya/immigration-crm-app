@@ -15,10 +15,10 @@ function getClient(): Resend | null {
 
 export const FROM_ADDRESS =
   process.env.RESEND_FROM_ADDRESS ??
-  "Big Bang Immigration <noreply@bigbangimmigration.com>";
+  "genzdatalabs Immigration <noreply@genzdatalabs.com>";
 
 export const REPLY_TO =
-  process.env.RESEND_REPLY_TO ?? "info@bigbangimmigration.com";
+  process.env.RESEND_REPLY_TO ?? "info@genzdatalabs.com";
 
 export type EmailAttachment = {
   filename: string;

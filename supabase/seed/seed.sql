@@ -1,5 +1,5 @@
 -- ============================================================================
--- Big Bang Immigration CRM - Seed data
+-- genzdatalabs Immigration CRM - Seed data
 -- Runs after migrations on `supabase db reset` (or via `npm run db:reset`).
 --
 -- Reference data (countries, document categories, service types, templates,

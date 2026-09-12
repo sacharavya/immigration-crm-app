@@ -12,7 +12,7 @@ export function passwordResetEmail(args: Args): {
   html: string;
   text: string;
 } {
-  const subject = `Your Big Bang Immigration CRM password was reset`;
+  const subject = `Your genzdatalabs Immigration CRM password was reset`;
 
   const bodyHtml = `<p style="margin:0 0 12px 0;">Hi ${escapeHtml(args.firstName)},</p>
 <p style="margin:0 0 12px 0;">An administrator has reset your password. Sign in with the temporary password below — you&rsquo;ll be asked to choose a new password on first login.</p>
@@ -39,7 +39,7 @@ An administrator has reset your password. Sign in with the temporary password be
 
 If you didn't expect this, contact your administrator immediately.
 
-Big Bang Immigration Consulting Inc.`;
+genzdatalabs Immigration Consulting Inc.`;
 
   return {
     subject,

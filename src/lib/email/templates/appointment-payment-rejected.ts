@@ -18,7 +18,7 @@ export function appointmentPaymentRejectedEmail(
 <p style="margin:0 0 12px 0;">Hello ${escapeHtml(args.clientName)},</p>
 <p style="margin:0 0 12px 0;">We weren&apos;t able to verify the payment proof you submitted for your consultation on <strong>${escapeHtml(args.dateDisplay)}</strong> at ${escapeHtml(args.timeDisplay)}.</p>
 <p style="margin:0 0 16px 0;color:#0c0a09;"><strong>Reason:</strong> ${escapeHtml(args.rejectionReason)}</p>
-<p style="margin:0 0 12px 0;">We&apos;ve cancelled this booking and released the slot. To book again, use the button below. If you believe this was a mistake or need help, email us at info@bigbangimmigration.com.</p>
+<p style="margin:0 0 12px 0;">We&apos;ve cancelled this booking and released the slot. To book again, use the button below. If you believe this was a mistake or need help, email us at info@genzdatalabs.com.</p>
 ${buttonHtml("Book a new consultation", args.bookAgainUrl)}`;
 
   const html = emailLayout({
@@ -32,7 +32,7 @@ ${buttonHtml("Book a new consultation", args.bookAgainUrl)}`;
     `We weren't able to verify the payment proof you submitted for your consultation on ${args.dateDisplay} at ${args.timeDisplay} (${args.timezoneDisplay}).`,
     `Reason: ${args.rejectionReason}.`,
     "",
-    `We've cancelled this booking and released the slot. To book again, visit ${args.bookAgainUrl}. Email us at info@bigbangimmigration.com if you need help.`,
+    `We've cancelled this booking and released the slot. To book again, visit ${args.bookAgainUrl}. Email us at info@genzdatalabs.com if you need help.`,
   ].join("\n");
 
   return { subject, html, text };

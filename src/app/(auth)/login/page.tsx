@@ -35,8 +35,8 @@ export default function LoginPage({ searchParams }: Props) {
         <div className="mx-auto w-full max-w-md">
           {/* Logo */}
           <Image
-            src="/logo.png"
-            alt="Big Bang Immigration"
+            src="/genzdatalabs-logo.png"
+            alt="genzdatalabs Immigration"
             width={1933}
             height={537}
             priority
@@ -48,7 +48,7 @@ export default function LoginPage({ searchParams }: Props) {
             Sign in to your account
           </h1>
           <p className="mt-2 text-sm text-stone-600">
-            Access the Big Bang Immigration staff console to manage cases,
+            Access the genzdatalabs Immigration staff console to manage cases,
             clients, and appointments.
           </p>
 
@@ -85,7 +85,7 @@ export default function LoginPage({ searchParams }: Props) {
                 autoComplete="email"
                 required
                 aria-invalid={Boolean(state.fieldErrors?.email)}
-                placeholder="you@bigbangimmigration.com"
+                placeholder="you@genzdatalabs.com"
                 className="mt-1.5 h-11 w-full border border-stone-300 bg-white px-3 text-sm"
               />
               {state.fieldErrors?.email && (
@@ -143,7 +143,7 @@ export default function LoginPage({ searchParams }: Props) {
           </form>
 
           <p className="mt-8 text-center text-xs text-stone-500">
-            &copy; {new Date().getFullYear()} Big Bang Immigration Consulting
+            &copy; {new Date().getFullYear()} genzdatalabs Immigration Consulting
             Inc.
           </p>
         </div>
@@ -157,7 +157,7 @@ export default function LoginPage({ searchParams }: Props) {
             <div className="rounded-lg bg-white/[0.05] px-6 py-10">
               <div className="flex items-center justify-center gap-3">
                 <Image
-                  src="/logo.png"
+                  src="/genzdatalabs-logo.png"
                   alt=""
                   width={1933}
                   height={537}
@@ -197,7 +197,7 @@ export default function LoginPage({ searchParams }: Props) {
           </h2>
           <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-stone-300">
             The complete immigration case management platform built for
-            Big Bang Immigration Consulting.
+            genzdatalabs Immigration Consulting.
           </p>
 
           {/* Trust badges */}

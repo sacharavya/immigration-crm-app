@@ -61,7 +61,7 @@ async function loadTeamsAutoCreate(supabase: ServiceClient): Promise<boolean> {
 function locationLine(appt: ApptSyncRow): string {
   return appt.location_type === "online"
     ? `Online${appt.online_link ? ": " + appt.online_link : ""}`
-    : (appt.onsite_address ?? "Big Bang Immigration office");
+    : (appt.onsite_address ?? "genzdatalabs Immigration office");
 }
 
 function subjectLine(appt: ApptSyncRow): string {
@@ -231,7 +231,7 @@ function buildEventBodyHtml(appt: ApptSyncRow): string {
     <p>Appointment with ${escapeHtml(appt.snapshot_client_name)}</p>
     ${reasonHtml}
     ${linkHtml}
-    <p style="color:#666;font-size:12px;">Booked via Big Bang Immigration CRM.</p>
+    <p style="color:#666;font-size:12px;">Booked via genzdatalabs Immigration CRM.</p>
   `;
 }
 

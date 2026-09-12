@@ -32,10 +32,10 @@ export function PublicFooter() {
           <div className="flex items-start gap-2.5 text-sm text-stone-600">
             <Mail className="mt-0.5 h-4 w-4 shrink-0 text-[var(--gold)]" />
             <a
-              href="mailto:info@bigbangimmigration.com"
+              href="mailto:info@genzdatalabs.com"
               className="hover:text-stone-900 hover:underline"
             >
-              info@bigbangimmigration.com
+              info@genzdatalabs.com
             </a>
           </div>
         </div>
@@ -58,9 +58,9 @@ export function PublicFooter() {
             BBI-CRM for firms
           </Link>
         </div>
-        &copy; {new Date().getFullYear()} Big Bang Immigration Consulting Inc.
+        &copy; {new Date().getFullYear()} genzdatalabs Immigration Consulting Inc.
         &middot; Licensed by the College of Immigration and Citizenship
-        Consultants (CICC) &middot; RCIC# R711181
+        Consultants (CICC) &middot; RCIC# R7111111
       </div>
     </footer>
   );

@@ -17,7 +17,7 @@ export function consultationAgreementInviteEmail(args: Args): {
     day: "numeric",
   });
   const subject =
-    "Please sign your Initial Consultation Agreement — Big Bang Immigration";
+    "Please sign your Initial Consultation Agreement — genzdatalabs Immigration";
 
   const bodyHtml = `
 <p style="margin:0 0 12px 0;">Hello ${escapeHtml(args.clientName)},</p>
@@ -32,7 +32,7 @@ ${args.signingUrl}
 
 This link expires on ${expiry}.
 
-Big Bang Immigration`;
+genzdatalabs Immigration`;
 
   return {
     subject,

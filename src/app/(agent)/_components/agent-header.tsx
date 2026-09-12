@@ -13,12 +13,12 @@ export function AgentHeader() {
     <header className="flex h-16 items-center justify-between border-b border-stone-200 bg-white px-6">
       <Link
         href="/portal"
-        aria-label="Big Bang Immigration"
+        aria-label="genzdatalabs Immigration"
         className="flex h-full items-center transition-opacity hover:opacity-80"
       >
         <Image
-          src="/logo.png"
-          alt="Big Bang Immigration"
+          src="/genzdatalabs-logo.png"
+          alt="genzdatalabs Immigration"
           width={200}
           height={100}
           priority

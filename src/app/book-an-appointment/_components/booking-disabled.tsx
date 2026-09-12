@@ -17,14 +17,14 @@ export function BookingDisabled({ message }: { message?: string } = {}) {
       </p>
       <div className="mx-auto mt-6 inline-flex flex-col items-center gap-1 text-sm">
         <a
-          href="mailto:info@bigbangimmigration.com"
-          className="text-[#3D6FD8] underline-offset-2 hover:underline"
+          href="mailto:info@genzdatalabs.com"
+          className="text-[#1E2136] underline-offset-2 hover:underline"
         >
-          info@bigbangimmigration.com
+          info@genzdatalabs.com
         </a>
         <a
           href="tel:+14163865351"
-          className="text-[#3D6FD8] underline-offset-2 hover:underline"
+          className="text-[#1E2136] underline-offset-2 hover:underline"
         >
           +1 416-386-5351
         </a>

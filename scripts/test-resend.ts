@@ -21,15 +21,15 @@ async function main() {
 
   const from =
     process.env.RESEND_FROM_ADDRESS ??
-    "Big Bang Immigration <noreply@bigbangimmigration.com>";
+    "genzdatalabs Immigration <noreply@genzdatalabs.com>";
   const replyTo =
-    process.env.RESEND_REPLY_TO ?? "info@bigbangimmigration.com";
+    process.env.RESEND_REPLY_TO ?? "info@genzdatalabs.com";
 
   const client = new Resend(apiKey);
-  const subject = "Big Bang Immigration — Resend test";
+  const subject = "genzdatalabs Immigration — Resend test";
   const html = `
     <p>Hello,</p>
-    <p>This is a test email sent from the Big Bang Immigration CRM via Resend.</p>
+    <p>This is a test email sent from the genzdatalabs Immigration CRM via Resend.</p>
     <p>If you received this, the domain + DKIM are wired correctly.</p>
     <p>
       <strong>From:</strong> ${from}<br />
@@ -37,7 +37,7 @@ async function main() {
       <strong>Sent at:</strong> ${new Date().toISOString()}
     </p>
   `;
-  const text = `Big Bang Immigration — Resend test\n\nFrom: ${from}\nReply-To: ${replyTo}\nSent at: ${new Date().toISOString()}`;
+  const text = `genzdatalabs Immigration — Resend test\n\nFrom: ${from}\nReply-To: ${replyTo}\nSent at: ${new Date().toISOString()}`;
 
   console.log(`Sending test to ${to} from ${from}…`);
   const { data, error } = await client.emails.send({
