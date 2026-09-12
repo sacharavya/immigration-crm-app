@@ -242,17 +242,17 @@ export default function CrmLandingPage() {
         }
       />
       <HeroBand>
-        <header className="relative flex flex-col items-center gap-5 px-6 pt-16 text-center text-white sm:pt-20">
+        <header className="relative flex flex-col items-center gap-6 px-6 pt-32 text-center text-white sm:pt-36">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/45 bg-white/20 py-1 pl-1 pr-3 text-xs font-semibold">
             <span className="rounded-full bg-white px-1.5 py-0.5 font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#3D6FD8]">
               ALPHA
             </span>
             Built inside a CICC-regulated firm · Toronto
           </span>
-          <h1 className="max-w-[820px] text-balance text-[clamp(36px,5vw,60px)] font-extrabold leading-[1.05] tracking-[-.03em]">
+          <h1 className="max-w-[820px] text-balance text-[clamp(36px,5vw,60px)] font-extrabold leading-[1.05] tracking-[-.03em] [text-shadow:0_2px_16px_rgba(27,54,93,.35)]">
             The all-in-one CRM for Canadian immigration practices
           </h1>
-          <p className="max-w-[600px] text-[17px] leading-relaxed text-white/90">
+          <p className="max-w-[600px] text-[17px] leading-relaxed text-white [text-shadow:0_2px_16px_rgba(27,54,93,.35)]">
             Case management, IRCC forms, submission packages, compliance and
             billing in one place — hosted in Canada, used daily by our own
             consultants.
@@ -263,7 +263,7 @@ export default function CrmLandingPage() {
             </PrimaryLink>
             <WhiteLink href="#features">See what&apos;s inside</WhiteLink>
           </div>
-          <div className="text-[12.5px] text-white/85">
+          <div className="text-[12.5px] text-white [text-shadow:0_2px_16px_rgba(27,54,93,.35)]">
             Free through alpha &amp; beta · One week of hands-on training ·
             Canadian data residency
           </div>
