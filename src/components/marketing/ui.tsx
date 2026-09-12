@@ -106,6 +106,7 @@ export function MarketingNav({
             width={200}
             height={64}
             priority
+            unoptimized
             className="h-8 w-auto"
           />
           {crmTag && (

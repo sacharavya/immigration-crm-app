@@ -688,6 +688,7 @@ export default function CrmLandingPage() {
               src="/logo.png"
               alt="Big Bang Immigration Consulting Inc"
               width={220}
+              unoptimized
               height={70}
               className="h-9 w-auto self-start"
             />

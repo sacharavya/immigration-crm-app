@@ -69,14 +69,14 @@ export function RequestForm() {
 
   if (done) {
     return (
-      <div className="border border-emerald-200 bg-emerald-50/50 p-6">
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6">
         <div className="flex items-start gap-3">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
           <div>
-            <h3 className="text-sm font-semibold text-stone-900">
+            <h3 className="text-sm font-semibold text-[#1B365D]">
               Request received
             </h3>
-            <p className="mt-1 text-sm text-stone-600">
+            <p className="mt-1 text-sm text-[#5A6A85]">
               Thanks for your interest in BBI-CRM. We onboard firms in small
               groups and will reach out to schedule an intro call and your
               training week.
@@ -88,32 +88,32 @@ export function RequestForm() {
   }
 
   return (
-    <form onSubmit={submit} className="border border-stone-200 bg-white p-6">
+    <form onSubmit={submit} className="rounded-2xl border border-[#D9E2EC] bg-white p-6 shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)]">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#5A6A85]">
             Firm name *
           </span>
           <input
             value={firmName}
             onChange={(e) => setFirmName(e.target.value)}
             disabled={pending}
-            className="mt-1 h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
           />
         </label>
         <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#5A6A85]">
             Contact name *
           </span>
           <input
             value={contactName}
             onChange={(e) => setContactName(e.target.value)}
             disabled={pending}
-            className="mt-1 h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
           />
         </label>
         <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#5A6A85]">
             Email *
           </span>
           <input
@@ -121,33 +121,33 @@ export function RequestForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={pending}
-            className="mt-1 h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
           />
         </label>
         <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#5A6A85]">
             Phone *
           </span>
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             disabled={pending}
-            className="mt-1 h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
           />
         </label>
         <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#5A6A85]">
             RCIC number (optional)
           </span>
           <input
             value={rcicNumber}
             onChange={(e) => setRcicNumber(e.target.value)}
             disabled={pending}
-            className="mt-1 h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
           />
         </label>
         <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#5A6A85]">
             Current software (optional)
           </span>
           <input
@@ -155,13 +155,13 @@ export function RequestForm() {
             onChange={(e) => setCurrentSoftware(e.target.value)}
             placeholder="Officio, spreadsheets, ..."
             disabled={pending}
-            className="mt-1 h-10 w-full border border-stone-200 bg-white px-3 text-sm"
+            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
           />
         </label>
       </div>
 
       <div className="mt-5">
-        <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+        <span className="text-xs font-semibold uppercase tracking-wider text-[#5A6A85]">
           Firm size
         </span>
         <div className="mt-2 grid gap-2 sm:grid-cols-4">
@@ -170,8 +170,8 @@ export function RequestForm() {
               key={opt.value}
               className={`group flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm transition-all ${
                 firmSize === opt.value
-                  ? "border-[var(--navy)] bg-[var(--navy)]/5 shadow-sm ring-1 ring-[var(--navy)]/30"
-                  : "border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50"
+                  ? "border-[#3D6FD8] bg-[#E9F0FC]/60 shadow-sm ring-1 ring-[#3D6FD8]/30"
+                  : "border-[#D9E2EC] bg-white hover:border-[#3D6FD8]/50"
               }`}
             >
               <input
@@ -185,20 +185,20 @@ export function RequestForm() {
                 aria-hidden
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all ${
                   firmSize === opt.value
-                    ? "border-[var(--navy)] bg-[var(--navy)] text-white"
-                    : "border-stone-300 bg-white text-transparent group-hover:border-stone-400"
+                    ? "border-[#3D6FD8] bg-[#3D6FD8] text-white"
+                    : "border-[#D9E2EC] bg-white text-transparent group-hover:border-[#3D6FD8]/50"
                 }`}
               >
                 <Check className="h-3.5 w-3.5" strokeWidth={3} />
               </span>
-              <span className="font-medium text-stone-800">{opt.label}</span>
+              <span className="font-medium text-[#1B365D]">{opt.label}</span>
             </label>
           ))}
         </div>
       </div>
 
       <label className="mt-5 block">
-        <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+        <span className="text-xs font-semibold uppercase tracking-wider text-[#5A6A85]">
           What matters most to your firm? (optional)
         </span>
         <textarea
@@ -208,11 +208,11 @@ export function RequestForm() {
           maxLength={2000}
           placeholder="The workflows you want to fix first, team setup, anything else we should know."
           disabled={pending}
-          className="mt-1 w-full border border-stone-200 bg-white px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 py-2 text-sm outline-none focus:border-[#3D6FD8] focus:ring-2 focus:ring-[#3D6FD8]/20"
         />
       </label>
 
-      <label className="group mt-4 flex cursor-pointer items-start gap-2 text-xs text-stone-600">
+      <label className="group mt-4 flex cursor-pointer items-start gap-2 text-xs text-[#5A6A85]">
         <input
           type="checkbox"
           checked={consent}
@@ -224,8 +224,8 @@ export function RequestForm() {
           aria-hidden
           className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${
             consent
-              ? "border-[var(--navy)] bg-[var(--navy)] text-white"
-              : "border-stone-300 bg-white text-transparent group-hover:border-stone-400"
+              ? "border-[#3D6FD8] bg-[#3D6FD8] text-white"
+              : "border-[#D9E2EC] bg-white text-transparent group-hover:border-[#3D6FD8]/50"
           }`}
         >
           <Check className="h-3 w-3" strokeWidth={3} />
@@ -236,7 +236,7 @@ export function RequestForm() {
           <Link
             href="/privacy-policy"
             target="_blank"
-            className="text-[var(--navy)] underline underline-offset-2"
+            className="text-[#3D6FD8] underline underline-offset-2"
           >
             Privacy Policy
           </Link>
@@ -245,7 +245,7 @@ export function RequestForm() {
       </label>
 
       {error && (
-        <p className="mt-4 border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+        <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
           {error}
         </p>
       )}
@@ -253,7 +253,7 @@ export function RequestForm() {
       <button
         type="submit"
         disabled={pending}
-        className="mt-5 inline-flex h-11 items-center gap-2 bg-[var(--navy)] px-6 text-sm font-semibold text-white hover:bg-[var(--navy)]/90 disabled:opacity-60"
+        className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#3D6FD8] px-6 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2F5BC0] disabled:opacity-60"
       >
         {pending ? (
           <>
