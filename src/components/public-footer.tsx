@@ -52,7 +52,7 @@ export function PublicFooter() {
             Terms of Use
           </Link>
           <Link
-            href="/immigration-crm-software"
+            href="/"
             className="hover:text-stone-600 hover:underline"
           >
             BBI-CRM for firms

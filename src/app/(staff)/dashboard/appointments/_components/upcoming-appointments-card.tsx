@@ -57,7 +57,7 @@ export function UpcomingAppointmentsCard({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-[var(--radius)] bg-card",
+        "overflow-hidden rounded-[var(--radius)] bg-card shadow-sm",
         prominent
           ? "border border-[var(--border-secondary)] border-l-2 border-l-[var(--gold)]"
           : "border border-border",

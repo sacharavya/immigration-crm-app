@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { GenzLogo } from "@/components/brand/genz-logo";
 
 import { type LatestDoc } from "@/app/(staff)/dashboard/cases/[id]/_components/document-checklist";
 import { adminClient } from "@/lib/supabase/admin";
@@ -213,14 +213,7 @@ export default async function ClientUploadPage({ params }: Props) {
     <main className="min-h-dvh bg-[var(--surface-sunken)]">
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-2xl items-center gap-4 px-5 py-5">
-          <Image
-            src="/genzdatalabs-logo.png"
-            alt="genzdatalabs Immigration"
-            width={400}
-            height={200}
-            className="h-11 w-auto object-contain"
-            priority
-          />
+          <GenzLogo className="h-11 w-auto text-[#1E2136]" />
           <p className="min-w-0 text-sm text-muted-foreground">
             Your case, {caseRow.case_number}, documents for {greetingName}
           </p>

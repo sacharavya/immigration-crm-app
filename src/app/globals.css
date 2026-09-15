@@ -162,6 +162,19 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* ── Elevation ────────────────────────────────────────────── */
+  /* Soft and navy-tinted rather than neutral black: cards lift off the
+     sunken canvas without a hard edge. Shadows were previously killed
+     globally; the scale is redefined here so the shadow-* utilities already
+     in the codebase all resolve to this one family. */
+  --shadow-2xs: 0 1px 2px rgba(30, 33, 54, 0.04);
+  --shadow-xs: 0 1px 2px rgba(30, 33, 54, 0.05);
+  --shadow-sm: 0 1px 2px rgba(30, 33, 54, 0.05), 0 1px 3px rgba(30, 33, 54, 0.04);
+  --shadow-md: 0 2px 4px rgba(30, 33, 54, 0.04), 0 4px 12px rgba(30, 33, 54, 0.06);
+  --shadow-lg: 0 4px 8px rgba(30, 33, 54, 0.04), 0 12px 28px rgba(30, 33, 54, 0.08);
+  --shadow-xl: 0 8px 16px rgba(30, 33, 54, 0.05), 0 24px 48px rgba(30, 33, 54, 0.10);
+  --shadow-2xl: 0 16px 32px rgba(30, 33, 54, 0.06), 0 40px 80px rgba(30, 33, 54, 0.14);
 }
 
 /* THE one radius setting for the public marketing surface. The app keeps
@@ -169,7 +182,92 @@
    rounded design-handoff scale by carrying this class on their root.
    Change this single value to tune every corner on those pages. */
 .marketing-radius {
-  --radius: 10px;
+  /* Tight corners. The editorial register wants crisp edges, not the soft
+     app radius — buttons and cards read as print, not as chrome. */
+  --radius: 6px;
+
+  /* Paper canvas and ink. Near-monochrome by design: navy carries the brand
+     and mint is rationed to small marks, so the pages read professional
+     rather than promotional. */
+  --paper: #F7F7F4;
+  --paper-raised: #FFFFFF;
+  --ink: #1E2136;
+  --ink-muted: #5A6A85;
+  --ink-faint: #8B93A3;
+  --rule: #E2E2DC;
+  --slab: #1A1D2E;
+
+  /* The colour that sits ON an --ink fill. Paired so a filled button keeps
+     contrast when the ink token is inverted on a dark surface. */
+  --on-ink: #FFFFFF;
+}
+
+/* Any dark marketing surface re-points the ink tokens, so the shared
+   primitives (Display, PrimaryLink, WhiteLink, hairline rules) invert
+   without every call site restating its colours. Nest .on-light to put a
+   light card back on a dark slab. */
+.on-dark {
+  --ink: #FFFFFF;
+  --on-ink: #1A1D2E;
+  --ink-muted: rgba(255, 255, 255, 0.62);
+  --ink-faint: rgba(255, 255, 255, 0.42);
+  --rule: rgba(255, 255, 255, 0.14);
+  --paper: rgba(255, 255, 255, 0.06);
+}
+
+.on-light {
+  --ink: #1E2136;
+  --on-ink: #FFFFFF;
+  --ink-muted: #5A6A85;
+  --ink-faint: #8B93A3;
+  --rule: #E2E2DC;
+  --paper: #F7F7F4;
+}
+
+/* Focus list: the whole set sits faded, one entry is in focus. Pointing at
+   any entry moves the focus to it. Pure CSS so the section stays a server
+   component — the specificity ladder is what makes it deterministic:
+   .fw (1 class) < .fw-list:hover .fw (2) < .fw-list .fw:hover (3). */
+.fw {
+  opacity: 0.22;
+  transition: opacity 220ms ease;
+}
+.fw-active {
+  opacity: 1;
+}
+.fw-list:hover .fw {
+  opacity: 0.22;
+}
+.fw-list .fw:hover {
+  opacity: 1;
+}
+
+/* Fine film grain. Flat colour fields read as cheap at this scale; a barely
+   visible noise layer gives the dark slabs a printed, tactile surface. */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+}
+
+/* genZ logo accent.
+   The supplied artwork uses #D8FF3E, which is drawn for a dark surface and
+   is effectively invisible on white (~1.1:1). On light surfaces we use a
+   deeper lime that still reads as the same colour; the original is kept for
+   dark ones. The wordmark itself inherits currentColor, so it is the caller's
+   text colour rather than a baked-in white. */
+:root {
+  --logo-accent: #7FA100;
+}
+
+.on-dark,
+:root[data-theme="dark"],
+.dark {
+  --logo-accent: #D8FF3E;
 }
 
 /* The signed-in CRM. Square everywhere reads as severe on data-dense
@@ -179,23 +277,28 @@
   --radius: 10px;
 
   /* Hairline borders. The default --border is tuned for square edges and
-     looks heavy once corners are rounded. */
+     looks heavy once corners are rounded, and elevation now carries most of
+     the separation that borders used to do alone. */
   --border: #ECEEF1;
   --border-secondary: #DDE1E6;
 
-  /* Page ground behind the cards. Slightly cooler than the cards so
-     surfaces separate without needing shadows (which are off globally). */
-  --surface-sunken: #F7F8FA;
+  /* Page ground behind the cards, cool enough that white surfaces read as
+     lifted off it. Navy-tinted rather than neutral grey so it belongs to the
+     brand family. */
+  --surface-sunken: #F4F5FA;
+
+  /* Pastel tile fills for accent icon squares. Each pairs with the matching
+     *-tile-fg for the glyph so contrast holds on the wash. */
+  --tile-mint: #DCF3E8;
+  --tile-mint-fg: #1F6B49;
+  --tile-lilac: #E6E7F4;
+  --tile-lilac-fg: #3B4066;
+  --tile-peach: #FCE7E3;
+  --tile-peach-fg: #9F2920;
+  --tile-amber: #FBEDD2;
+  --tile-amber-fg: #8A5A12;
 }
 
-/* Kill all shadows globally. Revert by removing this block. */
-*,
-*::before,
-*::after {
-  --tw-shadow: 0 0 #0000 !important;
-  --tw-ring-shadow: 0 0 #0000 !important;
-  box-shadow: none !important;
-}
 
 @media (prefers-reduced-motion: reduce) {
   * {

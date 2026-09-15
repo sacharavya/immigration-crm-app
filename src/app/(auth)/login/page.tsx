@@ -1,7 +1,7 @@
 "use client";
 
+import { GenzLogo } from "@/components/brand/genz-logo";
 import { ArrowRight, Globe, Scale, ShieldCheck } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { use, useActionState } from "react";
 
@@ -34,14 +34,7 @@ export default function LoginPage({ searchParams }: Props) {
       <div className="flex w-full flex-col justify-center px-8 py-12 lg:w-1/2 lg:px-16 xl:px-24">
         <div className="mx-auto w-full max-w-md">
           {/* Logo */}
-          <Image
-            src="/genzdatalabs-logo.png"
-            alt="genzdatalabs Immigration"
-            width={1933}
-            height={537}
-            priority
-            className="h-12 w-auto"
-          />
+          <GenzLogo className="h-12 w-auto text-[#1E2136]" />
 
           {/* Heading */}
           <h1 className="mt-8 text-2xl font-semibold tracking-tight text-stone-900">
@@ -156,13 +149,7 @@ export default function LoginPage({ searchParams }: Props) {
           <div className="mx-auto w-full overflow-hidden rounded-xl border border-white/10 bg-white/[0.07] p-1 shadow-2xl">
             <div className="rounded-lg bg-white/[0.05] px-6 py-10">
               <div className="flex items-center justify-center gap-3">
-                <Image
-                  src="/genzdatalabs-logo.png"
-                  alt=""
-                  width={1933}
-                  height={537}
-                  className="h-10 w-auto brightness-0 invert"
-                />
+                <GenzLogo tone="dark" className="h-10 w-auto" />
               </div>
               <div className="mt-6 grid grid-cols-3 gap-3">
                 {[

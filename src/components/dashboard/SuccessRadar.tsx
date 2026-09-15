@@ -69,7 +69,7 @@ export function SuccessRadar({ data }: { data: RadarData }) {
   }
 
   return (
-    <section className="rounded-lg border border-border bg-card">
+    <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <header className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div>
           <h2 className="text-sm font-semibold tracking-tight text-foreground">

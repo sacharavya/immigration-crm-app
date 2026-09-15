@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { GenzLogo } from "@/components/brand/genz-logo";
 
 import {
   RETAINER_STYLES,
@@ -56,13 +56,7 @@ export default async function PublicSigningPage({ params }: Props) {
     <main className="min-h-dvh bg-stone-100">
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <Image
-            src="/genzdatalabs-logo.png"
-            alt="genzdatalabs Immigration"
-            width={1933}
-            height={537}
-            className="h-10 w-auto"
-          />
+          <GenzLogo className="h-10 w-auto text-[#1E2136]" />
           <div>
             <div className="text-sm font-semibold text-[var(--navy)]">
               genzdatalabs Immigration Consulting Inc.

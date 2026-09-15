@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { getPlatformAdmin } from "@/lib/auth/platform-admin";
@@ -196,6 +197,37 @@ export async function respondToFeedback(raw: unknown): Promise<AdminResult> {
   if (error) return { error: error.message };
 
   revalidatePath("/admin/feedback");
+  return { ok: true };
+}
+
+const accessRequestSchema = z.object({
+  id: z.string().uuid(),
+  status: z.enum(["new", "contacted", "onboarding", "active", "declined"]),
+});
+
+// Triage for the B2B signup funnel. The table is the platform's, not any
+// tenant's, so this is the only write path to it outside the public form.
+export async function updateAccessRequestStatus(
+  raw: unknown,
+): Promise<AdminResult> {
+  if (!(await requireAdmin())) return { error: "Not authorized" };
+
+  const parsed = accessRequestSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  const supabase = await createClient();
+  // Newer than the generated Database types, hence the untyped client.
+  const { error } = await (supabase as unknown as SupabaseClient)
+    .schema("crm")
+    .from("software_access_requests")
+    .update({ status: parsed.data.status })
+    .eq("id", parsed.data.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/access-requests");
   return { ok: true };
 }
 

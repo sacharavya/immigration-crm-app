@@ -47,12 +47,12 @@ export function PipelineStrip({ phases }: { phases: PipelinePhase[] }) {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 border-l border-t border-border sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {phases.map((p) => (
           <Link
             key={p.phase}
             href={p.href}
-            className="group border-b border-r border-border bg-card outline-none transition-colors hover:bg-[var(--surface-sunken)] focus-visible:relative focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40"
+            className="group overflow-hidden rounded-[var(--radius)] border border-border bg-card shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             <span aria-hidden className={cn("block h-[3px]", RAIL[p.phase])} />
             <div className="p-4">

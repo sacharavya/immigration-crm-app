@@ -1,7 +1,7 @@
 "use client";
 
+import { GenzLogo } from "@/components/brand/genz-logo";
 import { LogOut } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 import { useAgent } from "@/lib/auth/agent-context";
@@ -16,14 +16,7 @@ export function AgentHeader() {
         aria-label="genzdatalabs Immigration"
         className="flex h-full items-center transition-opacity hover:opacity-80"
       >
-        <Image
-          src="/genzdatalabs-logo.png"
-          alt="genzdatalabs Immigration"
-          width={200}
-          height={100}
-          priority
-          className="h-10 w-auto object-contain"
-        />
+        <GenzLogo className="h-10 w-auto text-[#1E2136]" />
       </Link>
 
       <div className="flex items-center gap-4">

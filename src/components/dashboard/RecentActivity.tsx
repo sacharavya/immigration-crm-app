@@ -45,7 +45,7 @@ export function RecentActivity({ rows }: { rows: RecentRow[] }) {
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
         {rows.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-muted-foreground">
             No active cases yet.

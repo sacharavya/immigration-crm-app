@@ -1,5 +1,5 @@
+import { GenzLogo } from "@/components/brand/genz-logo";
 import type { Metadata } from "next";
-import Image from "next/image";
 
 import { PublicFooter } from "@/components/public-footer";
 
@@ -26,14 +26,7 @@ export default function PayLayout({
     <div className="flex min-h-dvh flex-col bg-stone-50 text-stone-900">
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-6 py-4">
-          <Image
-            src="/genzdatalabs-logo.png"
-            alt="genzdatalabs Immigration"
-            width={1933}
-            height={537}
-            priority
-            className="h-10 w-auto"
-          />
+          <GenzLogo className="h-10 w-auto text-[#1E2136]" />
         </div>
       </header>
       <main className="mx-auto max-w-3xl flex-1 px-6 py-8">{children}</main>

@@ -197,7 +197,7 @@ export default function AboutUsPage() {
               Book a consultation <ArrowRight className="h-4 w-4" />
             </WhiteLink>
             <Link
-              href="/#services"
+              href="/immigration-consulting#services"
               className="inline-flex items-center rounded-[10px] border border-white/60 px-5 py-3 text-sm font-semibold text-white hover:bg-white/10"
             >
               Explore services

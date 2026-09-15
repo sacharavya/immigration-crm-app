@@ -4,7 +4,7 @@ import { Check, CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-import { submitAccessRequest } from "../actions";
+import { submitAccessRequest } from "./actions";
 
 const FIRM_SIZES = [
   { value: "solo", label: "Solo practitioner" },

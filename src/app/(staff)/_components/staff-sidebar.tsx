@@ -1,5 +1,6 @@
 "use client";
 
+import { GenzLogo } from "@/components/brand/genz-logo";
 import {
   Archive,
   BarChart3,
@@ -23,7 +24,6 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -63,21 +63,14 @@ export function StaffSidebar() {
   }
 
   return (
-    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-stone-200 bg-white">
-      <div className="flex h-24 items-center justify-center border-b border-stone-200 px-3">
+    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-border bg-card">
+      <div className="flex h-24 items-center justify-center border-b border-border px-3">
         <Link
           href="/dashboard"
           aria-label="genzdatalabs Immigration CRM"
           className="block h-full w-full transition-opacity hover:opacity-80"
         >
-          <Image
-            src="/genzdatalabs-logo.png"
-            alt="genzdatalabs Immigration"
-            width={400}
-            height={200}
-            priority
-            className="h-full w-full object-contain"
-          />
+          <GenzLogo className="h-full w-full text-[#1E2136]" />
         </Link>
       </div>
 
@@ -173,7 +166,7 @@ export function StaffSidebar() {
         />
       </nav>
 
-      <div className="border-t border-stone-200 p-3">
+      <div className="border-t border-border p-3">
         <div className="flex items-center gap-3 rounded-md px-2 py-2">
           <span
             aria-hidden
@@ -183,17 +176,17 @@ export function StaffSidebar() {
             {initials}
           </span>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium text-stone-900">
+            <div className="truncate text-sm font-medium text-foreground">
               {staff.first_name} {staff.last_name}
             </div>
-            <div className="truncate text-xs text-stone-500">{staff.email}</div>
+            <div className="truncate text-xs text-[var(--subtle-foreground)]">{staff.email}</div>
           </div>
           <NotificationBell />
         </div>
         <form action="/logout" method="post" className="mt-1">
           <button
             type="submit"
-            className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+            className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-[var(--subtle-foreground)] transition-colors hover:bg-muted hover:text-foreground"
             title="Sign out"
           >
             <LogOut className="h-4 w-4" />
@@ -224,7 +217,7 @@ function NavItem({
         "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
         active
           ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
-          : "text-stone-600 hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
+          : "text-muted-foreground hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
       )}
     >
       <Icon className="h-4 w-4" />
@@ -254,7 +247,7 @@ function CasesSection({ pathname }: { pathname: string }) {
             "flex flex-1 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
             sectionActive
               ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
-              : "text-stone-600 hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
+              : "text-muted-foreground hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
           )}
         >
           <Briefcase className="h-4 w-4" />
@@ -265,7 +258,7 @@ function CasesSection({ pathname }: { pathname: string }) {
           aria-label={open ? "Collapse cases menu" : "Expand cases menu"}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="ml-1 rounded-md p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+          className="ml-1 rounded-md p-1.5 text-[var(--subtle-foreground)] transition-colors hover:bg-muted hover:text-foreground"
         >
           <ChevronDown
             className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
@@ -273,7 +266,7 @@ function CasesSection({ pathname }: { pathname: string }) {
         </button>
       </div>
       {open && (
-        <div className="ml-5 mt-0.5 space-y-0.5 border-l border-stone-200 pl-3">
+        <div className="ml-5 mt-0.5 space-y-0.5 border-l border-border pl-3">
           <SubNavItem
             href="/dashboard/cases"
             label="Active cases"
@@ -318,7 +311,7 @@ function AppointmentsSection({ pathname }: { pathname: string }) {
             "flex flex-1 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
             sectionActive
               ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
-              : "text-stone-600 hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
+              : "text-muted-foreground hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
           )}
         >
           <CalendarDays className="h-4 w-4" />
@@ -329,7 +322,7 @@ function AppointmentsSection({ pathname }: { pathname: string }) {
           aria-label={open ? "Collapse appointments menu" : "Expand appointments menu"}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="ml-1 rounded-md p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+          className="ml-1 rounded-md p-1.5 text-[var(--subtle-foreground)] transition-colors hover:bg-muted hover:text-foreground"
         >
           <ChevronDown
             className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
@@ -337,7 +330,7 @@ function AppointmentsSection({ pathname }: { pathname: string }) {
         </button>
       </div>
       {open && (
-        <div className="ml-5 mt-0.5 space-y-0.5 border-l border-stone-200 pl-3">
+        <div className="ml-5 mt-0.5 space-y-0.5 border-l border-border pl-3">
           <SubNavItem
             href="/dashboard/appointments"
             label="Calendar"
@@ -385,7 +378,7 @@ function SubNavItem({
         "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors",
         active
           ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
-          : "text-stone-600 hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
+          : "text-muted-foreground hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
       )}
     >
       <Icon className="h-3.5 w-3.5" />

@@ -1,4 +1,3 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { ArrowRight, Inbox } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -53,32 +52,6 @@ export default async function LeadsPage() {
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(200);
-
-  // BBI-CRM alpha requests from /immigration-crm-software. Newer than the
-  // generated Database types, hence the untyped view.
-  const { data: accessRequests } = await (
-    supabase as unknown as SupabaseClient
-  )
-    .schema("crm")
-    .from("software_access_requests")
-    .select(
-      "id, firm_name, contact_name, email, phone, rcic_number, firm_size, current_software, message, status, created_at",
-    )
-    .order("created_at", { ascending: false })
-    .limit(100);
-  const requests = (accessRequests ?? []) as Array<{
-    id: string;
-    firm_name: string;
-    contact_name: string;
-    email: string;
-    phone: string | null;
-    rcic_number: string | null;
-    firm_size: string | null;
-    current_software: string | null;
-    message: string | null;
-    status: string;
-    created_at: string;
-  }>;
 
   const rows = (leads ?? []).map((l) => {
     const responses = l.background_responses as Record<string, unknown> | null;
@@ -201,84 +174,6 @@ export default async function LeadsPage() {
         </div>
       )}
 
-      {requests.length > 0 && (
-        <div className="mt-12">
-          <h2 className="text-lg font-semibold text-stone-900">
-            BBI-CRM access requests
-          </h2>
-          <p className="mt-1 text-sm text-stone-500">
-            Firms asking to join the alpha program via the public
-            /immigration-crm-software page.
-          </p>
-          <div className="mt-4 overflow-x-auto border border-stone-200 bg-white">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-stone-200 bg-stone-50 text-left text-xs uppercase tracking-wide text-stone-500">
-                  <th className="px-4 py-3 font-medium">Firm</th>
-                  <th className="px-4 py-3 font-medium">Contact</th>
-                  <th className="px-4 py-3 font-medium">Size</th>
-                  <th className="px-4 py-3 font-medium">Current software</th>
-                  <th className="px-4 py-3 font-medium">Message</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Received</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map((r) => (
-                  <tr
-                    key={r.id}
-                    className="border-b border-stone-100 last:border-0 hover:bg-stone-50"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-stone-900">
-                        {r.firm_name}
-                      </div>
-                      {r.rcic_number && (
-                        <div className="text-xs text-stone-400">
-                          RCIC# {r.rcic_number}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-stone-600">
-                      <div>{r.contact_name}</div>
-                      <div className="text-xs text-stone-400">
-                        {r.email}
-                        {r.phone ? ` · ${r.phone}` : ""}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-stone-600">
-                      {r.firm_size ?? "-"}
-                    </td>
-                    <td className="px-4 py-3 text-stone-600">
-                      {r.current_software ?? "-"}
-                    </td>
-                    <td className="px-4 py-3 text-stone-600">
-                      {r.message ? (
-                        <span
-                          className="block max-w-64 truncate"
-                          title={r.message}
-                        >
-                          {r.message}
-                        </span>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-block rounded bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-stone-500">
-                      {new Date(r.created_at).toLocaleDateString("en-CA")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,7 +1,8 @@
-import { Building2, Inbox, LayoutGrid } from "lucide-react";
+import { Building2, Inbox, LayoutGrid, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { GenzLogo } from "@/components/brand/genz-logo";
 import { getPlatformAdmin } from "@/lib/auth/platform-admin";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 const NAV = [
   { href: "/admin", label: "Firms", Icon: Building2 },
   { href: "/admin/features", label: "Features", Icon: LayoutGrid },
+  { href: "/admin/access-requests", label: "Access requests", Icon: UserPlus },
   { href: "/admin/feedback", label: "Support inbox", Icon: Inbox },
 ];
 
@@ -25,11 +27,11 @@ export default async function PlatformAdminLayout({
   return (
     <div className="flex min-h-screen bg-[var(--surface-sunken)]">
       <aside className="flex w-60 flex-none flex-col border-r border-stone-200 bg-white">
-        <div className="border-b border-stone-200 px-5 py-4">
-          <div className="text-sm font-semibold text-stone-900">
-            Platform admin
-          </div>
-          <div className="mt-0.5 text-xs text-stone-500">
+        <div className="border-b border-stone-200 px-5 py-5">
+          {/* The operator portal is the platform itself, so it carries the
+              genZ mark. Each firm's own branding lives in their CRM. */}
+          <GenzLogo className="h-7 w-auto text-[#1E2136]" title="genZ" />
+          <div className="mt-2 text-xs text-stone-500">
             Manage firms. No access to their data.
           </div>
         </div>

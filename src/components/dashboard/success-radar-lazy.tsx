@@ -13,7 +13,7 @@ const SuccessRadarImpl = dynamic(
   {
     ssr: false,
     loading: () => (
-      <section className="rounded-lg border border-border bg-card">
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
         <div className="border-b border-border px-4 py-3">
           <div className="h-4 w-40 animate-pulse rounded bg-muted" />
         </div>

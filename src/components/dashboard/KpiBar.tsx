@@ -82,10 +82,9 @@ function Cell({ view }: { view: KpiView }) {
   );
 }
 
-// One instrument panel rather than four boxed cards. Each cell closes its own
-// bottom and right edge and the container closes the top and left, so the grid
-// reads as one surface at any column count — and an underfull last row leaves
-// no stray divider, which a gap-based separator would.
+// Separate tiles floating on the sunken canvas rather than one fused panel:
+// elevation does the separating, so no divider rules are needed and an
+// underfull last row is simply a shorter row.
 export function KpiBar({
   views,
   links,
@@ -94,19 +93,19 @@ export function KpiBar({
   links?: Partial<Record<KpiKey, string>>;
 }) {
   return (
-    <section className="grid grid-cols-1 border-l border-t border-border min-[560px]:grid-cols-2 min-[1080px]:grid-cols-4">
+    <section className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 min-[1080px]:grid-cols-4">
       {views.map((view) => {
         const href = links?.[view.key];
         return href ? (
           <Link
             key={view.key}
             href={href}
-            className="border-b border-r border-border bg-card outline-none transition-colors hover:bg-[var(--surface-sunken)] focus-visible:relative focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40"
+            className="rounded-[var(--radius)] border border-border bg-card shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             <Cell view={view} />
           </Link>
         ) : (
-          <div key={view.key} className="border-b border-r border-border bg-card">
+          <div key={view.key} className="rounded-[var(--radius)] border border-border bg-card shadow-sm">
             <Cell view={view} />
           </div>
         );

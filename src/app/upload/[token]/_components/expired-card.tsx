@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { GenzLogo } from "@/components/brand/genz-logo";
 
 // Static landing card shown when:
 // - the token doesn't exist (typo, fake URL)
@@ -14,14 +14,7 @@ export function ExpiredCard() {
     <main className="flex min-h-dvh items-center justify-center bg-[var(--surface-sunken)] px-6 py-12">
       <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-8 shadow-sm">
         <div className="flex justify-center">
-          <Image
-            src="/genzdatalabs-logo.png"
-            alt="genzdatalabs Immigration"
-            width={400}
-            height={200}
-            className="h-16 w-auto object-contain"
-            priority
-          />
+          <GenzLogo className="h-16 w-auto text-[#1E2136]" />
         </div>
         <h1 className="mt-6 text-center text-xl font-semibold text-[var(--navy)]">
           This upload link is no longer active.
