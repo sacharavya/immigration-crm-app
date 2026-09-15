@@ -32,7 +32,7 @@ export async function submitConsultationSignature(input: {
     .schema("crm")
     .from("appointments")
     .select(
-      "id, client_id, snapshot_client_name, snapshot_client_email, starts_at, consultation_agreement_signed_at, consultation_agreement_token_expires_at",
+      "id, tenant_id, client_id, snapshot_client_name, snapshot_client_email, starts_at, consultation_agreement_signed_at, consultation_agreement_token_expires_at",
     )
     .eq("consultation_agreement_token", input.token)
     .is("deleted_at", null)
@@ -65,7 +65,7 @@ export async function submitConsultationSignature(input: {
       .toLocaleDateString("en-CA", { timeZone: "America/Toronto" })
       .slice(0, 4);
     const safeName = `${appt.id.slice(0, 8)}_consultation-agreement.pdf`;
-    const folder = await ensureConsultationAgreementsFolder(year);
+    const folder = await ensureConsultationAgreementsFolder(appt.tenant_id, year);
     const uploaded = await uploadFile(
       folder.driveId,
       folder.folderItemId,

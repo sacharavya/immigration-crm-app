@@ -52,6 +52,7 @@ export type PayPortalCase = {
   total_due_cad: number;
   already_paid_cad: number;
   amount_due_cad: number;
+  tenant_id: string;
   sharepoint_folder_id: string | null;
   client_name: string;
 };
@@ -65,7 +66,7 @@ export async function loadCaseByPayToken(
     .schema("crm")
     .from("cases")
     .select(
-      "id, case_number, client_id, status, quoted_fee_cad, government_fee_cad, sharepoint_folder_id, client:clients(legal_name_full, given_names, preferred_name)",
+      "id, tenant_id, case_number, client_id, status, quoted_fee_cad, government_fee_cad, sharepoint_folder_id, client:clients(legal_name_full, given_names, preferred_name)",
     )
     .eq("client_portal_token", token)
     .is("deleted_at", null)
@@ -135,6 +136,7 @@ export async function loadCaseByPayToken(
     total_due_cad: totalDue,
     already_paid_cad: alreadyPaid,
     amount_due_cad: amountDue,
+    tenant_id: caseRow.tenant_id,
     sharepoint_folder_id: caseRow.sharepoint_folder_id,
     client_name: clientName,
   };
@@ -202,7 +204,10 @@ export async function submitCasePaymentProof(
 
   let uploaded;
   try {
-    const folder = await ensureCasePaymentsFolder(caseRow.sharepoint_folder_id);
+    const folder = await ensureCasePaymentsFolder(
+      caseRow.tenant_id,
+      caseRow.sharepoint_folder_id,
+    );
     uploaded = await uploadFile(
       folder.driveId,
       folder.folderItemId,

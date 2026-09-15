@@ -37,6 +37,7 @@ export type ClientPortalCase = {
   case_number: string;
   client_id: string;
   service_template_id: string;
+  tenant_id: string;
   sharepoint_folder_id: string | null;
   status: string;
   // FLOW-3d: when the case is past Review, the portal only stays open if
@@ -54,7 +55,7 @@ export async function loadCaseByPortalToken(
     .schema("crm")
     .from("cases")
     .select(
-      "id, case_number, client_id, service_template_id, sharepoint_folder_id, status",
+      "id, tenant_id, case_number, client_id, service_template_id, sharepoint_folder_id, status",
     )
     .eq("client_portal_token", token)
     .is("deleted_at", null)
@@ -205,6 +206,7 @@ async function resolvePortalUploadContext(
   let categoryFolderId: string;
   try {
     const { folderItemId } = await ensureCaseCategoryFolder(
+      caseRow.tenant_id,
       caseRow.sharepoint_folder_id,
       templateDoc.group.name,
     );
@@ -527,6 +529,7 @@ export async function reuploadFileAsClient(
     superseded.file_name
   ) {
     await enqueueAndAttemptRejectedMove({
+      tenantId: caseRow.tenant_id,
       supersededDocumentId: superseded.id,
       sourceDriveId: superseded.sharepoint_drive_id,
       sourceItemId: superseded.sharepoint_item_id,

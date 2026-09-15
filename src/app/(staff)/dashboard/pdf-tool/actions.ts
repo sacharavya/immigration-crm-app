@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getStaff } from "@/lib/auth/staff";
 import { graphFetch } from "@/lib/graph/client";
 import { ensureCaseFinalFolder } from "@/lib/graph/folders";
+import { requireStaffTenantId } from "@/lib/tenant/context";
 import { createClient } from "@/lib/supabase/server";
 
 // Mints a short-lived, pre-authenticated OneDrive download URL for a case
@@ -233,7 +234,9 @@ export async function createFinalUploadSession(
     return { error: "Only PDF output can be saved." };
   }
   try {
-    const { driveId, folderItemId } = await ensureCaseFinalFolder(ctx.folderId);
+    const { driveId, folderItemId } = await ensureCaseFinalFolder(
+      await requireStaffTenantId(),
+      ctx.folderId);
     const session = await graphFetch<{ uploadUrl?: string }>(
       `/drives/${driveId}/items/${folderItemId}:/${encodeURIComponent(safe)}:/createUploadSession`,
       {

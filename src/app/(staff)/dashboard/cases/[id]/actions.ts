@@ -25,6 +25,7 @@ import {
   ensureCasePaymentsFolder,
 } from "@/lib/graph/folders";
 import { uploadFile as graphUploadFile } from "@/lib/graph/uploads";
+import { requireStaffTenantId } from "@/lib/tenant/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { immigrationStatusFromServiceType } from "@/lib/validators/client-immigration";
@@ -199,6 +200,8 @@ async function resolveUploadContext(
   let categoryFolderId: string;
   try {
     const { folderItemId } = await ensureCaseCategoryFolder(
+      await requireStaffTenantId(),
+      
       caseRow.sharepoint_folder_id,
       templateDoc.group.name,
     );
@@ -565,6 +568,7 @@ export async function reuploadFile(
     superseded.file_name
   ) {
     await enqueueAndAttemptRejectedMove({
+      tenantId: await requireStaffTenantId(),
       supersededDocumentId: superseded.id,
       sourceDriveId: superseded.sharepoint_drive_id,
       sourceItemId: superseded.sharepoint_item_id,
@@ -988,7 +992,9 @@ export async function attachPaymentProof(
 
   let uploaded;
   try {
-    const folder = await ensureCasePaymentsFolder(caseRow.sharepoint_folder_id);
+    const folder = await ensureCasePaymentsFolder(
+      await requireStaffTenantId(),
+      caseRow.sharepoint_folder_id);
     uploaded = await graphUploadFile(
       folder.driveId,
       folder.folderItemId,

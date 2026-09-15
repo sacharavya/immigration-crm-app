@@ -10,6 +10,7 @@ import type { FormMapping } from "@/lib/forms/mapping";
 import type { ApplicantProfile } from "@/lib/forms/profile";
 import { ensureCaseFinalFolder } from "@/lib/graph/folders";
 import { uploadFile } from "@/lib/graph/uploads";
+import { requireStaffTenantId } from "@/lib/tenant/context";
 import { createClient } from "@/lib/supabase/server";
 
 // FORMS-4: server side of the Generate form action. The PDF itself is
@@ -216,6 +217,8 @@ export async function saveFormFill(
 
   try {
     const { driveId, folderItemId } = await ensureCaseFinalFolder(
+      await requireStaffTenantId(),
+      
       caseRow.sharepoint_folder_id,
     );
     const bytes = new Uint8Array(await file.arrayBuffer());

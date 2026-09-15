@@ -77,7 +77,7 @@ async function loadRetainerByToken(token: string) {
     .schema("crm")
     .from("retainer_agreements")
     .select(
-      "id, case_id, status, signing_token, token_expires_at, deleted_at, rcic_id",
+      "id, tenant_id, case_id, status, signing_token, token_expires_at, deleted_at, rcic_id",
     )
     .eq("signing_token", token)
     .is("deleted_at", null)
@@ -383,7 +383,7 @@ async function finishOnlineSignature(
       pdfForEmail = Buffer.from(pdf);
       const today = new Date().toISOString().slice(0, 10);
       const fileName = `Retainer_Signed_${today}.pdf`;
-      const folder = await ensureCaseRetainerFolder(folderId);
+      const folder = await ensureCaseRetainerFolder(retainer.tenant_id, folderId);
       const uploaded = await uploadFile(
         folder.driveId,
         folder.folderItemId,
@@ -528,7 +528,7 @@ export async function submitScannedDocument(
 
   let uploaded;
   try {
-    const folder = await ensureCaseRetainerFolder(folderId);
+    const folder = await ensureCaseRetainerFolder(retainer.tenant_id, folderId);
     uploaded = await uploadFile(
       folder.driveId,
       folder.folderItemId,

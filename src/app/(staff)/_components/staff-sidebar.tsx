@@ -9,11 +9,13 @@ import {
   ChevronDown,
   FileText,
   Handshake,
+  HardDrive,
   History,
   Inbox,
   LineChart,
   ListChecks,
   LogOut,
+  MessageSquare,
   Receipt,
   Settings as SettingsIcon,
   Shield,
@@ -155,6 +157,20 @@ export function StaffSidebar() {
             active={isActive("/dashboard/audit")}
           />
         </Can>
+        <Can permission="manage_settings">
+          <NavItem
+            href="/dashboard/settings/storage"
+            label="Storage"
+            Icon={HardDrive}
+            active={isActive("/dashboard/settings/storage")}
+          />
+        </Can>
+        <NavItem
+          href="/dashboard/feedback"
+          label="Feedback"
+          Icon={MessageSquare}
+          active={isActive("/dashboard/feedback")}
+        />
       </nav>
 
       <div className="border-t border-stone-200 p-3">

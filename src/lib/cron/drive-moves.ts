@@ -36,7 +36,7 @@ export async function runDriveMovesSweep(): Promise<DriveMovesSweepResult> {
     .schema("files")
     .from("pending_drive_moves")
     .select(
-      "id, source_drive_id, source_item_id, parent_folder_item_id, target_file_name, attempt_count, max_attempts",
+      "id, tenant_id, source_drive_id, source_item_id, parent_folder_item_id, target_file_name, attempt_count, max_attempts",
     )
     .eq("status", "pending")
     .lte("next_attempt_at", nowIso)
@@ -60,6 +60,7 @@ export async function runDriveMovesSweep(): Promise<DriveMovesSweepResult> {
     const nextAttempt = row.attempt_count + 1;
     try {
       const { folderItemId } = await ensureRejectedFolderUnder(
+        row.tenant_id,
         row.parent_folder_item_id,
       );
       await moveAndRenameDriveItem(

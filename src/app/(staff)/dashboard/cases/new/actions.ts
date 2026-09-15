@@ -6,6 +6,7 @@ import { after } from "next/server";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
 import { createCaseFolderStructure } from "@/lib/graph/folders";
+import { requireStaffTenantId } from "@/lib/tenant/context";
 import { createClient } from "@/lib/supabase/server";
 import { newCaseSchema, type NewCaseInput } from "@/lib/validators/case";
 
@@ -304,7 +305,9 @@ export async function createCase(
     // cookies/auth survive in Next.js 15+ specifically for this case.
     const sb = await createClient();
     try {
-      const { driveItemId, webUrl } = await createCaseFolderStructure(newCaseId);
+      const { driveItemId, webUrl } = await createCaseFolderStructure(
+      await requireStaffTenantId(),
+      newCaseId);
       await sb
         .schema("crm")
         .from("cases")
@@ -387,7 +390,9 @@ export async function retryFolderCreation(
   }
 
   try {
-    const { driveItemId, webUrl } = await createCaseFolderStructure(caseId);
+    const { driveItemId, webUrl } = await createCaseFolderStructure(
+      await requireStaffTenantId(),
+      caseId);
 
     await supabase
       .schema("crm")

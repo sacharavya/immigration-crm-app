@@ -25,6 +25,11 @@ import {
 // client without touching the staff session.
 
 export type EnqueueRejectedMoveInput = {
+  // Firm that owns the document being moved. Required because the queue
+  // and the cron both run as service role, where there is no session to
+  // infer the firm from.
+  tenantId: string;
+
   // The 'superseded' (post-flip) document row. This is the row whose
   // Graph item we're moving; the new v(N+1) row stays in the active
   // category folder.
@@ -57,6 +62,7 @@ export async function enqueueAndAttemptRejectedMove(
     .schema("files")
     .from("pending_drive_moves")
     .insert({
+      tenant_id: input.tenantId,
       document_id: input.supersededDocumentId,
       source_drive_id: input.sourceDriveId,
       source_item_id: input.sourceItemId,
@@ -77,6 +83,7 @@ export async function enqueueAndAttemptRejectedMove(
   //    on success we stamp succeeded_at so the cron skips this row.
   try {
     const { folderItemId } = await ensureRejectedFolderUnder(
+      input.tenantId,
       input.parentFolderItemId,
     );
     await moveAndRenameDriveItem(

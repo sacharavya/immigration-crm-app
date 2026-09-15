@@ -19,6 +19,7 @@ import {
 import { uploadFile } from "@/lib/graph/uploads";
 import { renderRetainerPdf } from "@/lib/pdf/render-retainer";
 import { resolveServiceLabel } from "@/lib/retainer/service-label";
+import { requireStaffTenantId } from "@/lib/tenant/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 
@@ -858,6 +859,8 @@ export async function voidRetainer(
       const today = voidedAt.slice(0, 10);
       const fileName = `Retainer_VOID_${today}.pdf`;
       const folder = await ensureCaseRetainerFolder(
+      await requireStaffTenantId(),
+      
         ctx.caseRow.sharepoint_folder_id,
       );
       const uploaded = await uploadFile(
@@ -1087,7 +1090,9 @@ export async function startNewRetainer(
   // new case detail page.
   try {
     const { driveItemId, webUrl } =
-      await createCaseFolderStructure(newCase.id);
+      await createCaseFolderStructure(
+      await requireStaffTenantId(),
+      newCase.id);
     await supabase
       .schema("crm")
       .from("cases")
@@ -1220,6 +1225,8 @@ export async function applyClientSignatureImage(
       const today = new Date().toISOString().slice(0, 10);
       const fileName = `Retainer_Signed_${today}.pdf`;
       const folder = await ensureCaseRetainerFolder(
+      await requireStaffTenantId(),
+      
         ctx.caseRow.sharepoint_folder_id,
       );
       const uploaded = await uploadFile(
@@ -1321,6 +1328,8 @@ export async function uploadSignedRetainer(
   let folderItemId: string;
   try {
     const folder = await ensureCaseRetainerFolder(
+      await requireStaffTenantId(),
+      
       ctx.caseRow.sharepoint_folder_id,
     );
     driveId = folder.driveId;
@@ -1492,7 +1501,9 @@ export async function resaveSignedRetainerToOneDrive(
   let folderDriveId: string;
   let folderItemId: string;
   try {
-    const folder = await ensureCaseRetainerFolder(caseRow.sharepoint_folder_id);
+    const folder = await ensureCaseRetainerFolder(
+      await requireStaffTenantId(),
+      caseRow.sharepoint_folder_id);
     folderDriveId = folder.driveId;
     folderItemId = folder.folderItemId;
   } catch (err) {

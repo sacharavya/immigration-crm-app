@@ -56,6 +56,17 @@ export async function login(
       redirect("/dashboard");
     }
 
+    // Platform operators have no staff row by design — they belong to no
+    // firm — so they are routed to the admin portal instead.
+    const { data: adminRow } = await supabase
+      .schema("platform")
+      .from("admins")
+      .select("auth_user_id")
+      .eq("auth_user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (adminRow) redirect("/admin");
+
     const { data: agentRow } = await supabase
       .schema("crm")
       .from("referral_agents")

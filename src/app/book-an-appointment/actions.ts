@@ -16,6 +16,7 @@ import {
 import { maybeSendConsultationAgreement } from "@/lib/consultation/send";
 import { ensureConsultationPaymentsFolder } from "@/lib/graph/folders";
 import { uploadFile } from "@/lib/graph/uploads";
+import { requireTenantId } from "@/lib/tenant/context";
 
 import type { BookingResult } from "./_components/types";
 import {
@@ -423,7 +424,10 @@ export async function uploadPaymentProof(
 
   let driveItem: { id: string; webUrl: string; driveId: string };
   try {
-    const folder = await ensureConsultationPaymentsFolder(year);
+    const folder = await ensureConsultationPaymentsFolder(
+      await requireTenantId(),
+      year,
+    );
     const uploaded = await uploadFile(
       folder.driveId,
       folder.folderItemId,

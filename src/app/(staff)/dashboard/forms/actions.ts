@@ -18,6 +18,7 @@ import { TRANSFORM_KEYS } from "@/lib/forms/transforms";
 import type { FormFieldSchema } from "@/lib/forms/types";
 import { ensureFormsLibraryFolder } from "@/lib/graph/folders";
 import { uploadFile } from "@/lib/graph/uploads";
+import { requireStaffTenantId } from "@/lib/tenant/context";
 import { createClient } from "@/lib/supabase/server";
 
 import { FORM_TYPES, ISSUING_BODIES } from "./constants";
@@ -219,6 +220,8 @@ export async function uploadFormVersion(
   let uploaded;
   try {
     const { driveId, folderItemId } = await ensureFormsLibraryFolder(
+      await requireStaffTenantId(),
+      
       form.form_number,
     );
     uploaded = await uploadFile(

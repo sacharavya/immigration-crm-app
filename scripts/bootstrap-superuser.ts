@@ -61,11 +61,46 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Inserting crm.staff row (role=super_user)...`);
+  // Every staff member belongs to exactly one firm. TENANT_SLUG picks it;
+  // when the deployment has only one firm the choice is unambiguous, so
+  // don't make the caller state it.
+  const wantedSlug = process.env.TENANT_SLUG?.trim();
+  const { data: tenants, error: tenantErr } = await supabase
+    .schema("crm")
+    .from("tenants")
+    .select("id, name, slug");
+
+  if (tenantErr) {
+    console.error(`Could not read tenants: ${tenantErr.message}`);
+    await supabase.auth.admin.deleteUser(created.user.id);
+    process.exit(1);
+  }
+
+  const tenant = wantedSlug
+    ? tenants?.find((t) => t.slug.toLowerCase() === wantedSlug.toLowerCase())
+    : tenants?.length === 1
+      ? tenants[0]
+      : undefined;
+
+  if (!tenant) {
+    console.error(
+      wantedSlug
+        ? `No firm with slug "${wantedSlug}".`
+        : `This deployment has ${tenants?.length ?? 0} firms, so the firm is ambiguous. Re-run with TENANT_SLUG=<slug>.`,
+    );
+    console.error(
+      `Available: ${(tenants ?? []).map((t) => t.slug).join(", ") || "none"}`,
+    );
+    await supabase.auth.admin.deleteUser(created.user.id);
+    process.exit(1);
+  }
+
+  console.log(`Inserting crm.staff row (role=super_user, firm=${tenant.name})...`);
   const { error: staffErr } = await supabase
     .schema("crm")
     .from("staff")
     .insert({
+      tenant_id: tenant.id,
       auth_user_id: created.user.id,
       first_name: firstName,
       last_name: lastName,

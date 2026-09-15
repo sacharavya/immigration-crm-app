@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   audit: {
     Tables: {
       change_log: {
@@ -27,6 +22,7 @@ export type Database = {
           row_id: string | null
           schema_name: string
           table_name: string
+          tenant_id: string | null
         }
         Insert: {
           actor_staff_id?: string | null
@@ -40,6 +36,7 @@ export type Database = {
           row_id?: string | null
           schema_name: string
           table_name: string
+          tenant_id?: string | null
         }
         Update: {
           actor_staff_id?: string | null
@@ -53,6 +50,7 @@ export type Database = {
           row_id?: string | null
           schema_name?: string
           table_name?: string
+          tenant_id?: string | null
         }
         Relationships: []
       }
@@ -89,6 +87,7 @@ export type Database = {
           public_booking_enabled: boolean
           slot_increment_minutes: number
           teams_auto_create: boolean
+          tenant_id: string
           timezone: string
           updated_at: string
           updated_by: string | null
@@ -109,6 +108,7 @@ export type Database = {
           public_booking_enabled?: boolean
           slot_increment_minutes?: number
           teams_auto_create?: boolean
+          tenant_id?: string
           timezone?: string
           updated_at?: string
           updated_by?: string | null
@@ -129,6 +129,7 @@ export type Database = {
           public_booking_enabled?: boolean
           slot_increment_minutes?: number
           teams_auto_create?: boolean
+          tenant_id?: string
           timezone?: string
           updated_at?: string
           updated_by?: string | null
@@ -146,6 +147,13 @@ export type Database = {
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_appointment_settings_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -167,6 +175,7 @@ export type Database = {
           preparation_notes: string | null
           requires_case: boolean
           requires_consultation_agreement: boolean
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -185,6 +194,7 @@ export type Database = {
           preparation_notes?: string | null
           requires_case?: boolean
           requires_consultation_agreement?: boolean
+          tenant_id?: string
           updated_at?: string
         }
         Update: {
@@ -203,9 +213,18 @@ export type Database = {
           preparation_notes?: string | null
           requires_case?: boolean
           requires_consultation_agreement?: boolean
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "crm_appointment_types_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       appointments: {
         Row: {
@@ -261,6 +280,7 @@ export type Database = {
           status: Database["crm"]["Enums"]["appointment_status"]
           teams_join_url: string | null
           teams_meeting_id: string | null
+          tenant_id: string
           timezone: string
           updated_at: string
         }
@@ -317,6 +337,7 @@ export type Database = {
           status?: Database["crm"]["Enums"]["appointment_status"]
           teams_join_url?: string | null
           teams_meeting_id?: string | null
+          tenant_id?: string
           timezone?: string
           updated_at?: string
         }
@@ -373,6 +394,7 @@ export type Database = {
           status?: Database["crm"]["Enums"]["appointment_status"]
           teams_join_url?: string | null
           teams_meeting_id?: string | null
+          tenant_id?: string
           timezone?: string
           updated_at?: string
         }
@@ -454,6 +476,13 @@ export type Database = {
             referencedRelation: "appointments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "crm_appointments_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       case_assignments: {
@@ -464,6 +493,7 @@ export type Database = {
           id: string
           role: Database["crm"]["Enums"]["case_team_role"]
           staff_id: string
+          tenant_id: string
         }
         Insert: {
           case_id: string
@@ -472,6 +502,7 @@ export type Database = {
           id?: string
           role: Database["crm"]["Enums"]["case_team_role"]
           staff_id: string
+          tenant_id?: string
         }
         Update: {
           case_id?: string
@@ -480,6 +511,7 @@ export type Database = {
           id?: string
           role?: Database["crm"]["Enums"]["case_team_role"]
           staff_id?: string
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -517,6 +549,13 @@ export type Database = {
             referencedRelation: "staff"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "crm_case_assignments_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       case_events: {
@@ -530,6 +569,7 @@ export type Database = {
           event_type: Database["crm"]["Enums"]["event_type"]
           id: string
           occurred_at: string
+          tenant_id: string
           visible_to_client: boolean
         }
         Insert: {
@@ -542,6 +582,7 @@ export type Database = {
           event_type: Database["crm"]["Enums"]["event_type"]
           id?: string
           occurred_at?: string
+          tenant_id?: string
           visible_to_client?: boolean
         }
         Update: {
@@ -554,6 +595,7 @@ export type Database = {
           event_type?: Database["crm"]["Enums"]["event_type"]
           id?: string
           occurred_at?: string
+          tenant_id?: string
           visible_to_client?: boolean
         }
         Relationships: [
@@ -592,6 +634,13 @@ export type Database = {
             referencedRelation: "staff"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "crm_case_events_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       case_participants: {
@@ -601,6 +650,7 @@ export type Database = {
           client_id: string
           id: string
           role: Database["crm"]["Enums"]["participant_role"]
+          tenant_id: string
         }
         Insert: {
           added_at?: string
@@ -608,6 +658,7 @@ export type Database = {
           client_id: string
           id?: string
           role: Database["crm"]["Enums"]["participant_role"]
+          tenant_id?: string
         }
         Update: {
           added_at?: string
@@ -615,6 +666,7 @@ export type Database = {
           client_id?: string
           id?: string
           role?: Database["crm"]["Enums"]["participant_role"]
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -645,6 +697,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "crm_case_participants_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       case_requests: {
@@ -659,6 +718,7 @@ export type Database = {
           resulting_case_id: string | null
           service_type_id: string | null
           status: Database["crm"]["Enums"]["case_request_status"]
+          tenant_id: string
         }
         Insert: {
           agent_id: string
@@ -671,6 +731,7 @@ export type Database = {
           resulting_case_id?: string | null
           service_type_id?: string | null
           status?: Database["crm"]["Enums"]["case_request_status"]
+          tenant_id?: string
         }
         Update: {
           agent_id?: string
@@ -683,6 +744,7 @@ export type Database = {
           resulting_case_id?: string | null
           service_type_id?: string | null
           status?: Database["crm"]["Enums"]["case_request_status"]
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -727,6 +789,13 @@ export type Database = {
             referencedRelation: "v_case_chip_inputs"
             referencedColumns: ["case_id"]
           },
+          {
+            foreignKeyName: "crm_case_requests_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       case_required_documents: {
@@ -739,6 +808,7 @@ export type Database = {
           requested_at_event_id: string | null
           set_at: string
           set_by: string | null
+          tenant_id: string
         }
         Insert: {
           case_id: string
@@ -749,6 +819,7 @@ export type Database = {
           requested_at_event_id?: string | null
           set_at?: string
           set_by?: string | null
+          tenant_id?: string
         }
         Update: {
           case_id?: string
@@ -759,6 +830,7 @@ export type Database = {
           requested_at_event_id?: string | null
           set_at?: string
           set_by?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -794,6 +866,13 @@ export type Database = {
             columns: ["set_by"]
             isOneToOne: false
             referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_case_required_documents_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -832,6 +911,7 @@ export type Database = {
           sharepoint_folder_url: string | null
           status: Database["crm"]["Enums"]["case_status"]
           submitted_at: string | null
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -867,6 +947,7 @@ export type Database = {
           sharepoint_folder_url?: string | null
           status?: Database["crm"]["Enums"]["case_status"]
           submitted_at?: string | null
+          tenant_id?: string
           updated_at?: string
         }
         Update: {
@@ -902,6 +983,7 @@ export type Database = {
           sharepoint_folder_url?: string | null
           status?: Database["crm"]["Enums"]["case_status"]
           submitted_at?: string | null
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -940,6 +1022,13 @@ export type Database = {
             referencedRelation: "staff"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "crm_cases_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       client_address_history: {
@@ -955,6 +1044,7 @@ export type Database = {
           id: string
           notes: string | null
           province_state: string | null
+          tenant_id: string
         }
         Insert: {
           address_line: string
@@ -968,6 +1058,7 @@ export type Database = {
           id?: string
           notes?: string | null
           province_state?: string | null
+          tenant_id?: string
         }
         Update: {
           address_line?: string
@@ -981,6 +1072,7 @@ export type Database = {
           id?: string
           notes?: string | null
           province_state?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -988,6 +1080,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_client_address_history_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1006,6 +1105,7 @@ export type Database = {
           id: string
           location: string | null
           notes: string | null
+          tenant_id: string
           updated_at: string
           valid_until: string | null
         }
@@ -1022,6 +1122,7 @@ export type Database = {
           id?: string
           location?: string | null
           notes?: string | null
+          tenant_id?: string
           updated_at?: string
           valid_until?: string | null
         }
@@ -1038,6 +1139,7 @@ export type Database = {
           id?: string
           location?: string | null
           notes?: string | null
+          tenant_id?: string
           updated_at?: string
           valid_until?: string | null
         }
@@ -1054,6 +1156,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_client_biometric_records_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1073,6 +1182,7 @@ export type Database = {
           level: string | null
           notes: string | null
           province_state: string | null
+          tenant_id: string
         }
         Insert: {
           city?: string | null
@@ -1088,6 +1198,7 @@ export type Database = {
           level?: string | null
           notes?: string | null
           province_state?: string | null
+          tenant_id?: string
         }
         Update: {
           city?: string | null
@@ -1103,6 +1214,7 @@ export type Database = {
           level?: string | null
           notes?: string | null
           province_state?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -1110,6 +1222,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_client_education_history_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1130,6 +1249,7 @@ export type Database = {
           notes: string | null
           occupation: string
           province_state: string | null
+          tenant_id: string
         }
         Insert: {
           activity_type?: string | null
@@ -1146,6 +1266,7 @@ export type Database = {
           notes?: string | null
           occupation: string
           province_state?: string | null
+          tenant_id?: string
         }
         Update: {
           activity_type?: string | null
@@ -1162,6 +1283,7 @@ export type Database = {
           notes?: string | null
           occupation?: string
           province_state?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -1169,6 +1291,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_client_employment_history_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1191,6 +1320,7 @@ export type Database = {
           present_address: string | null
           present_occupation: string | null
           relationship: Database["crm"]["Enums"]["relationship_type"]
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -1210,6 +1340,7 @@ export type Database = {
           present_address?: string | null
           present_occupation?: string | null
           relationship: Database["crm"]["Enums"]["relationship_type"]
+          tenant_id?: string
           updated_at?: string
         }
         Update: {
@@ -1229,6 +1360,7 @@ export type Database = {
           present_address?: string | null
           present_occupation?: string | null
           relationship?: Database["crm"]["Enums"]["relationship_type"]
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -1237,6 +1369,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_client_family_members_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1257,6 +1396,7 @@ export type Database = {
           notes: string | null
           position_held: string | null
           province_state: string | null
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -1274,6 +1414,7 @@ export type Database = {
           notes?: string | null
           position_held?: string | null
           province_state?: string | null
+          tenant_id?: string
           updated_at?: string
         }
         Update: {
@@ -1291,6 +1432,7 @@ export type Database = {
           notes?: string | null
           position_held?: string | null
           province_state?: string | null
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -1299,6 +1441,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_client_government_positions_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1319,6 +1468,7 @@ export type Database = {
           military_rank: string | null
           notes: string | null
           reason_for_end_of_service: string | null
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -1336,6 +1486,7 @@ export type Database = {
           military_rank?: string | null
           notes?: string | null
           reason_for_end_of_service?: string | null
+          tenant_id?: string
           updated_at?: string
         }
         Update: {
@@ -1353,6 +1504,7 @@ export type Database = {
           military_rank?: string | null
           notes?: string | null
           reason_for_end_of_service?: string | null
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -1361,6 +1513,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_client_military_services_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1381,6 +1540,7 @@ export type Database = {
           organisation_type: string | null
           position_held: string | null
           province_state: string | null
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -1398,6 +1558,7 @@ export type Database = {
           organisation_type?: string | null
           position_held?: string | null
           province_state?: string | null
+          tenant_id?: string
           updated_at?: string
         }
         Update: {
@@ -1415,6 +1576,7 @@ export type Database = {
           organisation_type?: string | null
           position_held?: string | null
           province_state?: string | null
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -1423,6 +1585,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_client_organisations_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1440,6 +1609,7 @@ export type Database = {
           id: string
           notes: string | null
           purpose: string | null
+          tenant_id: string
         }
         Insert: {
           city?: string | null
@@ -1453,6 +1623,7 @@ export type Database = {
           id?: string
           notes?: string | null
           purpose?: string | null
+          tenant_id?: string
         }
         Update: {
           city?: string | null
@@ -1466,6 +1637,7 @@ export type Database = {
           id?: string
           notes?: string | null
           purpose?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -1473,6 +1645,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_client_travel_history_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1529,6 +1708,7 @@ export type Database = {
           referred_by: string | null
           source: string | null
           status: Database["crm"]["Enums"]["client_status"]
+          tenant_id: string
           travel_completed: boolean | null
           uci: string | null
           updated_at: string
@@ -1588,6 +1768,7 @@ export type Database = {
           referred_by?: string | null
           source?: string | null
           status?: Database["crm"]["Enums"]["client_status"]
+          tenant_id?: string
           travel_completed?: boolean | null
           uci?: string | null
           updated_at?: string
@@ -1647,6 +1828,7 @@ export type Database = {
           referred_by?: string | null
           source?: string | null
           status?: Database["crm"]["Enums"]["client_status"]
+          tenant_id?: string
           travel_completed?: boolean | null
           uci?: string | null
           updated_at?: string
@@ -1684,6 +1866,13 @@ export type Database = {
             referencedRelation: "staff"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "crm_clients_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       communications: {
@@ -1705,6 +1894,7 @@ export type Database = {
           occurred_at: string
           subject: string | null
           summary: string | null
+          tenant_id: string
           to_addresses: string[] | null
         }
         Insert: {
@@ -1725,6 +1915,7 @@ export type Database = {
           occurred_at?: string
           subject?: string | null
           summary?: string | null
+          tenant_id?: string
           to_addresses?: string[] | null
         }
         Update: {
@@ -1745,6 +1936,7 @@ export type Database = {
           occurred_at?: string
           subject?: string | null
           summary?: string | null
+          tenant_id?: string
           to_addresses?: string[] | null
         }
         Relationships: [
@@ -1790,6 +1982,13 @@ export type Database = {
             referencedRelation: "staff"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "crm_communications_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       firm_metric_daily: {
@@ -1799,6 +1998,7 @@ export type Database = {
           outstanding_fees_cad: number | null
           retained_mtd: number
           snapshot_date: string
+          tenant_id: string
           total_clients: number
         }
         Insert: {
@@ -1807,6 +2007,7 @@ export type Database = {
           outstanding_fees_cad?: number | null
           retained_mtd?: number
           snapshot_date: string
+          tenant_id?: string
           total_clients?: number
         }
         Update: {
@@ -1815,9 +2016,18 @@ export type Database = {
           outstanding_fees_cad?: number | null
           retained_mtd?: number
           snapshot_date?: string
+          tenant_id?: string
           total_clients?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "crm_firm_metric_daily_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       form_fills: {
         Row: {
@@ -1832,6 +2042,7 @@ export type Database = {
           sharepoint_drive_id: string | null
           sharepoint_item_id: string | null
           sharepoint_web_url: string | null
+          tenant_id: string
           unmapped_fields: Json
         }
         Insert: {
@@ -1846,6 +2057,7 @@ export type Database = {
           sharepoint_drive_id?: string | null
           sharepoint_item_id?: string | null
           sharepoint_web_url?: string | null
+          tenant_id?: string
           unmapped_fields?: Json
         }
         Update: {
@@ -1860,9 +2072,17 @@ export type Database = {
           sharepoint_drive_id?: string | null
           sharepoint_item_id?: string | null
           sharepoint_web_url?: string | null
+          tenant_id?: string
           unmapped_fields?: Json
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_form_fills_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "form_fills_case_id_fkey"
             columns: ["case_id"]
@@ -1927,6 +2147,7 @@ export type Database = {
           sharepoint_web_url: string | null
           status: string
           superseded_at: string | null
+          tenant_id: string | null
           version_label: string
         }
         Insert: {
@@ -1948,6 +2169,7 @@ export type Database = {
           sharepoint_web_url?: string | null
           status?: string
           superseded_at?: string | null
+          tenant_id?: string | null
           version_label: string
         }
         Update: {
@@ -1969,9 +2191,17 @@ export type Database = {
           sharepoint_web_url?: string | null
           status?: string
           superseded_at?: string | null
+          tenant_id?: string | null
           version_label?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_form_versions_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "form_versions_created_by_fkey"
             columns: ["created_by"]
@@ -1999,6 +2229,7 @@ export type Database = {
           issuing_body: string
           program_tags: string[]
           scope: string
+          tenant_id: string | null
           title: string
           updated_at: string
         }
@@ -2012,6 +2243,7 @@ export type Database = {
           issuing_body: string
           program_tags?: string[]
           scope?: string
+          tenant_id?: string | null
           title: string
           updated_at?: string
         }
@@ -2025,10 +2257,19 @@ export type Database = {
           issuing_body?: string
           program_tags?: string[]
           scope?: string
+          tenant_id?: string | null
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "crm_forms_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_line_items: {
         Row: {
@@ -2038,6 +2279,7 @@ export type Database = {
           invoice_id: string
           line_total_cad: number
           quantity: number
+          tenant_id: string
           unit_price_cad: number
         }
         Insert: {
@@ -2047,6 +2289,7 @@ export type Database = {
           invoice_id: string
           line_total_cad: number
           quantity?: number
+          tenant_id?: string
           unit_price_cad: number
         }
         Update: {
@@ -2056,9 +2299,17 @@ export type Database = {
           invoice_id?: string
           line_total_cad?: number
           quantity?: number
+          tenant_id?: string
           unit_price_cad?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_invoice_line_items_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoice_line_items_invoice_id_fkey"
             columns: ["invoice_id"]
@@ -2084,6 +2335,7 @@ export type Database = {
           paid_cad: number
           status: Database["crm"]["Enums"]["invoice_status"]
           subtotal_cad: number
+          tenant_id: string
           total_cad: number
           updated_at: string
         }
@@ -2102,6 +2354,7 @@ export type Database = {
           paid_cad?: number
           status?: Database["crm"]["Enums"]["invoice_status"]
           subtotal_cad: number
+          tenant_id?: string
           total_cad: number
           updated_at?: string
         }
@@ -2120,10 +2373,18 @@ export type Database = {
           paid_cad?: number
           status?: Database["crm"]["Enums"]["invoice_status"]
           subtotal_cad?: number
+          tenant_id?: string
           total_cad?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_invoices_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_case_id_fkey"
             columns: ["case_id"]
@@ -2172,6 +2433,7 @@ export type Database = {
           read_at: string | null
           source_event_id: string | null
           staff_id: string
+          tenant_id: string
           title: string
           type: Database["crm"]["Enums"]["notification_type"]
         }
@@ -2185,6 +2447,7 @@ export type Database = {
           read_at?: string | null
           source_event_id?: string | null
           staff_id: string
+          tenant_id?: string
           title: string
           type: Database["crm"]["Enums"]["notification_type"]
         }
@@ -2198,10 +2461,18 @@ export type Database = {
           read_at?: string | null
           source_event_id?: string | null
           staff_id?: string
+          tenant_id?: string
           title?: string
           type?: Database["crm"]["Enums"]["notification_type"]
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_notifications_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_actor_id_fkey"
             columns: ["actor_id"]
@@ -2246,6 +2517,35 @@ export type Database = {
           },
         ]
       }
+      number_counters: {
+        Row: {
+          kind: string
+          next_value: number
+          tenant_id: string
+          year: number
+        }
+        Insert: {
+          kind: string
+          next_value?: number
+          tenant_id: string
+          year: number
+        }
+        Update: {
+          kind?: string
+          next_value?: number
+          tenant_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "number_counters_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       package_items: {
         Row: {
           display_name: string
@@ -2254,6 +2554,7 @@ export type Database = {
           size_bytes: number | null
           sort_order: number
           source_onedrive_item_id: string
+          tenant_id: string
         }
         Insert: {
           display_name: string
@@ -2262,6 +2563,7 @@ export type Database = {
           size_bytes?: number | null
           sort_order: number
           source_onedrive_item_id: string
+          tenant_id?: string
         }
         Update: {
           display_name?: string
@@ -2270,8 +2572,16 @@ export type Database = {
           size_bytes?: number | null
           sort_order?: number
           source_onedrive_item_id?: string
+          tenant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_package_items_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "package_items_package_id_fkey"
             columns: ["package_id"]
@@ -2293,6 +2603,7 @@ export type Database = {
           output_onedrive_item_id: string | null
           preset_key: string
           status: Database["crm"]["Enums"]["package_status"]
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -2306,6 +2617,7 @@ export type Database = {
           output_onedrive_item_id?: string | null
           preset_key: string
           status?: Database["crm"]["Enums"]["package_status"]
+          tenant_id?: string
           updated_at?: string
         }
         Update: {
@@ -2319,9 +2631,17 @@ export type Database = {
           output_onedrive_item_id?: string | null
           preset_key?: string
           status?: Database["crm"]["Enums"]["package_status"]
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_packages_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "packages_case_id_fkey"
             columns: ["case_id"]
@@ -2377,6 +2697,7 @@ export type Database = {
           received_date: string
           recorded_by: string | null
           reference: string | null
+          tenant_id: string
           verified_at: string | null
           verified_by: string | null
         }
@@ -2397,6 +2718,7 @@ export type Database = {
           received_date?: string
           recorded_by?: string | null
           reference?: string | null
+          tenant_id?: string
           verified_at?: string | null
           verified_by?: string | null
         }
@@ -2417,10 +2739,18 @@ export type Database = {
           received_date?: string
           recorded_by?: string | null
           reference?: string | null
+          tenant_id?: string
           verified_at?: string | null
           verified_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_payments_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_case_id_fkey"
             columns: ["case_id"]
@@ -2491,6 +2821,7 @@ export type Database = {
           organization: string | null
           password_reset_required_at: string | null
           phone: string | null
+          tenant_id: string
           updated_at: string
           website: string | null
         }
@@ -2512,6 +2843,7 @@ export type Database = {
           organization?: string | null
           password_reset_required_at?: string | null
           phone?: string | null
+          tenant_id?: string
           updated_at?: string
           website?: string | null
         }
@@ -2533,10 +2865,18 @@ export type Database = {
           organization?: string | null
           password_reset_required_at?: string | null
           phone?: string | null
+          tenant_id?: string
           updated_at?: string
           website?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_referral_agents_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "referral_agents_created_by_fkey"
             columns: ["created_by"]
@@ -2600,6 +2940,7 @@ export type Database = {
           signing_token: string | null
           status: Database["crm"]["Enums"]["retainer_agreement_status"]
           template_version: string
+          tenant_id: string
           token_expires_at: string | null
           updated_at: string
           void_reason: string | null
@@ -2653,6 +2994,7 @@ export type Database = {
           signing_token?: string | null
           status?: Database["crm"]["Enums"]["retainer_agreement_status"]
           template_version?: string
+          tenant_id?: string
           token_expires_at?: string | null
           updated_at?: string
           void_reason?: string | null
@@ -2706,6 +3048,7 @@ export type Database = {
           signing_token?: string | null
           status?: Database["crm"]["Enums"]["retainer_agreement_status"]
           template_version?: string
+          tenant_id?: string
           token_expires_at?: string | null
           updated_at?: string
           void_reason?: string | null
@@ -2714,6 +3057,13 @@ export type Database = {
           withdrawal_refund_floor_cad?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_retainer_agreements_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "retainer_agreements_case_id_fkey"
             columns: ["case_id"]
@@ -2863,6 +3213,7 @@ export type Database = {
           signature_capture_method: string | null
           signature_image_set_at: string | null
           signature_image_url: string | null
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -2893,6 +3244,7 @@ export type Database = {
           signature_capture_method?: string | null
           signature_image_set_at?: string | null
           signature_image_url?: string | null
+          tenant_id?: string
           updated_at?: string
         }
         Update: {
@@ -2923,9 +3275,17 @@ export type Database = {
           signature_capture_method?: string | null
           signature_image_set_at?: string | null
           signature_image_url?: string | null
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_staff_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "staff_created_by_staff_fkey"
             columns: ["created_by_staff"]
@@ -2936,6 +3296,51 @@ export type Database = {
           {
             foreignKeyName: "staff_deactivated_by_fkey"
             columns: ["deactivated_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storage_settings: {
+        Row: {
+          drive_id: string | null
+          id: string
+          provider: Database["crm"]["Enums"]["storage_provider"]
+          root_folder: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          drive_id?: string | null
+          id?: string
+          provider?: Database["crm"]["Enums"]["storage_provider"]
+          root_folder?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          drive_id?: string | null
+          id?: string
+          provider?: Database["crm"]["Enums"]["storage_provider"]
+          root_folder?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_storage_settings_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storage_settings_updated_by_fkey"
+            columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "staff"
             referencedColumns: ["id"]
@@ -2961,6 +3366,7 @@ export type Database = {
           priority: string | null
           status: Database["crm"]["Enums"]["task_status"]
           task_type: Database["crm"]["Enums"]["task_type"]
+          tenant_id: string
           title: string
           updated_at: string
         }
@@ -2982,6 +3388,7 @@ export type Database = {
           priority?: string | null
           status?: Database["crm"]["Enums"]["task_status"]
           task_type: Database["crm"]["Enums"]["task_type"]
+          tenant_id?: string
           title: string
           updated_at?: string
         }
@@ -3003,10 +3410,18 @@ export type Database = {
           priority?: string | null
           status?: Database["crm"]["Enums"]["task_status"]
           task_type?: Database["crm"]["Enums"]["task_type"]
+          tenant_id?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_tasks_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_assigned_to_fkey"
             columns: ["assigned_to"]
@@ -3057,6 +3472,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tenants: {
+        Row: {
+          admin_notes: string
+          created_at: string
+          features: Json
+          id: string
+          name: string
+          number_prefix: string
+          public_host: string | null
+          slug: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string
+          created_at?: string
+          features?: Json
+          id?: string
+          name: string
+          number_prefix?: string
+          public_host?: string | null
+          slug: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string
+          created_at?: string
+          features?: Json
+          id?: string
+          name?: string
+          number_prefix?: string
+          public_host?: string | null
+          slug?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -3139,11 +3593,26 @@ export type Database = {
         Args: never
         Returns: Database["crm"]["Enums"]["staff_role"]
       }
-      generate_case_number: { Args: never; Returns: string }
-      generate_client_number: { Args: never; Returns: string }
-      generate_invoice_number: { Args: never; Returns: string }
+      current_tenant_id: { Args: never; Returns: string }
+      generate_case_number:
+        | { Args: never; Returns: string }
+        | { Args: { p_tenant?: string }; Returns: string }
+      generate_client_number:
+        | { Args: never; Returns: string }
+        | { Args: { p_tenant?: string }; Returns: string }
+      generate_invoice_number:
+        | { Args: never; Returns: string }
+        | { Args: { p_tenant?: string }; Returns: string }
+      next_number: {
+        Args: { p_kind: string; p_tenant: string }
+        Returns: number
+      }
       phase_of: {
         Args: { status: Database["crm"]["Enums"]["case_status"] }
+        Returns: string
+      }
+      provision_tenant: {
+        Args: { p_name: string; p_number_prefix?: string; p_slug: string }
         Returns: string
       }
       staff_can: {
@@ -3152,8 +3621,15 @@ export type Database = {
       }
       staff_ids_with_permission: {
         Args: { p_permission: string }
-        Returns: string[]
+        Returns: {
+          staff_id: string
+        }[]
       }
+      tenant_feature_enabled: {
+        Args: { p_key: string; p_tenant: string }
+        Returns: boolean
+      }
+      tenant_for_host: { Args: { p_host: string }; Returns: string }
     }
     Enums: {
       appointment_booking_source: "staff" | "public_portal" | "manual_import"
@@ -3341,6 +3817,7 @@ export type Database = {
         | "super_user"
         | "document_officer"
         | "reception"
+      storage_provider: "onedrive" | "google_drive"
       task_status: "open" | "in_progress" | "blocked" | "done" | "cancelled"
       task_type:
         | "document_collection"
@@ -3388,6 +3865,7 @@ export type Database = {
           sharepoint_web_url: string | null
           status: Database["files"]["Enums"]["document_status"]
           supersedes: string | null
+          tenant_id: string
           uploaded_by_client: boolean
           uploaded_by_staff: string | null
           version_number: number
@@ -3417,6 +3895,7 @@ export type Database = {
           sharepoint_web_url?: string | null
           status?: Database["files"]["Enums"]["document_status"]
           supersedes?: string | null
+          tenant_id?: string
           uploaded_by_client?: boolean
           uploaded_by_staff?: string | null
           version_number?: number
@@ -3446,6 +3925,7 @@ export type Database = {
           sharepoint_web_url?: string | null
           status?: Database["files"]["Enums"]["document_status"]
           supersedes?: string | null
+          tenant_id?: string
           uploaded_by_client?: boolean
           uploaded_by_staff?: string | null
           version_number?: number
@@ -3475,6 +3955,7 @@ export type Database = {
           status: string
           succeeded_at: string | null
           target_file_name: string
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -3491,6 +3972,7 @@ export type Database = {
           status?: string
           succeeded_at?: string | null
           target_file_name: string
+          tenant_id?: string
           updated_at?: string
         }
         Update: {
@@ -3507,6 +3989,7 @@ export type Database = {
           status?: string
           succeeded_at?: string | null
           target_file_name?: string
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -3534,6 +4017,126 @@ export type Database = {
         | "accepted"
         | "rejected"
         | "superseded"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+  platform: {
+    Tables: {
+      admins: {
+        Row: {
+          auth_user_id: string
+          created_at: string
+          email: string
+          full_name: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string
+          email: string
+          full_name: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      features: {
+        Row: {
+          default_enabled: boolean
+          description: string
+          display_order: number
+          key: string
+          label: string
+        }
+        Insert: {
+          default_enabled?: boolean
+          description?: string
+          display_order?: number
+          key: string
+          label: string
+        }
+        Update: {
+          default_enabled?: boolean
+          description?: string
+          display_order?: number
+          key?: string
+          label?: string
+        }
+        Relationships: []
+      }
+      feedback: {
+        Row: {
+          admin_response: string | null
+          body: string
+          created_at: string
+          id: string
+          kind: Database["platform"]["Enums"]["feedback_kind"]
+          responded_at: string | null
+          status: Database["platform"]["Enums"]["feedback_status"]
+          subject: string
+          submitted_by: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          admin_response?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          kind?: Database["platform"]["Enums"]["feedback_kind"]
+          responded_at?: string | null
+          status?: Database["platform"]["Enums"]["feedback_status"]
+          subject: string
+          submitted_by?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_response?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          kind?: Database["platform"]["Enums"]["feedback_kind"]
+          responded_at?: string | null
+          status?: Database["platform"]["Enums"]["feedback_status"]
+          subject?: string
+          submitted_by?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      is_admin: { Args: never; Returns: boolean }
+      tenant_usage: {
+        Args: never
+        Returns: {
+          case_count: number
+          client_count: number
+          last_activity: string
+          staff_count: number
+          tenant_id: string
+        }[]
+      }
+    }
+    Enums: {
+      feedback_kind: "complaint" | "bug" | "feature_request" | "question"
+      feedback_status: "open" | "in_progress" | "resolved" | "declined"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3567,6 +4170,7 @@ export type Database = {
           display_order: number
           is_active: boolean
           name: string
+          tenant_id: string | null
         }
         Insert: {
           code: string
@@ -3576,6 +4180,7 @@ export type Database = {
           display_order?: number
           is_active?: boolean
           name: string
+          tenant_id?: string | null
         }
         Update: {
           code?: string
@@ -3585,6 +4190,7 @@ export type Database = {
           display_order?: number
           is_active?: boolean
           name?: string
+          tenant_id?: string | null
         }
         Relationships: []
       }
@@ -3734,6 +4340,7 @@ export type Database = {
           notes: string | null
           required_intake_sections: Json
           service_type_id: string
+          tenant_id: string | null
           version: number
         }
         Insert: {
@@ -3746,6 +4353,7 @@ export type Database = {
           notes?: string | null
           required_intake_sections?: Json
           service_type_id: string
+          tenant_id?: string | null
           version: number
         }
         Update: {
@@ -3758,6 +4366,7 @@ export type Database = {
           notes?: string | null
           required_intake_sections?: Json
           service_type_id?: string
+          tenant_id?: string | null
           version?: number
         }
         Relationships: [
@@ -3785,6 +4394,7 @@ export type Database = {
           name: string
           scheduled_deactivation_at: string | null
           sub_category: string | null
+          tenant_id: string | null
           typical_duration_days: number | null
         }
         Insert: {
@@ -3801,6 +4411,7 @@ export type Database = {
           name: string
           scheduled_deactivation_at?: string | null
           sub_category?: string | null
+          tenant_id?: string | null
           typical_duration_days?: number | null
         }
         Update: {
@@ -3817,6 +4428,7 @@ export type Database = {
           name?: string
           scheduled_deactivation_at?: string | null
           sub_category?: string | null
+          tenant_id?: string | null
           typical_duration_days?: number | null
         }
         Relationships: [
@@ -3871,6 +4483,7 @@ export type Database = {
           max_file_size_mb: number | null
           notes: string | null
           service_template_id: string
+          tenant_id: string | null
         }
         Insert: {
           allowed_file_types?: string[] | null
@@ -3886,6 +4499,7 @@ export type Database = {
           max_file_size_mb?: number | null
           notes?: string | null
           service_template_id: string
+          tenant_id?: string | null
         }
         Update: {
           allowed_file_types?: string[] | null
@@ -3901,6 +4515,7 @@ export type Database = {
           max_file_size_mb?: number | null
           notes?: string | null
           service_template_id?: string
+          tenant_id?: string | null
         }
         Relationships: [
           {
@@ -3947,12 +4562,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3976,11 +4591,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4001,11 +4616,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4026,11 +4641,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4043,11 +4658,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4263,6 +4878,7 @@ export const Constants = {
         "document_officer",
         "reception",
       ],
+      storage_provider: ["onedrive", "google_drive"],
       task_status: ["open", "in_progress", "blocked", "done", "cancelled"],
       task_type: [
         "document_collection",
@@ -4292,6 +4908,12 @@ export const Constants = {
       ],
     },
   },
+  platform: {
+    Enums: {
+      feedback_kind: ["complaint", "bug", "feature_request", "question"],
+      feedback_status: ["open", "in_progress", "resolved", "declined"],
+    },
+  },
   portal: {
     Enums: {},
   },
@@ -4299,3 +4921,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

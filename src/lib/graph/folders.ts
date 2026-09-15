@@ -1,3 +1,5 @@
+import { rootFolderParts } from "@/lib/storage/paths";
+import { requireOneDriveSettings } from "@/lib/storage/settings";
 import { createClient } from "@/lib/supabase/server";
 
 import { GraphApiError, graphFetch } from "./client";
@@ -28,12 +30,10 @@ export type CaseFolderResult = {
  * rather than re-created.
  */
 export async function createCaseFolderStructure(
+  tenantId: string,
   caseId: string,
 ): Promise<CaseFolderResult> {
-  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) {
-    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
-  }
+  const { driveId, rootFolder } = await requireOneDriveSettings(tenantId);
 
   const supabase = await createClient();
 
@@ -110,12 +110,7 @@ export async function createCaseFolderStructure(
     `${caseRow.case_number} ${service?.name ?? ""}`.trim(),
   );
 
-  // Optional sandbox/anchor folder. Treated as a path so nested values like
-  // "Sandbox/CRM-tests" work; unset means anchor at drive root.
-  const rootFolder = process.env.GRAPH_ROOT_FOLDER?.trim() ?? "";
-  const rootParts = rootFolder
-    ? rootFolder.split("/").map((p) => p.trim()).filter(Boolean).map(sanitize)
-    : [];
+  const rootParts = rootFolderParts(rootFolder, sanitize);
 
   const pathParts = [...rootParts, year, clientFolder, caseFolder].filter(
     Boolean,
@@ -147,12 +142,10 @@ export async function createCaseFolderStructure(
  * action.
  */
 export async function ensureCaseRetainerFolder(
+  tenantId: string,
   caseFolderItemId: string,
 ): Promise<{ driveId: string; folderItemId: string }> {
-  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) {
-    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
-  }
+  const { driveId } = await requireOneDriveSettings(tenantId);
   const folder = await ensureFolder(driveId, caseFolderItemId, "00 Retainer");
   return { driveId, folderItemId: folder.id };
 }
@@ -162,12 +155,10 @@ export async function ensureCaseRetainerFolder(
  * submission packages built by the PDF tool land here.
  */
 export async function ensureCaseFinalFolder(
+  tenantId: string,
   caseFolderItemId: string,
 ): Promise<{ driveId: string; folderItemId: string }> {
-  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) {
-    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
-  }
+  const { driveId } = await requireOneDriveSettings(tenantId);
   const folder = await ensureFolder(driveId, caseFolderItemId, "Final");
   return { driveId, folderItemId: folder.id };
 }
@@ -179,17 +170,12 @@ export async function ensureCaseFinalFolder(
  * live under GRAPH_ROOT_FOLDER/Consultation Payments/{year}/.
  */
 export async function ensureConsultationPaymentsFolder(
+  tenantId: string,
   year: string,
 ): Promise<{ driveId: string; folderItemId: string }> {
-  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) {
-    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
-  }
+  const { driveId, rootFolder } = await requireOneDriveSettings(tenantId);
 
-  const rootFolder = process.env.GRAPH_ROOT_FOLDER?.trim() ?? "";
-  const rootParts = rootFolder
-    ? rootFolder.split("/").map((p) => p.trim()).filter(Boolean).map(sanitize)
-    : [];
+  const rootParts = rootFolderParts(rootFolder, sanitize);
 
   const root = await graphFetch<DriveItem>(`/drives/${driveId}/root`);
   let parent: DriveItem = root;
@@ -205,17 +191,12 @@ export async function ensureConsultationPaymentsFolder(
 // (appointment-only clients have no case folder) and from payment proofs, so
 // staff can find agreements on their own.
 export async function ensureConsultationAgreementsFolder(
+  tenantId: string,
   year: string,
 ): Promise<{ driveId: string; folderItemId: string }> {
-  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) {
-    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
-  }
+  const { driveId, rootFolder } = await requireOneDriveSettings(tenantId);
 
-  const rootFolder = process.env.GRAPH_ROOT_FOLDER?.trim() ?? "";
-  const rootParts = rootFolder
-    ? rootFolder.split("/").map((p) => p.trim()).filter(Boolean).map(sanitize)
-    : [];
+  const rootParts = rootFolderParts(rootFolder, sanitize);
 
   const root = await graphFetch<DriveItem>(`/drives/${driveId}/root`);
   let parent: DriveItem = root;
@@ -246,12 +227,10 @@ export async function ensureConsultationAgreementsFolder(
  * files.pending_drive_moves.
  */
 export async function ensureRejectedFolderUnder(
+  tenantId: string,
   parentFolderItemId: string,
 ): Promise<{ driveId: string; folderItemId: string }> {
-  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) {
-    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
-  }
+  const { driveId } = await requireOneDriveSettings(tenantId);
   const folder = await ensureFolder(driveId, parentFolderItemId, "99 Rejected");
   return { driveId, folderItemId: folder.id };
 }
@@ -263,12 +242,10 @@ export async function ensureRejectedFolderUnder(
  * listing in OneDrive.
  */
 export async function ensureCasePaymentsFolder(
+  tenantId: string,
   caseFolderItemId: string,
 ): Promise<{ driveId: string; folderItemId: string }> {
-  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) {
-    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
-  }
+  const { driveId } = await requireOneDriveSettings(tenantId);
   const folder = await ensureFolder(driveId, caseFolderItemId, "00 Payments");
   return { driveId, folderItemId: folder.id };
 }
@@ -290,13 +267,11 @@ export async function ensureCasePaymentsFolder(
  * sanitize is applied internally to keep both paths in sync.
  */
 export async function ensureCaseCategoryFolder(
+  tenantId: string,
   caseFolderItemId: string,
   categoryName: string,
 ): Promise<{ driveId: string; folderItemId: string; wasCreated: boolean }> {
-  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) {
-    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
-  }
+  const { driveId } = await requireOneDriveSettings(tenantId);
   const name = sanitize(categoryName);
   // findChildFolder first so we can report wasCreated honestly (useful
   // for logs + the backfill script). ensureFolder would do the same
@@ -337,19 +312,13 @@ export async function ensureCaseCategoryFolder(
  * folder, creating the folder under the configured GRAPH_ROOT_FOLDER (if
  * any) when missing. Used by the staff signature settings page.
  */
-export async function ensureStaffSignaturesFolder(): Promise<{
+export async function ensureStaffSignaturesFolder(tenantId: string): Promise<{
   driveId: string;
   folderItemId: string;
 }> {
-  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) {
-    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
-  }
+  const { driveId, rootFolder } = await requireOneDriveSettings(tenantId);
 
-  const rootFolder = process.env.GRAPH_ROOT_FOLDER?.trim() ?? "";
-  const rootParts = rootFolder
-    ? rootFolder.split("/").map((p) => p.trim()).filter(Boolean).map(sanitize)
-    : [];
+  const rootParts = rootFolderParts(rootFolder, sanitize);
 
   const root = await graphFetch<DriveItem>(`/drives/${driveId}/root`);
   let parent: DriveItem = root;
@@ -366,19 +335,16 @@ export async function ensureStaffSignaturesFolder(): Promise<{
  * form version PDFs are stored here, one subfolder per form. Same drive
  * resolution as ensureStaffSignaturesFolder.
  */
-export async function ensureFormsLibraryFolder(formNumber: string): Promise<{
+export async function ensureFormsLibraryFolder(
+  tenantId: string,
+  formNumber: string,
+): Promise<{
   driveId: string;
   folderItemId: string;
 }> {
-  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) {
-    throw new Error("GRAPH_DOCUMENT_LIBRARY_ID is not set");
-  }
+  const { driveId, rootFolder } = await requireOneDriveSettings(tenantId);
 
-  const rootFolder = process.env.GRAPH_ROOT_FOLDER?.trim() ?? "";
-  const rootParts = rootFolder
-    ? rootFolder.split("/").map((p) => p.trim()).filter(Boolean).map(sanitize)
-    : [];
+  const rootParts = rootFolderParts(rootFolder, sanitize);
 
   const root = await graphFetch<DriveItem>(`/drives/${driveId}/root`);
   let parent: DriveItem = root;
