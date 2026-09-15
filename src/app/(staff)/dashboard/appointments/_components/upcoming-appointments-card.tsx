@@ -39,9 +39,10 @@ function datePart(
 
 // Shared card used in the case sidebar, client sidebar, and dashboard.
 // Anatomy mirrors MyTasks so the widgets read as one family. `prominent`
-// is the dashboard treatment: navy header band, bigger rows, and loud
-// Today / Tomorrow chips, because staff kept missing appointments in the
-// quiet sidebar version.
+// is the dashboard treatment. It used to be a solid navy band; that single
+// block dominated the page and fought every other surface. Prominence now
+// comes from a pale accent wash, a mint edge, and heavier type — the card
+// still leads, without a saturated slab doing the work.
 export function UpcomingAppointmentsCard({
   title,
   appointments,
@@ -56,16 +57,18 @@ export function UpcomingAppointmentsCard({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg bg-card",
+        "overflow-hidden rounded-[var(--radius)] bg-card",
         prominent
-          ? "border-2 border-[var(--navy)]/40 shadow-sm"
+          ? "border border-[var(--border-secondary)] border-l-2 border-l-[var(--gold)]"
           : "border border-border",
       )}
     >
       <header
         className={cn(
-          "flex items-center justify-between px-4 py-3",
-          prominent ? "bg-[var(--navy)] text-white" : "border-b border-border",
+          "flex items-center justify-between px-5 py-3.5",
+          prominent
+            ? "border-b border-border bg-[var(--accent)]"
+            : "border-b border-border",
         )}
       >
         <div className="flex items-center gap-2">
@@ -73,13 +76,13 @@ export function UpcomingAppointmentsCard({
             aria-hidden
             className={cn(
               "h-4 w-4",
-              prominent ? "text-white/80" : "text-muted-foreground",
+              prominent ? "text-[var(--primary)]" : "text-muted-foreground",
             )}
           />
           <h2
             className={cn(
               "text-sm font-semibold tracking-tight",
-              prominent ? "text-white" : "text-foreground",
+              prominent ? "text-foreground" : "text-foreground",
             )}
           >
             {title}
@@ -89,7 +92,7 @@ export function UpcomingAppointmentsCard({
           className={cn(
             "rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums",
             prominent
-              ? "bg-white/15 text-white"
+              ? "bg-[var(--primary)]/10 text-[var(--primary)]"
               : "bg-muted text-muted-foreground",
           )}
         >

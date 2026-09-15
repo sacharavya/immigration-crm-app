@@ -29,9 +29,9 @@ export default async function StaffLayout({
 
   return (
     <StaffProvider staff={staff}>
-      <div className="flex h-dvh">
+      <div className="app-surface flex h-dvh bg-[var(--surface-sunken)]">
         <StaffSidebar />
-        <div className="min-w-0 flex-1 overflow-y-auto pb-8">{children}</div>
+        <div className="min-w-0 flex-1 overflow-y-auto pb-10">{children}</div>
       </div>
     </StaffProvider>
   );

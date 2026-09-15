@@ -45,8 +45,8 @@ function dotClass(t: DashboardTask): string {
 
 export function MyTasks({ tasks }: { tasks: DashboardTask[] }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
-      <header className="flex items-center justify-between border-b border-border px-4 py-3">
+    <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-card">
+      <header className="flex items-center justify-between border-b border-border px-5 py-3.5">
         <div className="flex items-center gap-2">
           <CheckSquare aria-hidden className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold tracking-tight text-foreground">

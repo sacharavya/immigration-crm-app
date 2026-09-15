@@ -23,14 +23,15 @@ export function Sparkline({
 
   const min = Math.min(...series);
   const max = Math.max(...series);
+  // Nothing moved: a flat line carries no signal and reads as a divider rule.
+  if (max === min) return null;
   const span = max - min || 1;
   const pad = 2;
   const usable = height - pad * 2;
 
   const coords = series.map((v, i) => {
     const x = (i / (series.length - 1)) * width;
-    // Flat series sits on the mid line rather than the floor.
-    const norm = max === min ? 0.5 : (v - min) / span;
+    const norm = (v - min) / span;
     const y = pad + (1 - norm) * usable;
     return { x, y };
   });
@@ -57,7 +58,7 @@ export function Sparkline({
         points={line}
         fill="none"
         stroke="var(--primary)"
-        strokeWidth={2}
+        strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"

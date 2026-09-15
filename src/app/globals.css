@@ -123,6 +123,8 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
   --font-inter: var(--font-inter);
   --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);
@@ -168,6 +170,22 @@
    Change this single value to tune every corner on those pages. */
 .marketing-radius {
   --radius: 10px;
+}
+
+/* The signed-in CRM. Square everywhere reads as severe on data-dense
+   screens, so the staff shell opts into a soft radius — same escape hatch
+   the marketing pages use. Set to 0 to go back to square. */
+.app-surface {
+  --radius: 10px;
+
+  /* Hairline borders. The default --border is tuned for square edges and
+     looks heavy once corners are rounded. */
+  --border: #ECEEF1;
+  --border-secondary: #DDE1E6;
+
+  /* Page ground behind the cards. Slightly cooler than the cards so
+     surfaces separate without needing shadows (which are off globally). */
+  --surface-sunken: #F7F8FA;
 }
 
 /* Kill all shadows globally. Revert by removing this block. */

@@ -4051,6 +4051,36 @@ export type Database = {
         }
         Relationships: []
       }
+      deleted_tenants: {
+        Row: {
+          deleted_at: string
+          deleted_by: string | null
+          id: string
+          name: string
+          row_counts: Json
+          slug: string
+          tenant_id: string
+        }
+        Insert: {
+          deleted_at?: string
+          deleted_by?: string | null
+          id?: string
+          name: string
+          row_counts?: Json
+          slug: string
+          tenant_id: string
+        }
+        Update: {
+          deleted_at?: string
+          deleted_by?: string | null
+          id?: string
+          name?: string
+          row_counts?: Json
+          slug?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       features: {
         Row: {
           default_enabled: boolean
@@ -4122,7 +4152,48 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_tenant: {
+        Args: { p_confirm_name: string; p_tenant: string }
+        Returns: {
+          auth_user_id: string
+        }[]
+      }
+      flag_member_password_reset: {
+        Args: { p_staff: string }
+        Returns: {
+          auth_user_id: string
+          email: string
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
+      tenant_delete_preview: {
+        Args: { p_tenant: string }
+        Returns: {
+          row_count: number
+          table_ref: string
+        }[]
+      }
+      tenant_members: {
+        Args: { p_tenant: string }
+        Returns: {
+          created_at: string
+          email: string
+          first_name: string
+          is_active: boolean
+          last_login_at: string
+          last_name: string
+          password_reset_required: boolean
+          role: Database["crm"]["Enums"]["staff_role"]
+          staff_id: string
+        }[]
+      }
+      tenant_owned_tables: {
+        Args: never
+        Returns: {
+          schema_name: string
+          table_name: string
+        }[]
+      }
       tenant_usage: {
         Args: never
         Returns: {
@@ -4132,6 +4203,16 @@ export type Database = {
           staff_count: number
           tenant_id: string
         }[]
+      }
+      update_tenant_member: {
+        Args: {
+          p_first_name: string
+          p_is_active: boolean
+          p_last_name: string
+          p_role: Database["crm"]["Enums"]["staff_role"]
+          p_staff: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

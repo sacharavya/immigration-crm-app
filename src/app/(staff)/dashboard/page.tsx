@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { KpiCard } from "@/components/dashboard/KpiCard";
+import { KpiBar } from "@/components/dashboard/KpiBar";
 import { MyTasks } from "@/components/dashboard/MyTasks";
 import { PipelineStrip } from "@/components/dashboard/PipelineStrip";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
@@ -32,6 +32,28 @@ import { UpcomingAppointmentsCard } from "./appointments/_components/upcoming-ap
 // Server-rendered firm overview. Every panel reads finished view models from
 // lib/dashboard; the only client island is the radar's Service/Category toggle.
 export const dynamic = "force-dynamic";
+
+// The firm operates out of Toronto, so the header's date and greeting follow
+// that clock rather than the server's.
+const FIRM_TZ = "America/Toronto";
+
+function torontoHeader(): { date: string; greeting: string } {
+  const now = new Date();
+  const date = now.toLocaleDateString("en-CA", {
+    timeZone: FIRM_TZ,
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+  // en-CA's 24-hour clock renders midnight as "24", so fold it back to 0.
+  const hour =
+    Number(
+      now.toLocaleString("en-CA", { timeZone: FIRM_TZ, hour: "2-digit", hour12: false }),
+    ) % 24;
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  return { date, greeting };
+}
 
 export default async function DashboardPage() {
   const me = await getStaff();
@@ -72,19 +94,21 @@ export default async function DashboardPage() {
     ? await loadNewAppointmentDialogData()
     : null;
 
+  const { date, greeting } = torontoHeader();
+
   return (
-    <main className="space-y-6 px-6 py-6">
+    <main className="space-y-6 px-6 py-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Welcome back, {me.first_name}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Here is how the firm is tracking right now.
+          <p className="text-xs font-medium uppercase tracking-[0.08em] text-[var(--subtle-foreground)]">
+            {date}
           </p>
+          <h1 className="text-[28px] font-semibold tracking-[-0.02em] text-foreground">
+            {greeting}, {me.first_name}
+          </h1>
         </div>
         {(canCreateCases || canCreateClients || canAppointments) && (
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             {apptDialogData && (
               <NewAppointmentDialog
                 types={apptDialogData.types}
@@ -114,21 +138,19 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <section className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 min-[1080px]:grid-cols-4">
-        {visibleKpis.map((view) => (
-          <KpiCard
-            key={view.key}
-            view={view}
-            href={
-              view.key === "active_cases" && canCases
-                ? "/dashboard/cases"
-                : undefined
-            }
-          />
-        ))}
-      </section>
+      <KpiBar
+        views={visibleKpis}
+        links={canCases ? { active_cases: "/dashboard/cases" } : undefined}
+      />
 
-      <div className="grid gap-6 min-[1080px]:grid-cols-[minmax(0,1fr)_360px]">
+      {canCases && <PipelineStrip phases={pipeline} />}
+
+      <div className="grid gap-6 pt-1 min-[1080px]:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-6">
+          {canCases && <RecentActivity rows={recent} />}
+          {canCases && <SuccessRadar data={radar} />}
+        </div>
+
         <div className="space-y-6">
           {canAppointments && (
             <UpcomingAppointmentsCard
@@ -138,12 +160,6 @@ export default async function DashboardPage() {
               prominent
             />
           )}
-          {canCases && <PipelineStrip phases={pipeline} />}
-          {canCases && <RecentActivity rows={recent} />}
-        </div>
-
-        <div className="space-y-6">
-          {canCases && <SuccessRadar data={radar} />}
           {canTasks && <MyTasks tasks={tasks} />}
         </div>
       </div>

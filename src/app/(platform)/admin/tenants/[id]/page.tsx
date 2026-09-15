@@ -2,8 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+
+import type { TenantMember } from "../../actions";
 import { getFeatureCatalogue } from "@/lib/tenant/server";
 
+import { DangerZone } from "../../_components/danger-zone";
+import { MembersTable } from "../../_components/members-table";
+import { OwnerForm } from "../../_components/owner-form";
 import { TenantDetailForm } from "../../_components/tenant-detail-form";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +34,13 @@ export default async function TenantDetailPage({
 
   const catalogue = await getFeatureCatalogue();
 
+  // Account administration: names, emails, roles and sign-in status. Still
+  // no clients, cases or documents — those stay behind tenant isolation.
+  const { data: memberRows } = await supabase
+    .schema("platform")
+    .rpc("tenant_members", { p_tenant: id });
+  const members = (memberRows as TenantMember[] | null) ?? [];
+
   return (
     <div className="space-y-5 p-6">
       <header>
@@ -47,6 +59,14 @@ export default async function TenantDetailPage({
         </p>
       </header>
 
+      <OwnerForm
+        tenantId={tenant.id}
+        tenantName={tenant.name}
+        staffCount={members.length}
+      />
+
+      <MembersTable members={members} tenantName={tenant.name} />
+
       <TenantDetailForm
         catalogue={catalogue}
         tenant={{
@@ -60,6 +80,8 @@ export default async function TenantDetailPage({
           admin_notes: tenant.admin_notes,
         }}
       />
+
+      <DangerZone tenantId={tenant.id} tenantName={tenant.name} />
     </div>
   );
 }
