@@ -45,17 +45,30 @@ BEGIN
         RAISE EXCEPTION 'current_tenant_id did not resolve to firm A';
     END IF;
 
-    SELECT count(*) INTO n FROM crm.clients;
-    IF n <> 1 THEN RAISE EXCEPTION 'A sees % clients, expected only its own 1', n; END IF;
+    -- Every row visible must belong to firm A. This holds regardless of
+    -- how much real data the default firm already has.
+    SELECT count(*) INTO n FROM crm.clients
+     WHERE tenant_id::text IS DISTINCT FROM current_setting('test.tenant_a');
+    IF n <> 0 THEN RAISE EXCEPTION 'LEAK: firm A sees % foreign client rows', n; END IF;
 
     SELECT count(*) INTO n FROM crm.clients WHERE legal_name_full = 'Beta Client';
     IF n <> 0 THEN RAISE EXCEPTION 'LEAK: firm A can read firm B client rows'; END IF;
 
-    SELECT count(*) INTO n FROM crm.staff;
-    IF n <> 1 THEN RAISE EXCEPTION 'LEAK: firm A sees % staff rows', n; END IF;
+    -- ...and firm A's own row is genuinely readable, so this is isolation
+    -- rather than the table simply being closed to everyone.
+    SELECT count(*) INTO n FROM crm.clients WHERE legal_name_full = 'Alpha Client';
+    IF n <> 1 THEN RAISE EXCEPTION 'firm A cannot read its own client row'; END IF;
 
-    SELECT count(*) INTO n FROM crm.tenants;
-    IF n <> 1 THEN RAISE EXCEPTION 'LEAK: firm A can enumerate % tenants', n; END IF;
+    SELECT count(*) INTO n FROM crm.staff
+     WHERE tenant_id::text IS DISTINCT FROM current_setting('test.tenant_a');
+    IF n <> 0 THEN RAISE EXCEPTION 'LEAK: firm A sees % foreign staff rows', n; END IF;
+
+    SELECT count(*) INTO n FROM crm.staff WHERE email = 'b@b.test';
+    IF n <> 0 THEN RAISE EXCEPTION 'LEAK: firm A can read firm B staff'; END IF;
+
+    SELECT count(*) INTO n FROM crm.tenants
+     WHERE id::text IS DISTINCT FROM current_setting('test.tenant_a');
+    IF n <> 0 THEN RAISE EXCEPTION 'LEAK: firm A can enumerate other tenants'; END IF;
 
     -- Writing into another firm must be refused by the WITH CHECK clause.
     BEGIN
@@ -92,11 +105,15 @@ SELECT set_config('request.jwt.claims',
 DO $$
 DECLARE n INT;
 BEGIN
-    SELECT count(*) INTO n FROM crm.clients;
-    IF n <> 1 THEN RAISE EXCEPTION 'firm B sees % clients, expected its own 1', n; END IF;
+    SELECT count(*) INTO n FROM crm.clients
+     WHERE tenant_id::text IS DISTINCT FROM current_setting('test.tenant_b');
+    IF n <> 0 THEN RAISE EXCEPTION 'LEAK: firm B sees % foreign client rows', n; END IF;
 
     SELECT count(*) INTO n FROM crm.clients WHERE legal_name_full LIKE '%Alpha%';
     IF n <> 0 THEN RAISE EXCEPTION 'LEAK: firm B can read firm A client rows'; END IF;
+
+    SELECT count(*) INTO n FROM crm.clients WHERE legal_name_full = 'Beta Client';
+    IF n <> 1 THEN RAISE EXCEPTION 'firm B cannot read its own client row'; END IF;
 END $$;
 
 RESET ROLE;
@@ -124,10 +141,16 @@ SELECT set_config('request.jwt.claims',
 DO $$
 DECLARE n INT;
 BEGIN
-    SELECT count(*) INTO n FROM crm.staff_ids_with_permission('view_clients');
-    IF n <> 1 THEN
-        RAISE EXCEPTION 'LEAK: permission fan-out returned % staff, crossing firms', n;
+    SELECT count(*) INTO n
+      FROM crm.staff_ids_with_permission('view_clients') f
+      JOIN crm.staff s ON s.id = f.staff_id
+     WHERE s.tenant_id::text IS DISTINCT FROM current_setting('test.tenant_a');
+    IF n <> 0 THEN
+        RAISE EXCEPTION 'LEAK: permission fan-out reached % staff at other firms', n;
     END IF;
+
+    SELECT count(*) INTO n FROM crm.staff_ids_with_permission('view_clients');
+    IF n = 0 THEN RAISE EXCEPTION 'fan-out returned nobody, so the check is vacuous'; END IF;
 END $$;
 
 RESET ROLE;
