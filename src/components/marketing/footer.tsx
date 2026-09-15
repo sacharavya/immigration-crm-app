@@ -47,7 +47,7 @@ export function MarketingFooter() {
           </h2>
           <Link
             href="/book-an-appointment"
-            className="shrink-0 rounded-[var(--radius)] bg-white px-5 py-2.5 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--gold)]"
+            className="shrink-0 rounded-[var(--radius)] bg-white px-5 py-2.5 text-[13px] font-semibold text-[var(--on-ink)] transition-colors hover:bg-[var(--gold)]"
           >
             Book a consultation
           </Link>

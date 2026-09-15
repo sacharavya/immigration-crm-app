@@ -30,6 +30,7 @@ import { ContactForm } from '../_contact/contact-form';
 import { SiteNav } from '@/components/marketing/shell';
 import { MarketingFooter } from '@/components/marketing/footer';
 import { dmMono, instrumentSerif, jakarta } from '@/components/marketing/fonts';
+import { MEDIA } from '@/components/marketing/media';
 import {
   BleedPanel,
   DarkSection,
@@ -39,6 +40,7 @@ import {
   GradientBlock,
   HeroBand,
   PrimaryLink,
+  Photo,
   SectionHead,
   WhiteLink,
 } from '@/components/marketing/ui';
@@ -285,6 +287,14 @@ export default function HomePage() {
             </div>
           </div>
 
+          {/* The photograph runs the full measure under the headline, so the
+              hero opens on type and then hands off to a single wide image. */}
+          <Photo
+            slot={MEDIA.heroConsulting}
+            priority
+            className='mx-auto mt-14 aspect-[21/9] w-full max-w-[1180px]'
+          />
+
           {/* Credential strip: the regulator line is the proof point, so it
               sits on its own rule rather than floating under the buttons. */}
           <div className='mx-auto mt-16 flex w-full max-w-[1180px] flex-wrap items-center gap-x-6 gap-y-4 border-t border-[var(--rule)] pt-6'>
@@ -339,7 +349,7 @@ export default function HomePage() {
             </div>
             <Link
               href='/'
-              className='relative self-start rounded-[var(--radius)] bg-[var(--paper-raised)] px-3.5 py-2 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:bg-[var(--gold)]'
+              className='relative self-start rounded-[var(--radius)] bg-[var(--paper-raised)] px-3.5 py-2 text-[13px] font-semibold text-[var(--on-ink)] transition-colors hover:bg-[var(--gold)]'
             >
               Learn more →
             </Link>
@@ -349,7 +359,7 @@ export default function HomePage() {
 
       {/* Pathways — the one section that carries the page. A hard cut to
           dark, then nothing but names set large. */}
-      <DarkSection className='py-28'>
+      <DarkSection className='py-28' image={MEDIA.pathwaysBackdrop}>
         <div className='grid items-start gap-12 lg:grid-cols-[minmax(0,260px)_1fr]'>
           <div className='flex flex-col gap-5 lg:sticky lg:top-28'>
             <span className='font-[family-name:var(--font-dm-mono)] text-[10.5px] uppercase tracking-[.18em] text-white/45'>
@@ -361,7 +371,7 @@ export default function HomePage() {
             </p>
             <Link
               href='https://genzdatalabs.com/services'
-              className='self-start rounded-[var(--radius)] border border-white/25 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-white hover:text-[var(--ink)]'
+              className='self-start rounded-[var(--radius)] border border-white/25 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-white hover:text-[var(--on-ink)]'
             >
               Explore all services
             </Link>
@@ -372,7 +382,7 @@ export default function HomePage() {
 
       {/* About */}
       <section id='about' className='scroll-mt-24 px-6 pb-28'>
-        <div className='mx-auto grid max-w-[1100px] items-center gap-10 lg:grid-cols-2'>
+        <div className='mx-auto grid max-w-[1180px] items-center gap-12 lg:grid-cols-2'>
           <div className='flex flex-col items-start gap-4'>
             <Eyebrow>ABOUT US</Eyebrow>
             <Display className='text-balance text-[clamp(30px,3.8vw,48px)]'>
@@ -521,7 +531,7 @@ export default function HomePage() {
             {STUDY_STEPS.map((label, i) => (
               <div
                 key={label}
-                className='flex items-center gap-2.5 rounded-xl bg-white/95 px-4 py-3.5 text-[var(--ink)]'
+                className='flex items-center gap-2.5 on-light rounded-xl bg-white/95 px-4 py-3.5 text-[var(--ink)]'
               >
                 <span className='font-[family-name:var(--font-dm-mono)] text-[10.5px] text-[var(--ink)]'>
                   0{i + 1}
@@ -543,7 +553,7 @@ export default function HomePage() {
             action={
               <Link
                 href='/book-an-appointment'
-                className='rounded-[var(--radius)] border border-white/25 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-white hover:text-[var(--ink)]'
+                className='rounded-[var(--radius)] border border-white/25 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-white hover:text-[var(--on-ink)]'
               >
                 Book a consultation
               </Link>
@@ -580,7 +590,7 @@ export default function HomePage() {
             action={
               <Link
                 href='/'
-                className='rounded-[var(--radius)] bg-[var(--gold)] px-4 py-2.5 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:bg-white'
+                className='rounded-[var(--radius)] bg-[var(--gold)] px-4 py-2.5 text-[13px] font-semibold text-[var(--on-ink)] transition-colors hover:bg-white'
               >
                 See the CRM
               </Link>

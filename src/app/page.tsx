@@ -13,6 +13,7 @@ import Image from "next/image";
 
 import { dmMono, instrumentSerif, jakarta } from "@/components/marketing/fonts";
 import { MarketingFooter } from "@/components/marketing/footer";
+import { MEDIA } from "@/components/marketing/media";
 import { SiteNav } from "@/components/marketing/shell";
 import {
   BrowserFrame,
@@ -512,7 +513,7 @@ export default function CrmLandingPage() {
 
       {/* Benefits — cut to dark. The page is otherwise one long paper
           field, and the trust claims are what deserve the contrast. */}
-      <DarkSection className="mt-28 py-28">
+      <DarkSection id="trust" className="mt-28 py-28" image={MEDIA.securityBackdrop}>
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,320px)_1fr]">
           <div className="flex flex-col gap-5 lg:sticky lg:top-28">
             <span className="font-[family-name:var(--font-dm-mono)] text-[10.5px] uppercase tracking-[.18em] text-white/45">
@@ -610,7 +611,7 @@ export default function CrmLandingPage() {
       </section>
 
       {/* Request access form */}
-      <section id="request" className="mx-auto w-full max-w-3xl px-6 pt-28">
+      <section id="request" className="mx-auto w-full max-w-3xl px-6 pb-28 pt-28">
         <div className="flex flex-col items-center gap-4 text-center">
           <Eyebrow>REQUEST ACCESS</Eyebrow>
           <Display className="text-balance text-[clamp(30px,3.8vw,48px)]">

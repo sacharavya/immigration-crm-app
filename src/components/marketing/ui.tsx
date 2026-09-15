@@ -1,7 +1,10 @@
-import { GenzLogo } from "@/components/brand/genz-logo";
+import Image from "next/image";
 import Link from "next/link";
 
+
 import { cn } from "@/lib/utils/index";
+
+import type { MediaSlot } from "./media";
 
 // Shared primitives for the marketing visual system (home + CRM landing).
 // The register is editorial: a serif display face over a paper canvas, ink
@@ -104,7 +107,7 @@ export function PrimaryLink({
         "inline-flex items-center gap-2 rounded-[var(--radius)] px-4 py-2.5 text-[13px] font-semibold transition-colors",
         tone === "primary"
           ? "bg-[var(--ink)] text-[var(--on-ink)] hover:opacity-90"
-          : "bg-[var(--gold)] text-[var(--ink)] hover:bg-[var(--ink)] hover:text-white",
+          : "bg-[var(--gold)] text-[var(--on-ink)] hover:opacity-90",
         className,
       )}
     >
@@ -132,28 +135,6 @@ export function WhiteLink({
     >
       {children}
     </Link>
-  );
-}
-
-// Thin flat top bar. The previous floating glass pill read as consumer SaaS;
-// a full-width rule sitting on the paper reads as a firm.
-export function MarketingNav({
-  center,
-  actions,
-}: {
-  center?: React.ReactNode;
-  actions: React.ReactNode;
-}) {
-  return (
-    <div className="sticky top-0 z-50 border-b border-[var(--rule)] bg-[var(--paper)]/90 backdrop-blur-md">
-      <nav className="mx-auto flex w-full max-w-[1180px] items-center justify-between gap-6 px-6 py-3.5">
-        <Link href="/" className="flex shrink-0 items-center gap-2.5">
-          <GenzLogo className="h-7 w-auto text-[#1E2136]" />
-        </Link>
-        {center}
-        <div className="ml-auto flex flex-none items-center gap-1.5">{actions}</div>
-      </nav>
-    </div>
   );
 }
 
@@ -259,12 +240,46 @@ export function Rule({ className }: { className?: string }) {
 export function DarkSection({
   children,
   className,
+  image,
+  id,
 }: {
   children: React.ReactNode;
   className?: string;
+  /** Optional backdrop. Sits under a heavy scrim, so use a dark photo. */
+  image?: MediaSlot;
+  /** Anchor target, when the band is a nav destination. */
+  id?: string;
 }) {
   return (
-    <section className={cn("on-dark grain relative overflow-hidden bg-[var(--slab)] text-white", className)}>
+    <section id={id} className={cn("on-dark grain relative scroll-mt-20 overflow-hidden bg-[var(--slab)] text-white", className)}>
+      {image && (
+        <>
+          <Image
+            src={image.src}
+            alt={image.alt}
+            fill
+            sizes="100vw"
+            unoptimized
+            className="pointer-events-none absolute inset-0 object-cover"
+            style={{ objectPosition: image.position ?? "50% 50%" }}
+          />
+          {/* Scrim. A flat 88% hid the photograph entirely; this keeps the
+              same contrast under the text while letting the image read at
+              the edges. Text never depends on the photo being dark enough. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-[var(--slab)]/70"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg,var(--slab) 0%,rgba(26,29,46,.55) 28%,rgba(26,29,46,.55) 72%,var(--slab) 100%)",
+            }}
+          />
+        </>
+      )}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -275,6 +290,38 @@ export function DarkSection({
       />
       <div className="relative mx-auto w-full max-w-[1180px] px-6">{children}</div>
     </section>
+  );
+}
+
+// A framed photograph. Ratio is set by the caller so the same component
+// serves a tall hero crop and a wide band.
+export function Photo({
+  slot,
+  className,
+  priority = false,
+}: {
+  slot: MediaSlot;
+  className?: string;
+  priority?: boolean;
+}) {
+  return (
+    <figure className={cn("relative overflow-hidden rounded-[calc(var(--radius)*1.5)] bg-[var(--paper)]", className)}>
+      <Image
+        src={slot.src}
+        alt={slot.alt}
+        fill
+        sizes="(max-width: 1024px) 100vw, 50vw"
+        unoptimized
+        priority={priority}
+        className="object-cover"
+        style={{ objectPosition: slot.position ?? "50% 50%" }}
+      />
+      {slot.credit && (
+        <figcaption className="absolute bottom-0 right-0 bg-[var(--slab)]/70 px-2 py-1 font-[family-name:var(--font-dm-mono)] text-[10px] uppercase tracking-[.12em] text-white/70">
+          {slot.credit}
+        </figcaption>
+      )}
+    </figure>
   );
 }
 

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1200" viewBox="0 0 2000 1200" role="img" aria-label="Backdrop · pathways (dark) placeholder">
+  <rect width="2000" height="1200" fill="#1A1D2E"/>
+  <g fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2" opacity=".5">
+    <line x1="0" y1="0" x2="2000" y2="1200"/>
+    <line x1="2000" y1="0" x2="0" y2="1200"/>
+    <rect x="1" y="1" width="1998" height="1198"/>
+  </g>
+  <rect x="660" y="508" width="680" height="184" fill="#1A1D2E"/>
+  <text x="1000" y="566" text-anchor="middle" font-family="ui-monospace,monospace" font-size="21" letter-spacing="4" fill="rgba(255,255,255,.45)">PLACEHOLDER — REPLACE THIS FILE</text>
+  <text x="1000" y="616" text-anchor="middle" font-family="Georgia,serif" font-size="42" fill="#FFFFFF">Backdrop · pathways (dark)</text>
+  <text x="1000" y="656" text-anchor="middle" font-family="ui-monospace,monospace" font-size="19" fill="rgba(255,255,255,.45)">2000×1200 · pexels: &#8220;toronto skyline dusk&#8221;</text>
+</svg>
