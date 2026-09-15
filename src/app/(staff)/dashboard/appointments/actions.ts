@@ -26,6 +26,7 @@ import {
   sendInternalNotification,
   sendPaymentPending,
 } from "@/lib/email/appointments";
+import { getStaffTenantId, requireStaffTenantId } from "@/lib/tenant/context";
 import { createClient } from "@/lib/supabase/server";
 
 // All gated by manage_appointments. The Graph calendar sync is a side
@@ -94,9 +95,16 @@ async function isSlotFree(
   endsAt: string,
   excludeId: string | null,
 ): Promise<boolean> {
+  // Availability is per firm, so the check needs one. A staff session always
+  // has one; if it somehow does not, treat the slot as taken rather than
+  // answering from every firm's calendar.
+  const tenantId = await getStaffTenantId();
+  if (!tenantId) return false;
+
   const { data, error } = await supabase
     .schema("crm")
     .rpc("appointment_slot_is_free", {
+      p_tenant: tenantId,
       p_starts_at: startsAt,
       p_ends_at: endsAt,
       p_exclude_appointment_id: excludeId ?? undefined,
@@ -627,7 +635,7 @@ export async function getAvailableSlots(
   if (!uuid.safeParse(typeId).success) return { error: "Invalid type" };
 
   try {
-    const allSlots = await getOpenSlotsForType(typeId);
+    const allSlots = await getOpenSlotsForType(typeId, await requireStaffTenantId());
 
     const fromTime = new Date(fromIso).getTime();
     const toTime = new Date(toIso).getTime();

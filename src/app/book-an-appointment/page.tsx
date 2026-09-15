@@ -1,4 +1,5 @@
 import { adminClient } from "@/lib/supabase/admin";
+import { getPublicTenantId } from "@/lib/tenant/context";
 
 
 import { BookingDisabled } from "./_components/booking-disabled";
@@ -9,12 +10,20 @@ export const dynamic = "force-dynamic";
 
 
 export default async function BookPage() {
+  // Which firm's booking page is this? No session here, so it comes from the
+  // request host. Without it these service-role reads would see every firm's
+  // rows: the settings read would error on the second row, and the type list
+  // below would advertise another firm's consultations and prices.
+  const tenantId = await getPublicTenantId();
+  if (!tenantId) return <BookingDisabled />;
+
   const supabase = adminClient();
 
   const { data: settings } = await supabase
     .schema("crm")
     .from("appointment_settings")
     .select("public_booking_enabled, timezone, office_address")
+    .eq("tenant_id", tenantId)
     .maybeSingle();
 
   if (!settings?.public_booking_enabled) {
@@ -27,6 +36,7 @@ export default async function BookPage() {
     .select(
       "id, name, code, description, preparation_notes, duration_minutes, fee_cad, default_location_type, requires_consultation_agreement",
     )
+    .eq("tenant_id", tenantId)
     .eq("active", true)
     .eq("is_public", true)
     .is("deleted_at", null)

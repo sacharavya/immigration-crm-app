@@ -15,14 +15,18 @@ import { generateOpenSlots, type HoursByWeekday, type Slot } from "./slots";
 
 export async function getOpenSlotsForType(
   appointmentTypeId: string,
+  tenantId: string,
 ): Promise<Slot[]> {
   const supabase = adminClient();
 
-  // 1. Load settings (singleton)
+  // Service role, so RLS is off and every query here must carry the firm.
+  // Settings used to be read as a singleton: with two firms that returned two
+  // rows and .single() threw, taking the whole slot picker down.
   const { data: settingsRow } = await supabase
     .schema("crm")
     .from("appointment_settings")
     .select("*")
+    .eq("tenant_id", tenantId)
     .single();
   if (!settingsRow) throw new Error("appointment_settings missing");
 
@@ -31,6 +35,7 @@ export async function getOpenSlotsForType(
     .schema("crm")
     .from("appointment_types")
     .select("duration_minutes")
+    .eq("tenant_id", tenantId)
     .eq("id", appointmentTypeId)
     .eq("active", true)
     .is("deleted_at", null)
@@ -47,6 +52,7 @@ export async function getOpenSlotsForType(
     .schema("crm")
     .from("appointments")
     .select("starts_at, ends_at")
+    .eq("tenant_id", tenantId)
     .eq("status", "confirmed")
     .is("deleted_at", null)
     .gte("starts_at", now.toISOString())

@@ -3573,6 +3573,7 @@ export type Database = {
           p_ends_at: string
           p_exclude_appointment_id?: string
           p_starts_at: string
+          p_tenant: string
         }
         Returns: boolean
       }
@@ -3594,15 +3595,9 @@ export type Database = {
         Returns: Database["crm"]["Enums"]["staff_role"]
       }
       current_tenant_id: { Args: never; Returns: string }
-      generate_case_number:
-        | { Args: never; Returns: string }
-        | { Args: { p_tenant?: string }; Returns: string }
-      generate_client_number:
-        | { Args: never; Returns: string }
-        | { Args: { p_tenant?: string }; Returns: string }
-      generate_invoice_number:
-        | { Args: never; Returns: string }
-        | { Args: { p_tenant?: string }; Returns: string }
+      generate_case_number: { Args: { p_tenant?: string }; Returns: string }
+      generate_client_number: { Args: { p_tenant?: string }; Returns: string }
+      generate_invoice_number: { Args: { p_tenant?: string }; Returns: string }
       next_number: {
         Args: { p_kind: string; p_tenant: string }
         Returns: number

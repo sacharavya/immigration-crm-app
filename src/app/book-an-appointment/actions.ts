@@ -16,7 +16,7 @@ import {
 import { maybeSendConsultationAgreement } from "@/lib/consultation/send";
 import { ensureConsultationPaymentsFolder } from "@/lib/graph/folders";
 import { uploadFile } from "@/lib/graph/uploads";
-import { requireTenantId } from "@/lib/tenant/context";
+import { getPublicTenantId, requireTenantId } from "@/lib/tenant/context";
 
 import type { BookingResult } from "./_components/types";
 import {
@@ -78,6 +78,12 @@ export async function bookAppointment(
   const data = parsed.data;
   const emailLower = data.email.toLowerCase();
 
+  // Which firm is being booked. Public pages carry no session, so the firm
+  // comes from the request host. Every query below is service-role and so
+  // bypasses RLS — this id is the only thing scoping them.
+  const tenantId = await getPublicTenantId();
+  if (!tenantId) return { ok: false, error: "booking_disabled" };
+
   const supabase = adminClient();
 
   // 1. Feature flag check.
@@ -87,6 +93,7 @@ export async function bookAppointment(
     .select(
       "public_booking_enabled, timezone, office_address, minimum_lead_time_hours, maximum_horizon_days",
     )
+    .eq("tenant_id", tenantId)
     .maybeSingle();
   if (!settings?.public_booking_enabled) {
     return { ok: false, error: "booking_disabled" };
@@ -99,6 +106,7 @@ export async function bookAppointment(
     .select(
       "id, name, code, duration_minutes, default_location_type, is_public, active, requires_case, fee_cad",
     )
+    .eq("tenant_id", tenantId)
     .eq("id", data.appointment_type_id)
     .eq("is_public", true)
     .eq("active", true)
@@ -149,6 +157,7 @@ export async function bookAppointment(
   const { data: slotFree } = await supabase
     .schema("crm")
     .rpc("appointment_slot_is_free", {
+      p_tenant: tenantId,
       p_starts_at: startsAt.toISOString(),
       p_ends_at: endsAt.toISOString(),
     });
@@ -160,6 +169,7 @@ export async function bookAppointment(
     .schema("crm")
     .from("appointments")
     .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
     .eq("snapshot_client_email", emailLower)
     .gte("created_at", oneHourAgo);
   if ((recentCount ?? 0) >= 3) return { ok: false, error: "rate_limited" };
@@ -169,6 +179,7 @@ export async function bookAppointment(
     .schema("crm")
     .from("appointments")
     .select("id, starts_at")
+    .eq("tenant_id", tenantId)
     .eq("snapshot_client_email", emailLower)
     .eq("status", "confirmed")
     .gte("starts_at", now.toISOString())
@@ -188,6 +199,7 @@ export async function bookAppointment(
     .schema("crm")
     .from("clients")
     .select("id")
+    .eq("tenant_id", tenantId)
     .eq("email", emailLower)
     .is("deleted_at", null)
     .maybeSingle();
@@ -219,7 +231,7 @@ export async function bookAppointment(
     // crm.generate_client_number() returns the next "BB-C-YYYY-NNNN" string.
     const { data: nextNumber, error: numErr } = await supabase
       .schema("crm")
-      .rpc("generate_client_number");
+      .rpc("generate_client_number", { p_tenant: tenantId });
     if (numErr || !nextNumber) {
       return { ok: false, error: "client_creation_failed" };
     }
@@ -228,6 +240,7 @@ export async function bookAppointment(
       .schema("crm")
       .from("clients")
       .insert({
+        tenant_id: tenantId,
         client_number: nextNumber,
         legal_name_full: data.name.trim(),
         given_names: given,
@@ -270,6 +283,7 @@ export async function bookAppointment(
     .schema("crm")
     .from("appointments")
     .insert({
+      tenant_id: tenantId,
       appointment_type_id: type.id,
       client_id: clientId,
       case_id: null,

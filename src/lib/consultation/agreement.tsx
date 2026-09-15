@@ -42,12 +42,23 @@ function mapRcic(s: RcicRow) {
 
 // The RCIC of record for a consultation: the assigned staff member if they're
 // an RCIC, otherwise the firm's sole RCIC (matches the retainer's fallback).
-async function resolveRcic(supabase: Admin, assignedStaffId: string | null) {
+//
+// Every lookup here is scoped to the firm. This runs under the service role,
+// and the final fallback used to be "the first active RCIC ordered by
+// created_at" across the whole table — which could print another firm's
+// consultant name and CICC licence number on a signed agreement. That is a
+// regulatory problem, not a cosmetic one.
+async function resolveRcic(
+  supabase: Admin,
+  tenantId: string,
+  assignedStaffId: string | null,
+) {
   if (assignedStaffId) {
     const { data } = await supabase
       .schema("crm")
       .from("staff")
       .select(RCIC_COLS)
+      .eq("tenant_id", tenantId)
       .eq("id", assignedStaffId)
       .maybeSingle();
     const s = data as RcicRow | null;
@@ -59,12 +70,14 @@ async function resolveRcic(supabase: Admin, assignedStaffId: string | null) {
     .schema("crm")
     .from("appointment_settings")
     .select("default_rcic_staff_id")
+    .eq("tenant_id", tenantId)
     .maybeSingle();
   if (settings?.default_rcic_staff_id) {
     const { data } = await supabase
       .schema("crm")
       .from("staff")
       .select(RCIC_COLS)
+      .eq("tenant_id", tenantId)
       .eq("id", settings.default_rcic_staff_id)
       .maybeSingle();
     const s = data as RcicRow | null;
@@ -74,6 +87,7 @@ async function resolveRcic(supabase: Admin, assignedStaffId: string | null) {
     .schema("crm")
     .from("staff")
     .select(RCIC_COLS)
+    .eq("tenant_id", tenantId)
     .eq("is_rcic", true)
     .eq("is_active", true)
     .is("deleted_at", null)
@@ -94,7 +108,7 @@ export async function loadConsultationAgreementData(
     .schema("crm")
     .from("appointments")
     .select(
-      "client_id, assigned_staff_id, snapshot_client_name, snapshot_client_email, snapshot_client_phone, fee_cad_at_booking, starts_at, timezone",
+      "tenant_id, client_id, assigned_staff_id, snapshot_client_name, snapshot_client_email, snapshot_client_phone, fee_cad_at_booking, starts_at, timezone",
     )
     .eq("id", appointmentId)
     .maybeSingle();
@@ -126,7 +140,7 @@ export async function loadConsultationAgreementData(
     }
   }
 
-  const rcic = await resolveRcic(supabase, appt.assigned_staff_id);
+  const rcic = await resolveRcic(supabase, appt.tenant_id, appt.assigned_staff_id);
   const fee =
     appt.fee_cad_at_booking != null ? Number(appt.fee_cad_at_booking) : null;
 

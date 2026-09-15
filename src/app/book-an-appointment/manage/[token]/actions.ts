@@ -41,7 +41,7 @@ export async function publicReschedule(
     .schema("crm")
     .from("appointments")
     .select(
-      "id, status, appointment_type_id, management_token_expires_at, starts_at, staff_notes",
+      "id, tenant_id, status, appointment_type_id, management_token_expires_at, starts_at, staff_notes",
     )
     .eq("management_token", token)
     .is("deleted_at", null)
@@ -61,6 +61,7 @@ export async function publicReschedule(
     .schema("crm")
     .from("appointment_types")
     .select("duration_minutes")
+    .eq("tenant_id", appt.tenant_id)
     .eq("id", appt.appointment_type_id)
     .maybeSingle();
   if (!type) return { error: "invalid_type" };
@@ -73,6 +74,7 @@ export async function publicReschedule(
   const { data: slotFree } = await supabase
     .schema("crm")
     .rpc("appointment_slot_is_free", {
+      p_tenant: appt.tenant_id,
       p_starts_at: startsAt.toISOString(),
       p_ends_at: endsAt.toISOString(),
       p_exclude_appointment_id: appt.id,

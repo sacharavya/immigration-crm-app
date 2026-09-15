@@ -2,6 +2,7 @@ import { fromZonedTime } from "date-fns-tz";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getOpenSlotsForType } from "@/lib/appointments/get-open-slots";
+import { getPublicTenantId } from "@/lib/tenant/context";
 
 // Public, anonymous endpoint the /book-an-appointment slot picker calls each time the
 // prospect changes the date. Service-role inside; reads only — no writes.
@@ -31,8 +32,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "invalid_date" }, { status: 400 });
   }
 
+  // Anonymous endpoint, so the firm comes from the host the request arrived
+  // on — the same resolution the booking page itself uses.
+  const tenantId = await getPublicTenantId();
+  if (!tenantId) {
+    return NextResponse.json({ error: "unknown_firm" }, { status: 404 });
+  }
+
   try {
-    const allSlots = await getOpenSlotsForType(typeId);
+    const allSlots = await getOpenSlotsForType(typeId, tenantId);
 
     if (!dateParam) {
       return NextResponse.json({ slots: allSlots });

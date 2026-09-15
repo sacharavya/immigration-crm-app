@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import { adminClient } from "@/lib/supabase/admin";
+import { getPublicTenantId } from "@/lib/tenant/context";
 
 import { CONTACT_SERVICES } from "./constants";
 
@@ -25,7 +26,7 @@ const contactSchema = z.object({
 
 export type ContactResult =
   | { ok: true }
-  | { ok: false; error: "invalid_input" | "rate_limited" | "failed" };
+  | { ok: false; error: "invalid_input" | "rate_limited" | "failed" | "unknown_firm" };
 
 export async function submitContactInquiry(
   payload: unknown,
@@ -35,6 +36,14 @@ export async function submitContactInquiry(
   const data = parsed.data;
   const emailLower = data.email.toLowerCase();
 
+  // Which firm's site is this? Public pages have no session, so the firm comes
+  // from the request host. Service-role writes bypass RLS, so this is the only
+  // thing keeping the lead in the right firm — without it the insert fails the
+  // tenant_id NOT NULL, and a find-or-create by email alone would attach one
+  // firm's enquiry to another firm's client record.
+  const tenantId = await getPublicTenantId();
+  if (!tenantId) return { ok: false, error: "unknown_firm" };
+
   const supabase = adminClient();
 
   // Rate limit: 3 submissions per email per hour (mirrors the NOC form).
@@ -43,6 +52,7 @@ export async function submitContactInquiry(
     .schema("crm")
     .from("clients")
     .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
     .eq("email", emailLower)
     .gte("updated_at", oneHourAgo);
   if ((count ?? 0) >= 3) return { ok: false, error: "rate_limited" };
@@ -57,6 +67,7 @@ export async function submitContactInquiry(
     .schema("crm")
     .from("clients")
     .select("id, background_responses")
+    .eq("tenant_id", tenantId)
     .eq("email", emailLower)
     .is("deleted_at", null)
     .maybeSingle();
@@ -79,11 +90,12 @@ export async function submitContactInquiry(
 
   const { data: nextNumber } = await supabase
     .schema("crm")
-    .rpc("generate_client_number");
+    .rpc("generate_client_number", { p_tenant: tenantId });
   if (!nextNumber) return { ok: false, error: "failed" };
 
   const parts = data.name.trim().split(/\s+/);
   const { error } = await supabase.schema("crm").from("clients").insert({
+    tenant_id: tenantId,
     client_number: nextNumber,
     legal_name_full: data.name.trim(),
     given_names: parts[0],

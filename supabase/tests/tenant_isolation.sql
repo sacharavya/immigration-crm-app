@@ -133,6 +133,61 @@ BEGIN
     IF right(a2, 4) <= right(a1, 4) THEN RAISE EXCEPTION 'numbering did not advance: % then %', a1, a2; END IF;
 END $$;
 
+-- ---- the no-argument generators still resolve (regression) ---------------
+-- These are called with no arguments from all ten app call sites. A migration
+-- once left a zero-arg overload behind, which made every such call ambiguous
+-- and broke client and case creation everywhere. Passing an explicit tenant,
+-- as the test above does, would not have caught it.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims',
+       json_build_object('sub', current_setting('test.user_a'), 'role', 'authenticated')::text, true);
+
+DO $$
+DECLARE c TEXT; k TEXT;
+BEGIN
+    c := crm.generate_client_number();
+    k := crm.generate_case_number();
+    IF c IS NULL OR k IS NULL THEN
+        RAISE EXCEPTION 'no-argument generators returned NULL';
+    END IF;
+    IF c NOT LIKE 'BB-C-%' OR k NOT LIKE 'BB-%' THEN
+        RAISE EXCEPTION 'no-argument generators ignored the caller tenant: %, %', c, k;
+    END IF;
+END $$;
+
+RESET ROLE;
+
+-- ---- a referral agent resolves a tenant too (regression) -----------------
+-- current_tenant_id() once read only crm.staff, so agents resolved NULL and
+-- every policy denied them: the whole agent portal was locked out.
+DO $$
+DECLARE v_b UUID := current_setting('test.tenant_b')::uuid; v_u UUID := gen_random_uuid();
+BEGIN
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
+    VALUES (v_u, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'agent@b.test', '', now(), now(), now());
+    INSERT INTO crm.referral_agents (tenant_id, auth_user_id, name, email, is_active)
+    VALUES (v_b, v_u, 'Agent B', 'agent@b.test', TRUE);
+    PERFORM set_config('test.agent_b', v_u::text, false);
+END $$;
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims',
+       json_build_object('sub', current_setting('test.agent_b'), 'role', 'authenticated')::text, true);
+
+DO $$
+DECLARE n INT;
+BEGIN
+    IF crm.current_tenant_id()::text IS DISTINCT FROM current_setting('test.tenant_b') THEN
+        RAISE EXCEPTION 'a referral agent does not resolve their own firm';
+    END IF;
+
+    SELECT count(*) INTO n FROM crm.clients
+     WHERE tenant_id::text IS DISTINCT FROM current_setting('test.tenant_b');
+    IF n <> 0 THEN RAISE EXCEPTION 'LEAK: agent sees % foreign client rows', n; END IF;
+END $$;
+
+RESET ROLE;
+
 -- ---- notification fan-out stays inside one firm -------------------------
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims',
