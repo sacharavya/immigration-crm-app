@@ -44,13 +44,14 @@ export async function login(
   } = await supabase.auth.getUser();
 
   if (user) {
-    const { data: staffRow } = await supabase
+    const { data: staffRow, error: staffRowErr } = await supabase
       .schema("crm")
       .from("staff")
       .select("password_reset_required_at")
       .eq("auth_user_id", user.id)
       .is("deleted_at", null)
       .maybeSingle();
+    if (staffRowErr) console.error("[auth/login] staff lookup failed:", staffRowErr.message);
     if (staffRow) {
       if (staffRow.password_reset_required_at) redirect("/reset-password");
       redirect("/dashboard");
@@ -58,22 +59,24 @@ export async function login(
 
     // Platform operators have no staff row by design — they belong to no
     // firm — so they are routed to the admin portal instead.
-    const { data: adminRow } = await supabase
+    const { data: adminRow, error: adminRowErr } = await supabase
       .schema("platform")
       .from("admins")
       .select("auth_user_id")
       .eq("auth_user_id", user.id)
       .eq("is_active", true)
       .maybeSingle();
+    if (adminRowErr) console.error("[auth/login] platform admin lookup failed:", adminRowErr.message);
     if (adminRow) redirect("/admin");
 
-    const { data: agentRow } = await supabase
+    const { data: agentRow, error: agentRowErr } = await supabase
       .schema("crm")
       .from("referral_agents")
       .select("password_reset_required_at, is_active")
       .eq("auth_user_id", user.id)
       .is("deleted_at", null)
       .maybeSingle();
+    if (agentRowErr) console.error("[auth/login] referral agent lookup failed:", agentRowErr.message);
     if (agentRow && agentRow.is_active) {
       if (agentRow.password_reset_required_at) redirect("/reset-password");
       redirect("/portal");

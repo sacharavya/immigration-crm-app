@@ -29,7 +29,7 @@ export const getStaff = cache(async (): Promise<StaffWithOverrides | null> => {
   const userId = claimsData?.claims?.sub;
   if (!userId) return null;
 
-  const { data: row } = await supabase
+  const { data: row, error } = await supabase
     .schema("crm")
     .from("staff")
     .select(
@@ -38,6 +38,14 @@ export const getStaff = cache(async (): Promise<StaffWithOverrides | null> => {
     .eq("auth_user_id", userId)
     .is("deleted_at", null)
     .maybeSingle();
+
+  // A failed lookup and an absent staff member are different problems, and
+  // silently conflating them is how a misconfigured deployment ends up
+  // reported as "this account is not active". Surface the former in the logs.
+  if (error) {
+    console.error("[auth/getStaff] staff lookup failed:", error.message);
+    return null;
+  }
 
   if (!row || !row.is_active) return null;
 
