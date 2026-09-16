@@ -70,7 +70,7 @@ export async function createForm(
   const { data, error } = await supabase
     .schema("crm")
     .from("forms")
-    .insert(parsed.data)
+    .insert({ ...parsed.data, tenant_id: await requireStaffTenantId() })
     .select("id")
     .single();
   if (error) {
@@ -235,6 +235,7 @@ export async function uploadFormVersion(
       .schema("crm")
       .from("form_versions")
       .insert({
+        tenant_id: await requireStaffTenantId(),
         form_id: form.id,
         version_label: parsed.data.version_label,
         sharepoint_drive_id: driveId,

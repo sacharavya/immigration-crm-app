@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { requireStaffTenantId } from "@/lib/tenant/context";
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
 import { createClient } from "@/lib/supabase/server";
@@ -203,6 +204,7 @@ export async function createNewVersion(
     .schema("ref")
     .from("service_templates")
     .insert({
+      tenant_id: await requireStaffTenantId(),
       service_type_id: variantId,
       version: nextVersion,
       effective_from: effectiveFrom,
@@ -253,11 +255,14 @@ export async function createNewVersion(
       .eq("service_template_id", activeNow.id);
 
     if (sourceDocs && sourceDocs.length > 0) {
+      // Resolved once: await cannot live inside the map callback below.
+      const tenantId = await requireStaffTenantId();
       await supabase
         .schema("ref")
         .from("template_documents")
         .insert(
           sourceDocs.map((d) => ({
+            tenant_id: tenantId,
             service_template_id: newTpl.id,
             document_code: d.document_code,
             document_label: d.document_label,
@@ -456,6 +461,7 @@ export async function addTemplateDocument(
     .schema("ref")
     .from("template_documents")
     .insert({
+      tenant_id: await requireStaffTenantId(),
       service_template_id: targetTemplateId,
       group_code: groupCode,
       document_code: documentCode,
