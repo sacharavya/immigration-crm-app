@@ -17,6 +17,7 @@ import {
   ListChecks,
   LogOut,
   MessageSquare,
+  Palette,
   Receipt,
   Settings as SettingsIcon,
   Shield,
@@ -27,6 +28,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import type * as React from "react";
 
 import { Can } from "@/components/auth/can";
 import { useStaff } from "@/lib/auth/staff-context";
@@ -52,7 +54,7 @@ function initialsOf(first: string, last: string) {
   return (f + l).toUpperCase() || "??";
 }
 
-export function StaffSidebar() {
+export function StaffSidebar({ logo }: { logo?: React.ReactNode }) {
   const pathname = usePathname();
   const staff = useStaff();
   const initials = initialsOf(staff.first_name, staff.last_name);
@@ -70,7 +72,7 @@ export function StaffSidebar() {
           aria-label="genzdatalabs Immigration CRM"
           className="block transition-opacity hover:opacity-80"
         >
-          <GenzLogo className="h-8 w-auto text-[#1E2136]" />
+          {logo ?? <GenzLogo className="h-8 w-auto text-[#1E2136]" />}
         </Link>
       </div>
 
@@ -392,6 +394,14 @@ function AdminSection({ pathname }: { pathname: string }) {
               label="Audit log"
               Icon={History}
               active={is("/dashboard/audit")}
+            />
+          </Can>
+          <Can permission="manage_settings">
+            <SubNavItem
+              href="/dashboard/settings/site"
+              label="Site settings"
+              Icon={Palette}
+              active={is("/dashboard/settings/site")}
             />
           </Can>
           <Can permission="manage_settings">

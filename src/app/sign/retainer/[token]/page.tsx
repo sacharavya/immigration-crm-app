@@ -1,4 +1,5 @@
-import { GenzLogo } from "@/components/brand/genz-logo";
+import { FirmLogo } from "@/components/brand/firm-logo";
+import { tenantForPortalToken } from "@/lib/tenant/context";
 
 import {
   RETAINER_STYLES,
@@ -28,6 +29,7 @@ const FIRM_CONTACT = {
 
 export default async function PublicSigningPage({ params }: Props) {
   const { token } = await params;
+  const portalTenantId = await tenantForPortalToken(token);
 
   const validated = await validateToken(token);
 
@@ -56,7 +58,7 @@ export default async function PublicSigningPage({ params }: Props) {
     <main className="min-h-dvh bg-stone-100">
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <GenzLogo className="h-10 w-auto text-[#1E2136]" />
+          <FirmLogo className="h-10 w-auto" tenantId={portalTenantId ?? undefined} />
           <div>
             <div className="text-sm font-semibold text-[var(--navy)]">
               genzdatalabs Immigration Consulting Inc.

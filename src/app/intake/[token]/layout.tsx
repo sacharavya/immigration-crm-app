@@ -1,4 +1,5 @@
-import { GenzLogo } from "@/components/brand/genz-logo";
+import { FirmLogo } from "@/components/brand/firm-logo";
+import { tenantForPortalToken } from "@/lib/tenant/context";
 import type { Metadata } from "next";
 
 import { PublicFooter } from "@/components/public-footer";
@@ -20,16 +21,22 @@ export const metadata: Metadata = {
   title: "Intake form · genzdatalabs Immigration",
 };
 
-export default function IntakePortalLayout({
+export default async function IntakePortalLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  params: Promise<{ token: string }>;
 }) {
+  // The client has no session, so the firm comes from the token.
+  const { token } = await params;
+  const portalTenantId = await tenantForPortalToken(token);
+
   return (
     <div className="flex min-h-dvh flex-col bg-stone-50 text-stone-900">
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-6 py-4">
-          <GenzLogo className="h-10 w-auto text-[#1E2136]" />
+          <FirmLogo className="h-10 w-auto" tenantId={portalTenantId ?? undefined} />
         </div>
       </header>
       <main className="mx-auto max-w-5xl flex-1 px-6 py-8">{children}</main>

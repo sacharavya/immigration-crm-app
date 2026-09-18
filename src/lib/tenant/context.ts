@@ -97,3 +97,45 @@ export async function requireStaffTenantId(): Promise<string> {
   }
   return id;
 }
+
+/**
+ * The firm behind a client-facing portal link.
+ *
+ * The upload, payment, intake and signing pages have no session — the client
+ * is not a user — so the opaque token in the URL is the only handle on the
+ * firm. Tokens are globally unique precisely because they are looked up
+ * before any tenant is known, so trying each is unambiguous.
+ *
+ * Service role on purpose: these pages are unauthenticated, so RLS would
+ * return nothing.
+ */
+export const tenantForPortalToken = cache(
+  async (token: string): Promise<string | null> => {
+    if (!token) return null;
+    const db = adminClient();
+
+    const { data: caseRow } = await db
+      .schema("crm")
+      .from("cases")
+      .select("tenant_id")
+      .eq("client_portal_token", token)
+      .maybeSingle();
+    if (caseRow) return caseRow.tenant_id;
+
+    const { data: client } = await db
+      .schema("crm")
+      .from("clients")
+      .select("tenant_id")
+      .eq("intake_portal_token", token)
+      .maybeSingle();
+    if (client) return client.tenant_id;
+
+    const { data: retainer } = await db
+      .schema("crm")
+      .from("retainer_agreements")
+      .select("tenant_id")
+      .eq("signing_token", token)
+      .maybeSingle();
+    return retainer?.tenant_id ?? null;
+  },
+);

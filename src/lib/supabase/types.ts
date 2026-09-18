@@ -3479,6 +3479,8 @@ export type Database = {
           created_at: string
           features: Json
           id: string
+          logo_updated_at: string | null
+          logo_url: string | null
           name: string
           number_prefix: string
           public_host: string | null
@@ -3491,6 +3493,8 @@ export type Database = {
           created_at?: string
           features?: Json
           id?: string
+          logo_updated_at?: string | null
+          logo_url?: string | null
           name: string
           number_prefix?: string
           public_host?: string | null
@@ -3503,6 +3507,8 @@ export type Database = {
           created_at?: string
           features?: Json
           id?: string
+          logo_updated_at?: string | null
+          logo_url?: string | null
           name?: string
           number_prefix?: string
           public_host?: string | null
@@ -3610,6 +3616,7 @@ export type Database = {
         Args: { p_name: string; p_number_prefix?: string; p_slug: string }
         Returns: string
       }
+      set_tenant_logo: { Args: { p_logo_url?: string }; Returns: undefined }
       staff_can: {
         Args: { p_permission: string; p_user_id: string }
         Returns: boolean
