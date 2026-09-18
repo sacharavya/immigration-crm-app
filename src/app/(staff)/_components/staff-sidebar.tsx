@@ -64,13 +64,13 @@ export function StaffSidebar() {
 
   return (
     <aside className="flex h-full w-60 shrink-0 flex-col border-r border-border bg-card">
-      <div className="flex h-24 items-center justify-center border-b border-border px-3">
+      <div className="flex h-16 items-center border-b border-border px-4">
         <Link
           href="/dashboard"
           aria-label="genzdatalabs Immigration CRM"
-          className="block h-full w-full transition-opacity hover:opacity-80"
+          className="block transition-opacity hover:opacity-80"
         >
-          <GenzLogo className="h-full w-full text-[#1E2136]" />
+          <GenzLogo className="h-8 w-auto text-[#1E2136]" />
         </Link>
       </div>
 
@@ -126,44 +126,7 @@ export function StaffSidebar() {
             active={isActive("/dashboard/agents")}
           />
         </Can>
-        <Can permission="manage_staff">
-          <NavItem
-            href="/dashboard/staff"
-            label="Team"
-            Icon={Shield}
-            active={isActive("/dashboard/staff")}
-          />
-        </Can>
-        <Can permission="view_reports">
-          <NavItem
-            href="/dashboard/reports"
-            label="Reports"
-            Icon={LineChart}
-            active={isActive("/dashboard/reports")}
-          />
-        </Can>
-        <Can permission="view_audit_log">
-          <NavItem
-            href="/dashboard/audit"
-            label="Audit log"
-            Icon={History}
-            active={isActive("/dashboard/audit")}
-          />
-        </Can>
-        <Can permission="manage_settings">
-          <NavItem
-            href="/dashboard/settings/storage"
-            label="Storage"
-            Icon={HardDrive}
-            active={isActive("/dashboard/settings/storage")}
-          />
-        </Can>
-        <NavItem
-          href="/dashboard/feedback"
-          label="Feedback"
-          Icon={MessageSquare}
-          active={isActive("/dashboard/feedback")}
-        />
+        <AdminSection pathname={pathname} />
       </nav>
 
       <div className="border-t border-border p-3">
@@ -353,6 +316,98 @@ function AppointmentsSection({ pathname }: { pathname: string }) {
               active={activeIsSettings}
             />
           </Can>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Team, Reports, Audit log, Storage and Feedback are all low-frequency
+// admin destinations. As five flat rows they pushed the nav to sixteen items
+// and ~630px, which overflows the sidebar on a 700px-tall viewport — an
+// ordinary laptop — so the last items sat below the fold behind a scroll
+// nobody notices. Collapsed into one row they cost ~150px less, and the
+// section auto-expands whenever you are inside it.
+function AdminSection({ pathname }: { pathname: string }) {
+  const paths = [
+    "/dashboard/staff",
+    "/dashboard/reports",
+    "/dashboard/audit",
+    "/dashboard/settings",
+    "/dashboard/feedback",
+  ];
+  const sectionActive = paths.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+  const [open, setOpen] = useState(sectionActive);
+
+  const is = (href: string) =>
+    pathname === href || pathname.startsWith(`${href}/`);
+
+  return (
+    <div>
+      <div className="flex items-center">
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className={cn(
+            "flex flex-1 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+            sectionActive
+              ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
+              : "text-muted-foreground hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
+          )}
+        >
+          <SettingsIcon className="h-4 w-4" />
+          <span className="flex-1 text-left">Manage</span>
+          <ChevronDown
+            className={cn(
+              "h-3.5 w-3.5 transition-transform",
+              open && "rotate-180",
+            )}
+          />
+        </button>
+      </div>
+      {open && (
+        <div className="ml-5 mt-0.5 space-y-0.5 border-l border-border pl-3">
+          <Can permission="manage_staff">
+            <SubNavItem
+              href="/dashboard/staff"
+              label="Team"
+              Icon={Shield}
+              active={is("/dashboard/staff")}
+            />
+          </Can>
+          <Can permission="view_reports">
+            <SubNavItem
+              href="/dashboard/reports"
+              label="Reports"
+              Icon={LineChart}
+              active={is("/dashboard/reports")}
+            />
+          </Can>
+          <Can permission="view_audit_log">
+            <SubNavItem
+              href="/dashboard/audit"
+              label="Audit log"
+              Icon={History}
+              active={is("/dashboard/audit")}
+            />
+          </Can>
+          <Can permission="manage_settings">
+            <SubNavItem
+              href="/dashboard/settings/storage"
+              label="Storage"
+              Icon={HardDrive}
+              active={is("/dashboard/settings/storage")}
+            />
+          </Can>
+          <SubNavItem
+            href="/dashboard/feedback"
+            label="Feedback"
+            Icon={MessageSquare}
+            active={is("/dashboard/feedback")}
+          />
         </div>
       )}
     </div>
