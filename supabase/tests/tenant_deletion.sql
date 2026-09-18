@@ -8,7 +8,7 @@ DECLARE
     v_keep UUID; v_doomed UUID;
     v_admin UUID := gen_random_uuid();
     v_staff UUID := gen_random_uuid();
-    v_st UUID; v_client UUID;
+    v_st UUID; v_tpl UUID; v_client UUID; v_staff_id UUID;
 BEGIN
     SELECT id INTO v_keep FROM crm.tenants WHERE slug = 'genzdatalabs';
     v_doomed := crm.provision_tenant('Doomed Firm', 'doomed', 'DM');
@@ -21,18 +21,32 @@ BEGIN
     VALUES (v_admin, 'ops2@platform.test', 'Ops Two');
 
     INSERT INTO crm.staff (tenant_id, auth_user_id, first_name, last_name, email, role)
-    VALUES (v_doomed, v_staff, 'Doomed', 'Owner', 'doomed@firm.test', 'super_user');
+    VALUES (v_doomed, v_staff, 'Doomed', 'Owner', 'doomed@firm.test', 'super_user')
+    RETURNING id INTO v_staff_id;
 
     -- Give it real, interlinked data so the delete has to untangle FKs.
     INSERT INTO crm.clients (tenant_id, client_number, legal_name_full, status)
     VALUES (v_doomed, 'DM-C-2026-0001', 'Doomed Client', 'lead')
     RETURNING id INTO v_client;
 
-    SELECT id INTO v_st FROM ref.service_types LIMIT 1;
-    IF v_st IS NOT NULL THEN
-        INSERT INTO crm.cases (tenant_id, client_id, case_number, service_type_id)
-        VALUES (v_doomed, v_client, 'DM-2026-0001', v_st);
+    -- Build the reference rows rather than skipping: a case is the point of
+    -- this test, since it is what makes the delete untangle foreign keys.
+    SELECT id INTO v_st FROM ref.service_types WHERE tenant_id IS NULL LIMIT 1;
+    IF v_st IS NULL THEN
+        INSERT INTO ref.service_types (code, name, category_code)
+        VALUES ('del_svc', 'Deletion Test Service',
+                (SELECT code FROM ref.service_categories LIMIT 1))
+        RETURNING id INTO v_st;
     END IF;
+    SELECT id INTO v_tpl FROM ref.service_templates WHERE service_type_id = v_st LIMIT 1;
+    IF v_tpl IS NULL THEN
+        INSERT INTO ref.service_templates (service_type_id, version, effective_from)
+        VALUES (v_st, 1, CURRENT_DATE) RETURNING id INTO v_tpl;
+    END IF;
+
+    INSERT INTO crm.cases (tenant_id, client_id, case_number, service_type_id,
+                           service_template_id, assigned_rcic, quoted_fee_cad)
+    VALUES (v_doomed, v_client, 'DM-2026-0001', v_st, v_tpl, v_staff_id, 0);
 
     INSERT INTO platform.feedback (tenant_id, kind, subject, body)
     VALUES (v_doomed, 'question', 'Hello', 'Just testing the support inbox.');
