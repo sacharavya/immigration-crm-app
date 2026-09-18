@@ -3473,6 +3473,84 @@ export type Database = {
           },
         ]
       }
+      tenant_connections: {
+        Row: {
+          access_token_enc: string
+          account_email: string
+          account_name: string | null
+          connected_by: string | null
+          created_at: string
+          drive_id: string | null
+          expires_at: string
+          id: string
+          last_error: string | null
+          last_refreshed_at: string | null
+          provider: Database["crm"]["Enums"]["connection_provider"]
+          refresh_token_enc: string | null
+          root_folder_id: string | null
+          root_folder_path: string
+          scopes: string[]
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          access_token_enc: string
+          account_email: string
+          account_name?: string | null
+          connected_by?: string | null
+          created_at?: string
+          drive_id?: string | null
+          expires_at: string
+          id?: string
+          last_error?: string | null
+          last_refreshed_at?: string | null
+          provider: Database["crm"]["Enums"]["connection_provider"]
+          refresh_token_enc?: string | null
+          root_folder_id?: string | null
+          root_folder_path?: string
+          scopes?: string[]
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          access_token_enc?: string
+          account_email?: string
+          account_name?: string | null
+          connected_by?: string | null
+          created_at?: string
+          drive_id?: string | null
+          expires_at?: string
+          id?: string
+          last_error?: string | null
+          last_refreshed_at?: string | null
+          provider?: Database["crm"]["Enums"]["connection_provider"]
+          refresh_token_enc?: string | null
+          root_folder_id?: string | null
+          root_folder_path?: string
+          scopes?: string[]
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_connections_connected_by_fkey"
+            columns: ["connected_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_connections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           admin_notes: string
@@ -3594,6 +3672,21 @@ export type Database = {
         }[]
       }
       case_total_collected: { Args: { p_case_id: string }; Returns: number }
+      connection_status: {
+        Args: never
+        Returns: {
+          account_email: string
+          account_name: string
+          can_send_mail: boolean
+          can_store_files: boolean
+          connected_at: string
+          last_error: string
+          provider: Database["crm"]["Enums"]["connection_provider"]
+          root_folder_path: string
+          scopes: string[]
+          status: string
+        }[]
+      }
       current_agent_id: { Args: never; Returns: string }
       current_staff_id: { Args: never; Returns: string }
       current_staff_role: {
@@ -3622,7 +3715,7 @@ export type Database = {
         Returns: boolean
       }
       staff_ids_with_permission: {
-        Args: { p_permission: string }
+        Args: { p_permission: string; p_tenant?: string }
         Returns: {
           staff_id: string
         }[]
@@ -3675,6 +3768,7 @@ export type Database = {
         | "letter"
         | "other"
       communication_direction: "inbound" | "outbound"
+      connection_provider: "microsoft" | "google"
       event_type:
         | "status_changed"
         | "note_added"
@@ -4805,6 +4899,7 @@ export const Constants = {
         "other",
       ],
       communication_direction: ["inbound", "outbound"],
+      connection_provider: ["microsoft", "google"],
       event_type: [
         "status_changed",
         "note_added",
