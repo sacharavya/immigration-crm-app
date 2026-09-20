@@ -125,7 +125,7 @@ export default async function IntakePage({ params }: Props) {
   const canEdit = staffCan(me, "edit_clients");
 
   return (
-    <div className="min-h-full bg-white">
+    <div className="min-h-dvh bg-white">
       <header className="border-b border-stone-200 bg-white">
         <div className="flex items-center px-6 py-4 text-sm">
           <Link

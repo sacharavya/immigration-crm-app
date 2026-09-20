@@ -42,7 +42,7 @@ export default async function MappingPage({ params }: Props) {
   if (!form || !version || version.form_id !== form.id) notFound();
 
   return (
-    <div className="flex h-full flex-col p-6">
+    <div className="flex h-[calc(100dvh-2.5rem)] flex-col p-6">
       <Link
         href={`/dashboard/forms/${form.id}`}
         className="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-[var(--primary)]"
