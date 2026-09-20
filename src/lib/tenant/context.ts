@@ -54,7 +54,11 @@ export const getPublicTenantId = cache(async (): Promise<string | null> => {
 
   const { data, error } = await adminClient()
     .schema("crm")
-    .rpc("tenant_for_host", { p_host: host });
+    .rpc("tenant_for_host", {
+      p_host: host,
+      // Lets the resolver treat the apex as the platform's, never a firm's.
+      p_platform_domain: process.env.PLATFORM_DOMAIN?.trim() || undefined,
+    });
 
   if (error) return null;
   return (data as string | null) ?? null;
@@ -129,6 +133,14 @@ export const tenantForPortalToken = cache(
       .eq("intake_portal_token", token)
       .maybeSingle();
     if (client) return client.tenant_id;
+
+    const { data: consultation } = await db
+      .schema("crm")
+      .from("appointments")
+      .select("tenant_id")
+      .eq("consultation_agreement_token", token)
+      .maybeSingle();
+    if (consultation) return consultation.tenant_id;
 
     const { data: retainer } = await db
       .schema("crm")

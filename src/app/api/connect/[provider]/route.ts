@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { getBaseUrl } from "@/lib/email/url";
+
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
 import {
@@ -53,10 +55,11 @@ export async function GET(
   const tenantId = await requireStaffTenantId();
   const config = PROVIDERS[provider];
 
-  const redirectUri = new URL(
-    `/api/connect/${provider}/callback`,
-    request.url,
-  ).toString();
+  // Built from the app host, not the request: providers require every
+  // redirect URI to be pre-registered, and firms have their own hosts. Staff
+  // sessions only exist on the app host anyway, so this is also where the
+  // flow always starts.
+  const redirectUri = `${await getBaseUrl()}/api/connect/${provider}/callback`;
 
   const authUrl = new URL(config.authUrl);
   authUrl.searchParams.set("client_id", creds.clientId);

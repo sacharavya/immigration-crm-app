@@ -1,7 +1,9 @@
 import Link from "next/link";
 
+import { firmPublicUrl } from "@/lib/email/url";
 import { createClient } from "@/lib/supabase/server";
 
+import { CopyUrl } from "./_components/copy-url";
 import { CreateTenantForm } from "./_components/create-tenant-form";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +35,13 @@ export default async function FirmsPage() {
     ((usageRows as Usage[] | null) ?? []).map((u) => [u.tenant_id, u]),
   );
 
+  // Each firm's public address: its custom domain, else <slug>.<platform>.
+  const publicUrls = new Map(
+    await Promise.all(
+      (tenants ?? []).map(async (t) => [t.id, await firmPublicUrl(t.id)] as const),
+    ),
+  );
+
   return (
     <div className="space-y-5 p-6">
       <header className="flex items-start justify-between gap-4">
@@ -52,7 +61,7 @@ export default async function FirmsPage() {
           <thead className="border-b border-stone-200 bg-stone-50 text-left text-xs uppercase tracking-wide text-stone-500">
             <tr>
               <th className="px-4 py-2.5 font-medium">Firm</th>
-              <th className="px-4 py-2.5 font-medium">Handle</th>
+              <th className="px-4 py-2.5 font-medium">Public site</th>
               <th className="px-4 py-2.5 font-medium">Status</th>
               <th className="px-4 py-2.5 text-right font-medium">Staff</th>
               <th className="px-4 py-2.5 text-right font-medium">Clients</th>
@@ -67,14 +76,9 @@ export default async function FirmsPage() {
                 <tr key={t.id} className="border-b border-stone-100 last:border-0">
                   <td className="px-4 py-3">
                     <div className="font-medium text-stone-900">{t.name}</div>
-                    {t.public_host && (
-                      <div className="text-xs text-stone-500">
-                        {t.public_host}
-                      </div>
-                    )}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-stone-600">
-                    {t.slug}
+                  <td className="px-4 py-3">
+                    <CopyUrl url={publicUrls.get(t.id) ?? ""} />
                   </td>
                   <td className="px-4 py-3">
                     <span

@@ -125,8 +125,10 @@ export function TenantDetailForm({
               placeholder={`Leave blank to use ${tenant.slug} as a subdomain`}
             />
             <p className="text-xs text-stone-500">
-              Where this firm&apos;s booking and contact pages are served. Used
-              to tell requests apart when several firms share the platform.
+              Optional custom domain for the firm&apos;s booking and contact
+              pages. The firm points a CNAME at the platform, and the domain
+              must also be added to the Vercel project for HTTPS — saving it
+              here records it but does not make it live.
             </p>
           </div>
 

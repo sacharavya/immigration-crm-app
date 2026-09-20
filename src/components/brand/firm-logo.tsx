@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { adminClient } from "@/lib/supabase/admin";
 import { getStaffTenantId } from "@/lib/tenant/context";
 
 import { GenzLogo } from "./genz-logo";
@@ -25,8 +25,12 @@ export async function FirmLogo({
   const id = tenantId ?? (await getStaffTenantId());
   if (!id) return <GenzLogo className={className} tone={tone} />;
 
-  const supabase = await createClient();
-  const { data } = await supabase
+  // Service role on purpose. The client-facing portals have no session, and
+  // crm.tenants only grants SELECT to authenticated users, so through the
+  // session client this read returned nothing and every portal silently
+  // showed the platform mark. It is a name and a logo URL — nothing here
+  // needs guarding.
+  const { data } = await adminClient()
     .schema("crm")
     .from("tenants")
     .select("name, logo_url")

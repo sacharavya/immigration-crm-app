@@ -251,6 +251,52 @@ BEGIN
     END;
 END $$;
 
+-- ---- derived rows inherit their firm (regression) ------------------------
+-- The public portals write documents, payments and case events as the
+-- service role, where current_tenant_id() is NULL. Those inserts used to die
+-- on NOT NULL; the parent row knows its firm, so it is derived instead.
+DO $$
+DECLARE v_case UUID; v_client UUID; v_case_tenant UUID; v_got UUID;
+BEGIN
+    -- Earlier blocks set request.jwt.claims for the transaction; RESET ROLE
+    -- does not clear it. Left in place, the column default would fill
+    -- tenant_id from that session and this test would pass without the
+    -- trigger ever deriving anything. Clear it and prove we are sessionless.
+    PERFORM set_config('request.jwt.claims', '{}', true);
+    IF crm.current_tenant_id() IS NOT NULL THEN
+        RAISE EXCEPTION 'test setup: a session is still in scope';
+    END IF;
+
+    SELECT id, client_id, tenant_id INTO v_case, v_client, v_case_tenant
+      FROM crm.cases WHERE case_number = 'BB-2026-9001';
+    IF v_case IS NULL THEN RAISE EXCEPTION 'fixture case missing'; END IF;
+
+    -- No tenant given, only a case: must land in the case's firm.
+    INSERT INTO crm.payments (case_id, client_id, amount_cad, method, received_date, is_refund)
+    VALUES (v_case, v_client, 100, 'e_transfer', CURRENT_DATE, FALSE)
+    RETURNING tenant_id INTO v_got;
+    IF v_got IS DISTINCT FROM v_case_tenant THEN
+        RAISE EXCEPTION 'payment did not inherit the case firm: % vs %', v_got, v_case_tenant;
+    END IF;
+
+    -- A wrong firm stated explicitly must be refused, not silently kept.
+    BEGIN
+        INSERT INTO crm.payments (tenant_id, case_id, client_id, amount_cad, method, received_date, is_refund)
+        VALUES (current_setting('test.tenant_b')::uuid, v_case, v_client, 1, 'e_transfer', CURRENT_DATE, FALSE);
+        RAISE EXCEPTION 'LEAK: payment accepted with a firm that contradicts its case';
+    EXCEPTION WHEN raise_exception THEN
+        IF SQLERRM LIKE 'LEAK:%' THEN RAISE; END IF;
+    END;
+
+    -- Nothing to derive from: refused.
+    BEGIN
+        INSERT INTO files.documents (display_name) VALUES ('orphan');
+        RAISE EXCEPTION 'LEAK: document inserted with no firm and no parent';
+    EXCEPTION WHEN raise_exception THEN
+        IF SQLERRM LIKE 'LEAK:%' THEN RAISE; END IF;
+    END;
+END $$;
+
 -- ---- no ambiguous function overloads -------------------------------------
 -- Adding a defaulted parameter with CREATE OR REPLACE silently creates an
 -- overload instead of replacing, and every existing call then fails with

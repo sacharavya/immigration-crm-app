@@ -11,7 +11,7 @@ import {
   type EmailAttachment,
 } from "./client";
 import { logEmail } from "./log";
-import { getBaseUrl } from "./url";
+import { firmPublicUrl, getBaseUrl } from "./url";
 import { caseDecisionEmail } from "./templates/case-decision";
 import { caseEventNotificationEmail } from "./templates/case-event-notification";
 import { casePhaseAdvanceEmail } from "./templates/case-phase-advance";
@@ -27,6 +27,7 @@ export type CaseEmailResult =
 // ---------------------------------------------------------------------------
 
 type CaseEmailContext = {
+  tenantId: string;
   caseId: string;
   caseNumber: string;
   clientId: string;
@@ -42,7 +43,7 @@ async function loadCaseEmailContext(
   const { data: caseRow } = await supabase
     .schema("crm")
     .from("cases")
-    .select("id, case_number, client_id, service_type_id")
+    .select("id, tenant_id, case_number, client_id, service_type_id")
     .eq("id", caseId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -72,6 +73,7 @@ async function loadCaseEmailContext(
 
   return {
     caseId: caseRow.id,
+    tenantId: caseRow.tenant_id,
     caseNumber: caseRow.case_number,
     clientId: client.id,
     clientName,
@@ -162,7 +164,8 @@ export async function sendCaseDecisionEmail(
     outcome,
     staffNote: opts?.staffNote,
     hasAttachment: allAttachments.length > 0,
-    consultationUrl: `${await getBaseUrl()}/book-an-appointment`,
+    // The booking page is the firm's own public page, so its host.
+    consultationUrl: `${await firmPublicUrl(ctx.tenantId)}/book-an-appointment`,
   });
 
   const res = await sendEmail({

@@ -3724,7 +3724,10 @@ export type Database = {
         Args: { p_key: string; p_tenant: string }
         Returns: boolean
       }
-      tenant_for_host: { Args: { p_host: string }; Returns: string }
+      tenant_for_host: {
+        Args: { p_host: string; p_platform_domain?: string }
+        Returns: string
+      }
     }
     Enums: {
       appointment_booking_source: "staff" | "public_portal" | "manual_import"

@@ -1,9 +1,10 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
+import { firmPublicUrl } from "@/lib/email/url";
 import { createClient } from "@/lib/supabase/server";
+import { requireStaffTenantId } from "@/lib/tenant/context";
 
 import { SettingsForm } from "./_components/settings-form";
 
@@ -54,14 +55,10 @@ export default async function AppointmentSettingsPage() {
     );
   }
 
-  const reqHeaders = await headers();
-  const host = reqHeaders.get("x-forwarded-host") ?? reqHeaders.get("host");
-  const proto =
-    reqHeaders.get("x-forwarded-proto") ??
-    (process.env.NODE_ENV === "production" ? "https" : "http");
-  const publicBookingUrl = host
-    ? `${proto}://${host}/book-an-appointment`
-    : `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/book-an-appointment`;
+  // The firm's own public address — its custom domain or its subdomain —
+  // not whichever host the staff member signed in on. Staff live on the app
+  // host; prospects do not.
+  const publicBookingUrl = `${await firmPublicUrl(await requireStaffTenantId())}/book-an-appointment`;
 
   const incrementRaw = settings.slot_increment_minutes;
   const increment: 15 | 30 | 60 =

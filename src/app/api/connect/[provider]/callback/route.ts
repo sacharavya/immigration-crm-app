@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { getBaseUrl } from "@/lib/email/url";
+
 import {
   isProviderId,
   PROVIDERS,
@@ -75,10 +77,11 @@ export async function GET(
   const creds = providerCredentials(provider);
   if (!creds) return back(request, { error: "provider_not_configured" });
 
-  const redirectUri = new URL(
-    `/api/connect/${provider}/callback`,
-    request.url,
-  ).toString();
+  // Built from the app host, not the request: providers require every
+  // redirect URI to be pre-registered, and firms have their own hosts. Staff
+  // sessions only exist on the app host anyway, so this is also where the
+  // flow always starts.
+  const redirectUri = `${await getBaseUrl()}/api/connect/${provider}/callback`;
 
   const tokenRes = await fetch(PROVIDERS[provider].tokenUrl, {
     method: "POST",
