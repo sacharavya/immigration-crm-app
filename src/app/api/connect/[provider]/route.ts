@@ -22,7 +22,7 @@ import { requireStaffTenantId } from "@/lib/tenant/context";
 export const dynamic = "force-dynamic";
 
 function back(request: NextRequest, error: string) {
-  const url = new URL("/dashboard/settings/site", request.url);
+  const url = new URL("/dashboard/settings/storage", request.url);
   url.searchParams.set("error", error);
   return NextResponse.redirect(url);
 }

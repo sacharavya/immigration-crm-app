@@ -21,7 +21,7 @@ import { saveConnection } from "@/lib/connections/store";
 export const dynamic = "force-dynamic";
 
 function back(request: NextRequest, params: Record<string, string>) {
-  const url = new URL("/dashboard/settings/site", request.url);
+  const url = new URL("/dashboard/settings/storage", request.url);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   return NextResponse.redirect(url);
 }

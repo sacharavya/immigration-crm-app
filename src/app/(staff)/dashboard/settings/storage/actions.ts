@@ -1,5 +1,7 @@
 "use server";
 
+import { requireStaffTenantId } from "@/lib/tenant/context";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -95,6 +97,27 @@ export async function updateStorageSettings(
     .eq("id", existing.id);
 
   if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/settings/storage");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Connected account
+// ---------------------------------------------------------------------------
+
+export async function disconnectAccount(): Promise<
+  { ok: true } | { ok?: false; error: string }
+> {
+  const staff = await getStaff();
+  if (!staff) return { error: "Not authenticated" };
+  if (!staffCan(staff, "manage_settings")) return { error: "Not authorized" };
+
+  const tenantId = await requireStaffTenantId();
+  // Deleting the row destroys the encrypted refresh token; revoking at the
+  // provider is the firm's own choice from their account security page.
+  const { disconnect } = await import("@/lib/connections/store");
+  await disconnect(tenantId);
 
   revalidatePath("/dashboard/settings/storage");
   return { ok: true };

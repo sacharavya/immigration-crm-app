@@ -5,12 +5,6 @@ import { getStaff } from "@/lib/auth/staff";
 import { createClient } from "@/lib/supabase/server";
 import { requireStaffTenantId } from "@/lib/tenant/context";
 
-import { providerCredentials } from "@/lib/connections/providers";
-
-import {
-  ConnectedAccount,
-  type ConnectionView,
-} from "./_components/connected-account";
 import { SiteSettingsForm } from "./_components/site-settings-form";
 
 export const dynamic = "force-dynamic";
@@ -29,29 +23,15 @@ export default async function SiteSettingsPage() {
     .eq("id", tenantId)
     .maybeSingle();
 
-  // Metadata only: who is connected and what the grant covers. The tokens
-  // themselves are unreachable from any session, including this one.
-  const { data: statusRows } = await supabase
-    .schema("crm")
-    .rpc("connection_status");
-  const connection = ((statusRows as ConnectionView[] | null) ?? [])[0] ?? null;
 
   return (
     <div className="space-y-4 p-6">
       <header>
         <h1 className="text-xl font-semibold text-foreground">Site settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          How your firm appears to your team and to your clients.
+          How your firm appears to your team and to your clients: logo now, name and colours next.
         </p>
       </header>
-
-      <ConnectedAccount
-        connection={connection}
-        providersConfigured={{
-          microsoft: providerCredentials("microsoft") !== null,
-          google: providerCredentials("google") !== null,
-        }}
-      />
 
       <SiteSettingsForm
         firmName={tenant?.name ?? "Your firm"}

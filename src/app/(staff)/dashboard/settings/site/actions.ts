@@ -106,24 +106,3 @@ export async function removeFirmLogo(): Promise<SiteSettingsResult> {
   revalidatePath("/dashboard", "layout");
   return { ok: true, logoUrl: null };
 }
-
-// ---------------------------------------------------------------------------
-// Connected account
-// ---------------------------------------------------------------------------
-
-export async function disconnectAccount(): Promise<
-  { ok: true } | { ok?: false; error: string }
-> {
-  const staff = await getStaff();
-  if (!staff) return { error: "Not authenticated" };
-  if (!staffCan(staff, "manage_settings")) return { error: "Not authorized" };
-
-  const tenantId = await requireStaffTenantId();
-  // Deleting the row destroys the encrypted refresh token; revoking at the
-  // provider is the firm's own choice from their account security page.
-  const { disconnect } = await import("@/lib/connections/store");
-  await disconnect(tenantId);
-
-  revalidatePath("/dashboard/settings/site");
-  return { ok: true };
-}

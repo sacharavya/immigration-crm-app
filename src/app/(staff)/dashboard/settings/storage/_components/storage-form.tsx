@@ -28,7 +28,7 @@ const PROVIDERS: {
     value: "google_drive",
     label: "Google Drive",
     blurb:
-      "Not available yet — no adapter is wired up, so uploads would fail. Listed here because the setting is ready for it.",
+      "Use Connect Google Workspace above. This fallback library is OneDrive only.",
     available: false,
   },
 ];
@@ -81,8 +81,8 @@ export function StorageForm({
   return (
     <div className="space-y-5">
       <Section
-        title="Storage provider"
-        description="Where case folders, client uploads, and generated documents are kept."
+        title="Platform library (fallback)"
+        description="Used only while no account is connected above. Set by whoever runs the platform."
       >
         <div className="space-y-2">
           {PROVIDERS.map((p) => (
@@ -110,7 +110,7 @@ export function StorageForm({
                   {p.label}
                   {!p.available && (
                     <span className="ml-2 rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-normal text-stone-600">
-                      Coming soon
+                      Connect above
                     </span>
                   )}
                 </span>
