@@ -20,7 +20,9 @@ export async function proxy(request: NextRequest) {
   if (request.nextUrl.pathname === "/") {
     const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "";
     if (!isPlatformHost(host)) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      // Built from the host header, not request.url: behind a proxy the two
+      // can differ, and the sign-in must stay on the firm's own host.
+      return NextResponse.redirect(new URL("/login", `${request.nextUrl.protocol}//${host}`));
     }
   }
 
