@@ -16,7 +16,7 @@ export type Firm = {
 
 export const FIRMS: Firm[] = [
   {
-    name: "genzdatalabs Immigration Consulting",
+    name: "Big Bang Immigration",
     where: "Toronto · Kathmandu",
     since: "Founding firm",
     story:
