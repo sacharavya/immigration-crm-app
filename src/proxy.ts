@@ -10,6 +10,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 function isPlatformHost(hostHeader: string): boolean {
   const host = hostHeader.split(":")[0].toLowerCase();
   if (host === "localhost" || host === "127.0.0.1" || host.endsWith(".vercel.app")) return true;
+  if (host.endsWith(".localhost")) return false; // <slug>.localhost is a firm in dev
   const domain = process.env.PLATFORM_DOMAIN?.trim().toLowerCase();
   if (!domain) return true; // no domain configured: single-host deployment
   return host === domain || host === `www.${domain}` || host === `app.${domain}`;
