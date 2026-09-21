@@ -32,7 +32,7 @@ const MENU: MenuItem[] = [
       heading: i === 0 ? "The problem" : "and where the platform answers it",
       links: half.map((x) => ({
         label: x.problem,
-        href: `/platform#${x.slug}`,
+        href: `/solutions#${x.slug}`,
         description: x.solution,
       })),
     })),

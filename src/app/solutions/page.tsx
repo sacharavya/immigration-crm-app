@@ -27,7 +27,7 @@ export default function SolutionsPage() {
           {SOLUTIONS.map((s) => {
             const feature = FEATURES.get(s.slug);
             return (
-              <li key={s.slug} className="grid gap-3 border-t border-[var(--rule)] pt-6">
+              <li key={s.slug} id={s.slug} className="grid scroll-mt-28 gap-3 border-t border-[var(--rule)] pt-6">
                 <Eyebrow>The problem</Eyebrow>
                 <h2 className="font-[family-name:var(--font-display)] text-[26px] leading-tight tracking-[-0.01em] text-[var(--ink)]">
                   {s.problem}
