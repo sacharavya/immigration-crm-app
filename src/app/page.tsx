@@ -79,7 +79,7 @@ const PIPELINE = [
   { name: "Retainer", n: 2, cards: [{ name: "R. Gurung", type: "Study permit", pct: "10%", color: "var(--ink-faint)" }, { name: "S. Okafor", type: "Visitor", pct: "20%", color: "var(--ink-faint)" }] },
   { name: "Documents", n: 5, cards: [{ name: "P. Anand", type: "EE · CEC", pct: "75%", color: "var(--ink)" }, { name: "B. Khatiwada", type: "Family", pct: "60%", color: "var(--ink)" }] },
   { name: "Review", n: 1, cards: [{ name: "F. Al-Rashid", type: "Study permit", pct: "90%", color: "var(--ink)" }] },
-  { name: "Submitted", n: 3, cards: [{ name: "M. Santos", type: "WP · LMIA", pct: "100%", color: "#9AE5C8" }, { name: "C. Wei", type: "Spousal", pct: "100%", color: "#9AE5C8" }] },
+  { name: "Submitted", n: 3, cards: [{ name: "M. Santos", type: "WP · LMIA", pct: "100%", color: "#DCC79E" }, { name: "C. Wei", type: "Spousal", pct: "100%", color: "#DCC79E" }] },
   { name: "Decision", n: 9, cards: [{ name: "A. Mainali", type: "PNP · Approved", pct: "100%", color: "#1F7A3E" }, { name: "D. Khatiwada", type: "Business · Refused", pct: "100%", color: "#D32F2F" }] },
 ];
 

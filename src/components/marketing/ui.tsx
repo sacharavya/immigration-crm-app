@@ -173,7 +173,7 @@ export function GradientBlock({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(60% 70% at 100% 100%,rgba(98,212,166,.16),transparent 70%)",
+            "radial-gradient(60% 70% at 100% 100%,rgba(196,160,103,.16),transparent 70%)",
         }}
       />
       {children}
@@ -189,7 +189,7 @@ export function BrowserFrame({
   children: React.ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-[calc(var(--radius)*1.5)] border border-[var(--rule)] bg-white shadow-[0_40px_80px_-48px_rgba(30,33,54,.45)]">
+    <div className="overflow-hidden rounded-[calc(var(--radius)*1.5)] border border-[var(--rule)] bg-white shadow-[0_40px_80px_-48px_rgba(13, 66, 49,.45)]">
       <div className="flex items-center gap-2 border-b border-[var(--rule)] bg-[var(--paper)] px-3.5 py-2.5">
         <span className="block h-2.5 w-2.5 rounded-full bg-[var(--rule)]" />
         <span className="block h-2.5 w-2.5 rounded-full bg-[var(--rule)]" />
@@ -285,7 +285,7 @@ export function DarkSection({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(80% 60% at 50% 0%,rgba(98,212,166,.10),transparent 70%)",
+            "radial-gradient(80% 60% at 50% 0%,rgba(196,160,103,.10),transparent 70%)",
         }}
       />
       <div className="relative mx-auto w-full max-w-[1180px] px-6">{children}</div>

@@ -253,7 +253,7 @@ export function MegaNav({
           <div
             onMouseEnter={cancelClose}
             onMouseLeave={scheduleClose}
-            className="absolute inset-x-0 top-full hidden border-b border-[var(--rule)] bg-[var(--paper)] shadow-[0_24px_48px_-32px_rgba(30,33,54,.35)] md:block"
+            className="absolute inset-x-0 top-full hidden border-b border-[var(--rule)] bg-[var(--paper)] shadow-[0_24px_48px_-32px_rgba(13, 66, 49,.35)] md:block"
           >
             <div className="mx-auto grid w-full max-w-[1280px] gap-x-10 gap-y-10 px-6 py-12 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,300px)]">
               {active.columns?.map((col, i) => (

@@ -34,7 +34,7 @@ export default function LoginPage({ searchParams }: Props) {
       <div className="flex w-full flex-col justify-center px-8 py-12 lg:w-1/2 lg:px-16 xl:px-24">
         <div className="mx-auto w-full max-w-md">
           {/* Logo */}
-          <CaseBindLogo className="h-12 w-auto text-[#1E2136]" />
+          <CaseBindLogo className="h-12 w-auto text-[#0D4231]" />
 
           {/* Heading */}
           <h1 className="mt-8 text-2xl font-semibold tracking-tight text-stone-900">

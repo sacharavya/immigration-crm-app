@@ -18,7 +18,7 @@ export default function FindAPathwayPage() {
       subtitle="Discover which immigration program best matches your profile and goals."
     >
       <div className="flex flex-col items-center gap-4 rounded-2xl border border-[#D9E2EC] bg-white px-6 py-20 text-center shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)]">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F0F1F6] text-[#1E2136]">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#EEF4F1] text-[#0D4231]">
           <Compass className="h-6 w-6" strokeWidth={1.75} />
         </div>
         <h2 className="text-xl font-extrabold tracking-[-.02em]">
@@ -31,7 +31,7 @@ export default function FindAPathwayPage() {
         </p>
         <Link
           href="/book-an-appointment"
-          className="mt-2 rounded-[10px] bg-[#1E2136] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2E3252]"
+          className="mt-2 rounded-[10px] bg-[#0D4231] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#14523D]"
         >
           Book a consultation
         </Link>

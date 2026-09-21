@@ -44,7 +44,7 @@ export default function AboutUsPage() {
     >
       {/* Who we are */}
       <section className="grid items-start gap-10 pt-10 lg:grid-cols-2">
-        <div className="space-y-4 text-[15.5px] leading-relaxed text-[#1E2136]/90">
+        <div className="space-y-4 text-[15.5px] leading-relaxed text-[#0D4231]/90">
           <div className="flex items-center self-start rounded-xl border border-[#D9E2EC] bg-white px-4 py-2.5">
             <Image
               src="/RCIC.png"
@@ -75,13 +75,13 @@ export default function AboutUsPage() {
           <div className="flex flex-wrap gap-2.5 pt-1">
             <Link
               href="/book-an-appointment"
-              className="inline-flex items-center gap-2 rounded-[10px] bg-[#1E2136] px-4.5 py-2.5 text-[13.5px] font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2E3252]"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-[#0D4231] px-4.5 py-2.5 text-[13.5px] font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#14523D]"
             >
               Book a consultation <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="https://www.youtube-nocookie.com/embed/iDo3mRevQLU"
-              className="rounded-[10px] border border-[#D9E2EC] px-4.5 py-2.5 text-[13.5px] font-semibold text-[#1E2136] hover:border-[#1E2136]"
+              className="rounded-[10px] border border-[#D9E2EC] px-4.5 py-2.5 text-[13.5px] font-semibold text-[#0D4231] hover:border-[#0D4231]"
             >
               Watch our story
             </Link>
@@ -109,7 +109,7 @@ export default function AboutUsPage() {
           className="flex flex-col gap-3 rounded-2xl border border-[#D9E2EC] p-7"
           style={{ background: "linear-gradient(180deg,#F1F5FD,#fff)" }}
         >
-          <div className="font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#1E2136]">
+          <div className="font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#0D4231]">
             OUR MISSION
           </div>
           <div className="text-lg font-bold leading-snug">
@@ -123,7 +123,7 @@ export default function AboutUsPage() {
           className="flex flex-col gap-3 rounded-2xl border border-[#D9E2EC] p-7"
           style={{ background: "linear-gradient(180deg,#F6F1FC,#fff)" }}
         >
-          <div className="font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#1E2136]">
+          <div className="font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#0D4231]">
             OUR VISION
           </div>
           <div className="text-lg font-bold leading-snug">
@@ -137,7 +137,7 @@ export default function AboutUsPage() {
           className="flex flex-col gap-3 rounded-2xl border border-[#D9E2EC] p-7"
           style={{ background: "linear-gradient(180deg,#E4F7EF,#fff)" }}
         >
-          <div className="font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#1E2136]">
+          <div className="font-[family-name:var(--font-dm-mono)] text-[10px] tracking-[.14em] text-[#0D4231]">
             OUR VALUES
           </div>
           <div className="text-lg font-bold leading-snug">
@@ -159,7 +159,7 @@ export default function AboutUsPage() {
       {/* Commitments */}
       <section className="pt-20">
         <div className="rounded-2xl border border-[#D9E2EC] bg-white p-8 shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)] sm:p-10">
-          <div className="font-[family-name:var(--font-dm-mono)] text-[10.5px] tracking-[.16em] text-[#1E2136]">
+          <div className="font-[family-name:var(--font-dm-mono)] text-[10.5px] tracking-[.16em] text-[#0D4231]">
             OUR COMMITMENTS
           </div>
           <h2 className="mt-3 text-balance text-[clamp(24px,3vw,34px)] font-extrabold leading-[1.1] tracking-[-.03em]">
@@ -169,10 +169,10 @@ export default function AboutUsPage() {
             {COMMITMENTS.map((c) => (
               <li
                 key={c}
-                className="flex gap-2.5 text-[14.5px] leading-relaxed text-[#1E2136]/90"
+                className="flex gap-2.5 text-[14.5px] leading-relaxed text-[#0D4231]/90"
               >
                 <Check
-                  className="mt-1 h-4 w-4 shrink-0 text-[#62D4A6]"
+                  className="mt-1 h-4 w-4 shrink-0 text-[#C4A067]"
                   strokeWidth={2.5}
                 />
                 {c}

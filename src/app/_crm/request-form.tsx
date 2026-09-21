@@ -73,7 +73,7 @@ export function RequestForm() {
         <div className="flex items-start gap-3">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
           <div>
-            <h3 className="text-sm font-semibold text-[#1E2136]">
+            <h3 className="text-sm font-semibold text-[#0D4231]">
               Request received
             </h3>
             <p className="mt-1 text-sm text-[#5A6A85]">
@@ -98,7 +98,7 @@ export function RequestForm() {
             value={firmName}
             onChange={(e) => setFirmName(e.target.value)}
             disabled={pending}
-            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
+            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#0D4231] focus:ring-2 focus:ring-[#0D4231]/20"
           />
         </label>
         <label className="block">
@@ -109,7 +109,7 @@ export function RequestForm() {
             value={contactName}
             onChange={(e) => setContactName(e.target.value)}
             disabled={pending}
-            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
+            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#0D4231] focus:ring-2 focus:ring-[#0D4231]/20"
           />
         </label>
         <label className="block">
@@ -121,7 +121,7 @@ export function RequestForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={pending}
-            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
+            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#0D4231] focus:ring-2 focus:ring-[#0D4231]/20"
           />
         </label>
         <label className="block">
@@ -132,7 +132,7 @@ export function RequestForm() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             disabled={pending}
-            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
+            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#0D4231] focus:ring-2 focus:ring-[#0D4231]/20"
           />
         </label>
         <label className="block">
@@ -143,7 +143,7 @@ export function RequestForm() {
             value={rcicNumber}
             onChange={(e) => setRcicNumber(e.target.value)}
             disabled={pending}
-            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
+            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#0D4231] focus:ring-2 focus:ring-[#0D4231]/20"
           />
         </label>
         <label className="block">
@@ -155,7 +155,7 @@ export function RequestForm() {
             onChange={(e) => setCurrentSoftware(e.target.value)}
             placeholder="Officio, spreadsheets, ..."
             disabled={pending}
-            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
+            className="mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#0D4231] focus:ring-2 focus:ring-[#0D4231]/20"
           />
         </label>
       </div>
@@ -170,8 +170,8 @@ export function RequestForm() {
               key={opt.value}
               className={`group flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm transition-all ${
                 firmSize === opt.value
-                  ? "border-[#1E2136] bg-[#F0F1F6]/60 shadow-sm ring-1 ring-[#1E2136]/30"
-                  : "border-[#D9E2EC] bg-white hover:border-[#1E2136]/50"
+                  ? "border-[#0D4231] bg-[#EEF4F1]/60 shadow-sm ring-1 ring-[#0D4231]/30"
+                  : "border-[#D9E2EC] bg-white hover:border-[#0D4231]/50"
               }`}
             >
               <input
@@ -185,13 +185,13 @@ export function RequestForm() {
                 aria-hidden
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all ${
                   firmSize === opt.value
-                    ? "border-[#1E2136] bg-[#1E2136] text-white"
-                    : "border-[#D9E2EC] bg-white text-transparent group-hover:border-[#1E2136]/50"
+                    ? "border-[#0D4231] bg-[#0D4231] text-white"
+                    : "border-[#D9E2EC] bg-white text-transparent group-hover:border-[#0D4231]/50"
                 }`}
               >
                 <Check className="h-3.5 w-3.5" strokeWidth={3} />
               </span>
-              <span className="font-medium text-[#1E2136]">{opt.label}</span>
+              <span className="font-medium text-[#0D4231]">{opt.label}</span>
             </label>
           ))}
         </div>
@@ -208,7 +208,7 @@ export function RequestForm() {
           maxLength={2000}
           placeholder="The workflows you want to fix first, team setup, anything else we should know."
           disabled={pending}
-          className="mt-1 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 py-2 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
+          className="mt-1 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 py-2 text-sm outline-none focus:border-[#0D4231] focus:ring-2 focus:ring-[#0D4231]/20"
         />
       </label>
 
@@ -224,8 +224,8 @@ export function RequestForm() {
           aria-hidden
           className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${
             consent
-              ? "border-[#1E2136] bg-[#1E2136] text-white"
-              : "border-[#D9E2EC] bg-white text-transparent group-hover:border-[#1E2136]/50"
+              ? "border-[#0D4231] bg-[#0D4231] text-white"
+              : "border-[#D9E2EC] bg-white text-transparent group-hover:border-[#0D4231]/50"
           }`}
         >
           <Check className="h-3 w-3" strokeWidth={3} />
@@ -236,7 +236,7 @@ export function RequestForm() {
           <Link
             href="/privacy-policy"
             target="_blank"
-            className="text-[#1E2136] underline underline-offset-2"
+            className="text-[#0D4231] underline underline-offset-2"
           >
             Privacy Policy
           </Link>
@@ -253,7 +253,7 @@ export function RequestForm() {
       <button
         type="submit"
         disabled={pending}
-        className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#1E2136] px-6 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2E3252] disabled:opacity-60"
+        className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#0D4231] px-6 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#14523D] disabled:opacity-60"
       >
         {pending ? (
           <>
