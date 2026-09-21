@@ -27,11 +27,11 @@ const MENU: MenuItem[] = [
   },
   {
     label: "Solutions",
-    // Two columns of three; one column of six runs off a laptop screen.
-    columns: [SOLUTIONS.slice(0, 3), SOLUTIONS.slice(3)].map((half, i) => ({
-      heading: i === 0 ? "The problem" : "and where the platform answers it",
+    // Short labels with one line each, three per column — the menu names the
+    // problem; /solutions spells it out.
+    columns: [SOLUTIONS.slice(0, 3), SOLUTIONS.slice(3)].map((half) => ({
       links: half.map((x) => ({
-        label: x.problem,
+        label: x.label,
         href: `/solutions#${x.slug}`,
         description: x.solution,
       })),

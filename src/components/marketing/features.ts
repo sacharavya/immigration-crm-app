@@ -68,11 +68,11 @@ export const PLATFORM_COLUMNS = FEATURE_GROUPS.map((g) => ({
 
 // The Solutions menu is the same product read from the other side: the
 // problem a firm walks in with, and which part of the platform answers it.
-export const SOLUTIONS: { problem: string; solution: string; slug: string }[] = [
-  { problem: "Files scattered across email, drives and desktops", solution: "One case folder per client, kept in your own OneDrive or SharePoint.", slug: "microsoft-storage" },
-  { problem: "Deadlines slip between consultants", solution: "Tasks with owners and due dates, on the case they belong to.", slug: "tasks-deadlines" },
-  { problem: "Re-typing the same client data into every IRCC form", solution: "Enter it once; autofill carries it into every form on the file.", slug: "ircc-form-autofill" },
-  { problem: "Clients calling for updates and sending documents by WhatsApp", solution: "A portal link where they upload, sign and see progress.", slug: "client-portal" },
-  { problem: "Chasing retainers and payments", solution: "E-signed agreements and pay-by-link, tracked on the case.", slug: "payments" },
-  { problem: "Practice reviews and CICC audits", solution: "An audit log of every view, edit and export, ready to hand over.", slug: "audit-log" },
+export const SOLUTIONS: { label: string; problem: string; solution: string; slug: string }[] = [
+  { label: "Document chaos", problem: "Files scattered across email, drives and desktops", solution: "One case folder per client, kept in your own OneDrive or SharePoint.", slug: "microsoft-storage" },
+  { label: "Missed deadlines", problem: "Deadlines slip between consultants", solution: "Tasks with owners and due dates, on the case they belong to.", slug: "tasks-deadlines" },
+  { label: "Form re-entry", problem: "Re-typing the same client data into every IRCC form", solution: "Enter it once; autofill carries it into every form on the file.", slug: "ircc-form-autofill" },
+  { label: "Client updates", problem: "Clients calling for updates and sending documents by WhatsApp", solution: "A portal link where they upload, sign and see progress.", slug: "client-portal" },
+  { label: "Retainers & payments", problem: "Chasing retainers and payments", solution: "E-signed agreements and pay-by-link, tracked on the case.", slug: "payments" },
+  { label: "Practice reviews", problem: "Practice reviews and CICC audits", solution: "An audit log of every view, edit and export, ready to hand over.", slug: "audit-log" },
 ];
