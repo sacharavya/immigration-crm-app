@@ -168,7 +168,7 @@ const MENU: MenuItem[] = [
             label: "About us",
             href: "/about-us",
             description:
-              "Licensed by the CICC, working from Toronto and Kathmandu.",
+              "Partnered with licensed RCICs, working from Toronto and Kathmandu.",
           },
         ],
       },

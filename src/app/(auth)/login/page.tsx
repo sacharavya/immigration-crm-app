@@ -194,7 +194,7 @@ export default function LoginPage({ searchParams }: Props) {
             </div>
             <div className="flex items-center gap-1.5 text-xs">
               <Scale className="h-4 w-4 text-[var(--gold)]" />
-              CICC Licensed
+              Partnered with licensed RCIC
             </div>
             <div className="flex items-center gap-1.5 text-xs">
               <Globe className="h-4 w-4 text-[var(--gold)]" />

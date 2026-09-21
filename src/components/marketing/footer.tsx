@@ -86,8 +86,7 @@ export function MarketingFooter() {
         <div className="mt-14 flex flex-wrap justify-between gap-3 border-t border-white/10 pt-6 text-[11.5px] text-white/40">
           <span>© 2026 CaseBind Systems</span>
           <span>
-            Licensed by the College of Immigration and Citizenship Consultants
-            (CICC) · RCIC# R7111111
+            Partnered with licensed RCIC · RCIC# R7111111
           </span>
         </div>
       </div>

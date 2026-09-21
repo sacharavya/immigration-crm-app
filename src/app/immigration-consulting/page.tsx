@@ -230,7 +230,7 @@ const STAT_TILES = [
   },
   {
     big: 'RCIC',
-    small: 'Licensed by CICC · R7111111',
+    small: 'Partnered with licensed RCIC · R7111111',
   },
   {
     big: 'Since 2021',
@@ -308,8 +308,7 @@ export default function HomePage() {
               className='h-10 w-auto'
             />
             <span className='font-[family-name:var(--font-dm-mono)] text-[11px] uppercase leading-relaxed tracking-[.14em] text-[var(--ink-faint)]'>
-              Licensed by the College of Immigration and Citizenship
-              Consultants (CICC) · RCIC# R7111111
+              Partnered with licensed RCIC · RCIC# R7111111
             </span>
           </div>
         </header>

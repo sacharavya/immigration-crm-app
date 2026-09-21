@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 const STAT_TILES = [
   { big: "Toronto", small: "Head office · 211-2390 Eglinton Ave E", bg: "linear-gradient(180deg,#F1F5FD,#fff)" },
   { big: "Kathmandu", small: "Branch office · Nepal", bg: "linear-gradient(180deg,#F6F1FC,#fff)" },
-  { big: "RCIC", small: "Licensed by CICC · R7111111", bg: "linear-gradient(180deg,#E4F7EF,#fff)" },
+  { big: "RCIC", small: "Partnered with licensed RCIC · R7111111", bg: "linear-gradient(180deg,#E4F7EF,#fff)" },
   { big: "Since 2021", small: "Affordable, effective and expeditious solutions", bg: "linear-gradient(180deg,#EEF6FB,#fff)" },
 ];
 
@@ -56,9 +56,9 @@ export default function AboutUsPage() {
             />
           </div>
           <p>
-            We are a Toronto-based immigration consultancy founded in 2021 and
-            licensed by the College of Immigration and Citizenship Consultants
-            (CICC), with a branch office in Kathmandu serving clients across
+            We are a Toronto-based immigration consultancy founded in 2021,
+            partnered with licensed RCICs regulated by the College of
+            Immigration and Citizenship Consultants (CICC), with a branch office in Kathmandu serving clients across
             South Asia and around the world.
           </p>
           <p>

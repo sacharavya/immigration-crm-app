@@ -59,8 +59,7 @@ export function PublicFooter() {
           </Link>
         </div>
         &copy; {new Date().getFullYear()} genzdatalabs Immigration Consulting Inc.
-        &middot; Licensed by the College of Immigration and Citizenship
-        Consultants (CICC) &middot; RCIC# R7111111
+        &middot; Partnered with licensed RCIC &middot; RCIC# R7111111
       </div>
     </footer>
   );
