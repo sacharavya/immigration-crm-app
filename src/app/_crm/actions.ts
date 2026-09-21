@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { adminClient } from "@/lib/supabase/admin";
 
-// Public B2B lead capture: a firm asking to join the BBI-CRM alpha program.
+// Public B2B lead capture: a firm asking to join the CaseBind alpha program.
 // Inserts via service role; a DB trigger fans out the staff notification.
 
 const requestSchema = z.object({

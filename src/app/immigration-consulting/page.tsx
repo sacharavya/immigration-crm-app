@@ -340,7 +340,7 @@ export default function HomePage() {
                 FOR FIRMS
               </span>
               <div className='font-[family-name:var(--font-display)] text-[26px] leading-[1.05] tracking-[-0.02em]'>
-                BBI-CRM alpha program
+                CaseBind alpha program
               </div>
               <p className='text-[13.5px] leading-relaxed text-white/90'>
                 The CRM we built to run this practice, now open to a small group

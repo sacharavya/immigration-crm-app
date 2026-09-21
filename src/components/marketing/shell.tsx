@@ -217,7 +217,7 @@ export function SiteNav() {
     <MegaNav
       items={MENU}
       announcement={{
-        text: "BBI-CRM is open to a small group of alpha firms.",
+        text: "CaseBind is open to a small group of alpha firms.",
         href: "/#request",
       }}
       actions={

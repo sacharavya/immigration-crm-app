@@ -55,7 +55,7 @@ export function PublicFooter() {
             href="/"
             className="hover:text-stone-600 hover:underline"
           >
-            BBI-CRM for firms
+            CaseBind for firms
           </Link>
         </div>
         &copy; {new Date().getFullYear()} genzdatalabs Immigration Consulting Inc.

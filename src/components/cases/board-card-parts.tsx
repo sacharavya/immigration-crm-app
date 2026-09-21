@@ -4,7 +4,7 @@
  * The Board card and the List row render the same derived facts (ball in
  * court, signal, documents, payment, priority, worker). These atoms keep the
  * two views pixel-consistent and, more importantly, keep every colour tied to
- * a BBI design token - no ad-hoc palette. Whose move it is, the urgency, and
+ * a brand design token - no ad-hoc palette. Whose move it is, the urgency, and
  * the priority are always carried by text or an accessible label, never by
  * colour alone.
  */

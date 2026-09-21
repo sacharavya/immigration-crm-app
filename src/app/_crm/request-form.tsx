@@ -77,7 +77,7 @@ export function RequestForm() {
               Request received
             </h3>
             <p className="mt-1 text-sm text-[#5A6A85]">
-              Thanks for your interest in BBI-CRM. We onboard firms in small
+              Thanks for your interest in CaseBind. We onboard firms in small
               groups and will reach out to schedule an intro call and your
               training week.
             </p>

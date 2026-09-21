@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ================================================================
-   BBI Color System — revert by replacing this :root block with the
+   CaseBind colour system — revert by replacing this :root block with the
    original oklch values from git history.
    ================================================================ */
 :root {

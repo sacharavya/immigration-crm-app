@@ -16,7 +16,7 @@ import {
 } from "@/lib/validators/client-immigration";
 
 // ---------------------------------------------------------------------------
-// Color maps (using existing BBI tokens)
+// Color maps (using existing brand tokens)
 // ---------------------------------------------------------------------------
 
 const STAGE_COLORS: Record<ClientStage, string> = {
