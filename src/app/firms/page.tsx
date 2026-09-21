@@ -21,7 +21,7 @@ function LogoRow({ ariaHidden }: { ariaHidden?: boolean }) {
       {Array.from({ length: SETS }, () => FIRMS).flat().map((f, i) => (
         <li key={`${f.name}-${i}`} className="shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element -- firm-uploaded asset, sized by height */}
-          <img src={f.logo} alt={ariaHidden ? "" : f.name} className="h-9 w-auto opacity-80 grayscale" />
+          <img src={f.logo} alt={ariaHidden ? "" : f.name} className="max-h-9 w-auto max-w-[180px] object-contain opacity-60 grayscale" />
         </li>
       ))}
     </ul>
@@ -59,7 +59,7 @@ export default function FirmsPage() {
 
         {/* Marquee, edge to edge, faded at both ends. */}
         <div
-          className="marquee relative overflow-hidden border-y border-[var(--rule)] py-8"
+          className="marquee relative overflow-hidden py-8"
           style={{ maskImage: "linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)" }}
         >
           <div className="marquee-track flex w-max">
@@ -68,16 +68,26 @@ export default function FirmsPage() {
           </div>
         </div>
 
-        {/* Logo collection */}
-        <section className="mx-auto w-full max-w-[1180px] px-6 py-24">
+        {/* Logo collection: every mark in the same grey and the same box, so
+            mixed brand colours and aspect ratios read as one set. Light tiles
+            on purpose — some logos ship with an opaque white background,
+            which a knock-out on a dark tile turns into a white slab. */}
+        <section className="mx-auto w-full max-w-[1180px] px-6 pb-28 pt-12">
           <h2 className="max-w-[24ch] text-balance font-[family-name:var(--font-display)] text-[clamp(28px,3.4vw,44px)] leading-[1.05] tracking-[-0.02em] text-[var(--ink)]">
             Trusted by Canadian immigration practices.
           </h2>
-          <ul className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <ul className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {FIRMS.map((f) => (
-              <li key={f.name} className="flex aspect-[5/3] items-center justify-center rounded-[calc(var(--radius)*1.5)] border border-[var(--rule)] bg-[var(--paper-raised)] p-6">
-                {/* eslint-disable-next-line @next/next/no-img-element -- firm-uploaded asset, sized by height */}
-                <img src={f.logo} alt={f.name} className="h-10 w-auto" />
+              <li
+                key={f.name}
+                className="flex aspect-[5/3] items-center justify-center rounded-[calc(var(--radius)*1.5)] border border-[var(--rule)] bg-[var(--paper-raised)] p-8"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- firm-uploaded asset, sized by its box */}
+                <img
+                  src={f.logo}
+                  alt={f.name}
+                  className="max-h-12 w-auto max-w-[190px] object-contain opacity-60 grayscale transition-opacity hover:opacity-90"
+                />
               </li>
             ))}
           </ul>
