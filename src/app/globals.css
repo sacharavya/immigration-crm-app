@@ -15,6 +15,7 @@
      primary-hued light washes. Re-pointed here so every var(--navy*) consumer
      switches to primary in one place. */
   --navy: #0F5132;
+  --charcoal: #1F2937;
   --navy-light: #2A6B4A;
   --navy-50: #EEF4F0;
   --navy-100: #D5E5DB;
@@ -195,7 +196,7 @@
   --ink-muted: #4B5563;
   --ink-faint: #6B7280;
   --rule: #E2E2DC;
-  --slab: #0F5132;
+  --slab: #1F2937;
 
   /* The colour that sits ON an --ink fill. Paired so a filled button keeps
      contrast when the ink token is inverted on a dark surface. */
@@ -208,7 +209,7 @@
    light card back on a dark slab. */
 .on-dark {
   --ink: #FFFFFF;
-  --on-ink: #0F5132;
+  --on-ink: #1F2937;
   --ink-muted: rgba(255, 255, 255, 0.62);
   --ink-faint: rgba(255, 255, 255, 0.42);
   --rule: rgba(255, 255, 255, 0.14);

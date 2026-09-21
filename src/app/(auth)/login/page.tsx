@@ -142,7 +142,7 @@ export default function LoginPage({ searchParams }: Props) {
       </div>
 
       {/* ── Right: showcase panel ──────────────────────────────── */}
-      <div className="hidden lg:flex lg:w-1/2 lg:items-center lg:justify-center lg:bg-[var(--navy)] lg:p-12 xl:p-16">
+      <div className="hidden lg:flex lg:w-1/2 lg:items-center lg:justify-center lg:bg-[var(--charcoal)] lg:p-12 xl:p-16">
         <div className="max-w-lg text-center">
           {/* Dashboard preview placeholder */}
           <div className="mx-auto w-full overflow-hidden rounded-xl border border-white/10 bg-white/[0.07] p-1 shadow-2xl">

@@ -7,4 +7,5 @@ export const FIRMS: Firm[] = [
   { name: "Big Bang Immigration", logo: "/bigbang.png" },
   { name: "MDS Visa", logo: "/mdsvisa.png" },
   { name: "White Bunny", logo: "/whitebunny.png" },
+  { name: "Aayam Immigration", logo: "/aayam.svg" },
 ];
