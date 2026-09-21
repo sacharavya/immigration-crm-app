@@ -1,10 +1,28 @@
-import { type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 import { maybeSetIntakePortalCookie } from "@/lib/auth/intake-portal-proxy";
 import { maybeSetUploadPortalCookie } from "@/lib/auth/upload-portal-proxy";
 import { updateSession } from "@/lib/supabase/middleware";
 
+// The platform's own hosts. Anything else — <slug>.<PLATFORM_DOMAIN> or a
+// firm's custom domain — is a firm's host, and its front door is the CRM
+// sign-in, not the marketing site.
+function isPlatformHost(hostHeader: string): boolean {
+  const host = hostHeader.split(":")[0].toLowerCase();
+  if (host === "localhost" || host === "127.0.0.1" || host.endsWith(".vercel.app")) return true;
+  const domain = process.env.PLATFORM_DOMAIN?.trim().toLowerCase();
+  if (!domain) return true; // no domain configured: single-host deployment
+  return host === domain || host === `www.${domain}` || host === `app.${domain}`;
+}
+
 export async function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname === "/") {
+    const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "";
+    if (!isPlatformHost(host)) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+  }
+
   // updateSession refreshes the staff Supabase auth cookie chain on
   // every request. For unauthenticated /intake/<token>/* or
   // /upload/<token>/* requests it's a cheap no-op (no auth session to
