@@ -43,6 +43,7 @@ const MENU: MenuItem[] = [
       href: "/solutions",
     },
   },
+  { label: "Firms", href: "/firms" },
   {
     label: "Resources",
     columns: [
@@ -89,19 +90,28 @@ const MENU: MenuItem[] = [
       {
         links: [
           {
-            label: "Firms on CaseBind",
-            href: "/firms",
-            description: "The practices running their casework on the platform.",
+            label: "About",
+            href: "/about",
+            description: "Who we are and what we're building.",
           },
           {
-            label: "Security",
+            label: "Careers",
+            href: "/careers",
+            description: "Help build the case management platform Canadian immigration firms run on.",
+          },
+        ],
+      },
+      {
+        links: [
+          {
+            label: "Goals & vision",
+            href: "/about#vision",
+            description: "Where the platform is going, and what it will never do.",
+          },
+          {
+            label: "Compliance",
             href: "/#trust",
             description: "Canadian data residency, audit trail, your own document storage.",
-          },
-          {
-            label: "Alpha program",
-            href: "/#request",
-            description: "Free through alpha and beta, with a week of hands-on training.",
           },
         ],
       },
@@ -110,7 +120,7 @@ const MENU: MenuItem[] = [
       image: MEDIA.productShot,
       title: "Built inside a regulated firm",
       body: "CaseBind grew out of a CICC-regulated practice in Toronto, used daily by its own consultants.",
-      href: "/firms",
+      href: "/about",
     },
   },
 ];
