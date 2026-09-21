@@ -63,16 +63,16 @@ export function ContactForm() {
         <div className="flex items-start gap-3">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
           <div>
-            <h3 className="text-sm font-semibold text-[#1E2136]">
+            <h3 className="text-sm font-semibold text-[#0F5132]">
               Message received
             </h3>
-            <p className="mt-1 text-sm text-[#5A6A85]">
+            <p className="mt-1 text-sm text-[#4B5563]">
               Thanks for reaching out. A member of our team will get back to
               you, typically within one business day. Want to move faster?
             </p>
             <Link
               href="/book-an-appointment"
-              className="mt-3 inline-flex items-center gap-1.5 rounded-[10px] bg-[#1E2136] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2E3252]"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-[10px] bg-[#0F5132] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#146540]"
             >
               Book a consultation now
             </Link>
@@ -83,9 +83,9 @@ export function ContactForm() {
   }
 
   const inputClass =
-    "mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20";
+    "mt-1 h-10 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 text-sm outline-none focus:border-[#0F5132] focus:ring-2 focus:ring-[#0F5132]/20";
   const labelClass =
-    "text-xs font-semibold uppercase tracking-wider text-[#5A6A85]";
+    "text-xs font-semibold uppercase tracking-wider text-[#4B5563]";
 
   return (
     <form
@@ -149,11 +149,11 @@ export function ContactForm() {
           maxLength={2000}
           placeholder="Tell us briefly about your situation and goals."
           disabled={pending}
-          className="mt-1 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 py-2 text-sm outline-none focus:border-[#1E2136] focus:ring-2 focus:ring-[#1E2136]/20"
+          className="mt-1 w-full rounded-lg border border-[#D9E2EC] bg-white px-3 py-2 text-sm outline-none focus:border-[#0F5132] focus:ring-2 focus:ring-[#0F5132]/20"
         />
       </label>
 
-      <label className="group mt-4 flex cursor-pointer items-start gap-2 text-xs text-[#5A6A85]">
+      <label className="group mt-4 flex cursor-pointer items-start gap-2 text-xs text-[#4B5563]">
         <input
           type="checkbox"
           checked={consent}
@@ -165,8 +165,8 @@ export function ContactForm() {
           aria-hidden
           className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${
             consent
-              ? "border-[#1E2136] bg-[#1E2136] text-white"
-              : "border-[#D9E2EC] bg-white text-transparent group-hover:border-[#1E2136]/50"
+              ? "border-[#0F5132] bg-[#0F5132] text-white"
+              : "border-[#D9E2EC] bg-white text-transparent group-hover:border-[#0F5132]/50"
           }`}
         >
           <Check className="h-3 w-3" strokeWidth={3} />
@@ -177,7 +177,7 @@ export function ContactForm() {
           <Link
             href="/privacy-policy"
             target="_blank"
-            className="text-[#1E2136] underline underline-offset-2"
+            className="text-[#0F5132] underline underline-offset-2"
           >
             Privacy Policy
           </Link>
@@ -194,7 +194,7 @@ export function ContactForm() {
       <button
         type="submit"
         disabled={pending}
-        className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#1E2136] px-6 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#2E3252] disabled:opacity-60"
+        className="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#0F5132] px-6 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#146540] disabled:opacity-60"
       >
         {pending ? (
           <>

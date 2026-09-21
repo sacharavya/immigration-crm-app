@@ -2,6 +2,12 @@ import "server-only";
 
 import { Resend } from "resend";
 
+import { capabilitiesFor } from "@/lib/connections/providers";
+import { getAccessToken as getConnectionToken } from "@/lib/connections/store";
+import { getTenantId } from "@/lib/tenant/context";
+
+import { sendViaGmail, sendViaGraph } from "./connected";
+
 // Singleton Resend client. Instantiating once keeps connection pooling
 // behaviour predictable across server actions.
 let _client: Resend | null = null;
@@ -59,6 +65,12 @@ export type SendEmailArgs = {
   text?: string;
   replyTo?: string;
   attachments?: EmailAttachment[];
+  /**
+   * Which firm is sending. When set, and that firm has connected an account
+   * whose grant covers mail, the message goes out from their own address.
+   * Omitted: resolved from the current request where there is one.
+   */
+  tenantId?: string;
 };
 
 export type SendEmailResult =
@@ -70,6 +82,13 @@ export type SendEmailResult =
 // should treat email as a best-effort side channel and never block
 // their primary flow on it.
 export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
+  // A firm that has connected its own account sends as itself. Every other
+  // case — no connection, mail not granted, connection parked for re-auth —
+  // falls through to the platform sender exactly as before, so a broken
+  // connection degrades to "sent from the platform" rather than "not sent".
+  const viaFirm = await trySendAsFirm(args);
+  if (viaFirm) return viaFirm;
+
   const client = getClient();
   if (!client) {
     return { ok: false, error: "Resend not configured" };
@@ -98,5 +117,39 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
       ok: false,
       error: err instanceof Error ? err.message : String(err),
     };
+  }
+}
+
+async function trySendAsFirm(args: SendEmailArgs): Promise<SendEmailResult | null> {
+  try {
+    const tenantId = args.tenantId ?? (await getTenantId());
+    if (!tenantId) return null;
+
+    const conn = await getConnectionToken(tenantId);
+    if (!conn || !capabilitiesFor(conn.connection.scopes).mail) return null;
+
+    const mail = {
+      to: args.to,
+      subject: args.subject,
+      html: args.html,
+      text: args.text,
+      replyTo: args.replyTo,
+      attachments: args.attachments?.map((a) => ({
+        filename: a.filename,
+        content: Buffer.isBuffer(a.content) ? new Uint8Array(a.content) : a.content,
+      })),
+    };
+
+    const from = conn.connection.accountName
+      ? `${conn.connection.accountName} <${conn.connection.accountEmail}>`
+      : conn.connection.accountEmail;
+
+    return conn.connection.provider === "google"
+      ? await sendViaGmail(conn.token, from, mail)
+      : await sendViaGraph(conn.token, mail);
+  } catch {
+    // A refresh failure is already recorded on the connection for the firm
+    // to see; here it just means "use the platform sender this time".
+    return null;
   }
 }

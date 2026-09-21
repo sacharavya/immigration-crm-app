@@ -1,4 +1,5 @@
-import { GenzLogo } from "@/components/brand/genz-logo";
+import { FirmLogo } from "@/components/brand/firm-logo";
+import { tenantForPortalToken } from "@/lib/tenant/context";
 
 import { type LatestDoc } from "@/app/(staff)/dashboard/cases/[id]/_components/document-checklist";
 import { adminClient } from "@/lib/supabase/admin";
@@ -37,6 +38,7 @@ type Props = {
 
 export default async function ClientUploadPage({ params }: Props) {
   const { token } = await params;
+  const portalTenantId = await tenantForPortalToken(token);
   const caseRow = await loadCaseByPortalToken(token);
   if (!caseRow) {
     return <ExpiredCard />;
@@ -213,7 +215,7 @@ export default async function ClientUploadPage({ params }: Props) {
     <main className="min-h-dvh bg-[var(--surface-sunken)]">
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-2xl items-center gap-4 px-5 py-5">
-          <GenzLogo className="h-11 w-auto text-[#1E2136]" />
+          <FirmLogo className="h-11 w-auto" tenantId={portalTenantId ?? undefined} />
           <p className="min-w-0 text-sm text-muted-foreground">
             Your case, {caseRow.case_number}, documents for {greetingName}
           </p>

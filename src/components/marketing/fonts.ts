@@ -1,21 +1,14 @@
-import { DM_Mono, Instrument_Serif, Plus_Jakarta_Sans } from "next/font/google";
+import { DM_Mono, Fraunces } from "next/font/google";
 
-// Marketing visual system fonts (public pages only; the app keeps Inter).
+// Marketing visual system fonts (public pages only). Body text is Inter,
+// which the root layout already provides as --font-inter.
 
-// Display face for headlines. A high-contrast transitional serif is what
-// gives the public pages their editorial, professional register — the app
-// side stays entirely sans.
-export const instrumentSerif = Instrument_Serif({
+// Display face for headlines and the logo wordmark, per the brand sheet.
+export const fraunces = Fraunces({
   subsets: ["latin"],
-  weight: "400",
+  weight: ["400", "500", "600"],
   style: ["normal", "italic"],
   variable: "--font-display",
-});
-
-export const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-jakarta",
 });
 
 export const dmMono = DM_Mono({

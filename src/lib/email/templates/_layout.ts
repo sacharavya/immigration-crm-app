@@ -12,7 +12,7 @@ export function escapeHtml(s: string): string {
 
 // Logo must be an absolute URL — email clients refuse relative paths and
 // most strip data URIs. Resolved from NEXT_PUBLIC_APP_URL so dev (Vercel
-// preview / localhost-tunnel) and prod each point at their own /genzdatalabs-logo.png.
+// preview / localhost-tunnel) and prod each point at their own /casebind-logo.png.
 function logoUrl(): string {
   // Sync env-only read because emailLayout itself is sync. The fallback
   // must point at the actual prod domain — crm.genzdatalabs.com
@@ -20,7 +20,7 @@ function logoUrl(): string {
   // logo never loads in any client.
   const base =
     process.env.NEXT_PUBLIC_APP_URL ?? "https://app.genzdatalabs.com";
-  return `${base.replace(/\/$/, "")}/genzdatalabs-logo.png`;
+  return `${base.replace(/\/$/, "")}/casebind-logo.png`;
 }
 
 export function emailLayout(args: { previewText?: string; bodyHtml: string }): string {

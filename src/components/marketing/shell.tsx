@@ -1,8 +1,9 @@
 import Link from "next/link";
 
-import { dmMono, instrumentSerif, jakarta } from "./fonts";
+import { dmMono, fraunces } from "./fonts";
 import { MarketingFooter } from "./footer";
 import { MEDIA } from "./media";
+import { PLATFORM_COLUMNS, SOLUTIONS } from "./features";
 import { MegaNav, type MenuItem } from "./nav";
 import { Display, HeroBand } from "./ui";
 
@@ -12,166 +13,40 @@ export type Crumb = { label: string; href?: string };
 // home page, so the product sits in the menu and the consulting side is one
 // panel across. Every entry points at something that exists — the anchors
 // resolve on / and are absolute so they work from subpages too.
-// Everything the product does, grouped the way a firm thinks about its work.
-// Entries are derived from what is actually in the app: each one maps to a
-// staff route or a client-facing portal that exists today. Anything not yet
-// shipped carries a tag rather than being quietly listed as done.
-//
-// To add a feature: add a line. Tags are "In development" or "Planned"; omit
-// the tag once it ships.
+// The feature list itself lives in features.ts.
 const MENU: MenuItem[] = [
   {
     label: "Platform",
-    columns: [
-      {
-        heading: "Case management",
-        links: [
-          {
-            label: "Case pipeline",
-            href: "/#features",
-            description:
-              "Every active file by phase, from retainer to decision, with who owns it.",
-          },
-          {
-            label: "Case requests",
-            href: "/#how",
-            description: "Triage incoming requests before they become files.",
-          },
-          {
-            label: "Clients & leads",
-            href: "/#features",
-            description: "One record per person, with source, history and notes.",
-          },
-          {
-            label: "Tasks & deadlines",
-            href: "/#features",
-            description: "What is due, who owns it, and what is blocking it.",
-          },
-          {
-            label: "Checklists",
-            href: "/#features",
-            description: "Versioned document checklists per program and service.",
-          },
-        ],
-      },
-      {
-        heading: "Documents & forms",
-        links: [
-          {
-            label: "IRCC form autofill",
-            href: "/#features",
-            description: "Data entered once flows into every form on the file.",
-          },
-          {
-            label: "Submission packages",
-            href: "/#features",
-            description:
-              "Assembled in the browser, so documents never leave it.",
-          },
-          {
-            label: "PDF tool",
-            href: "/#features",
-            description: "Merge, split, stamp and paginate without leaving the case.",
-          },
-          {
-            label: "E-signature",
-            href: "/#how",
-            description: "Retainers and consultation agreements signed online.",
-          },
-          {
-            label: "Client portal",
-            href: "/#how",
-            description:
-              "Clients upload, sign and track progress from a single link.",
-          },
-          {
-            label: "Officio & spreadsheet import",
-            href: "/#faq",
-            description: "Bring an existing practice across without re-keying.",
-            tag: "In development",
-          },
-        ],
-      },
-      {
-        heading: "Practice operations",
-        links: [
-          {
-            label: "Appointments & booking",
-            href: "/#features",
-            description: "A public booking page, consultant calendars and reminders.",
-          },
-          {
-            label: "Payments & invoicing",
-            href: "/#features",
-            description: "Fees, government charges and HST, with pay-by-link.",
-          },
-          {
-            label: "Reports",
-            href: "/#features",
-            description: "Pipeline, revenue and approval rates across the firm.",
-          },
-          {
-            label: "Compliance & audit log",
-            href: "/#trust",
-            description: "Every view, edit and export recorded for practice review.",
-          },
-          {
-            label: "Team & permissions",
-            href: "/#trust",
-            description: "Roles, supervision hierarchies and per-case access.",
-          },
-          {
-            label: "Referral partners",
-            href: "/#features",
-            description: "A scoped portal for agents, with no access to full files.",
-          },
-          {
-            label: "OneDrive & SharePoint",
-            href: "/#trust",
-            description: "Keep documents in the firm's own Microsoft tenant.",
-          },
-          {
-            label: "Google Drive storage",
-            href: "/#trust",
-            description: "The same document sync against Google Workspace.",
-            tag: "Planned",
-          },
-        ],
-      },
-    ],
+    columns: PLATFORM_COLUMNS,
     featured: {
       image: MEDIA.productShot,
-      title: "Alpha program",
-      tag: "Open",
-      body: "Free through alpha and beta, with a week of hands-on training. We onboard a small number of firms at a time.",
-      href: "/#request",
+      title: "Everything on the platform",
+      body: "Every feature, grouped the way a firm works, with what is shipped and what is next.",
+      href: "/platform",
     },
   },
   {
-    label: "For applicants",
+    label: "Solutions",
+    // Short labels with one line each, three per column — the menu names the
+    // problem; /solutions spells it out.
+    columns: [SOLUTIONS.slice(0, 3), SOLUTIONS.slice(3)].map((half) => ({
+      links: half.map((x) => ({
+        label: x.label,
+        href: `/solutions#${x.slug}`,
+        description: x.solution,
+      })),
+    })),
+    featured: {
+      image: MEDIA.productShot,
+      title: "All solutions",
+      body: "Six things that go wrong in a practice, and the part of the platform built for each.",
+      href: "/solutions",
+    },
+  },
+  { label: "Firms", href: "/firms" },
+  {
+    label: "Resources",
     columns: [
-      {
-        heading: "Work with the firm",
-        links: [
-          {
-            label: "Immigration services",
-            href: "/immigration-consulting",
-            description:
-              "A regulated Canadian firm guiding individuals and families.",
-          },
-          {
-            label: "Book an appointment",
-            href: "/book-an-appointment",
-            description: "Consultation or case review with a licensed RCIC.",
-          },
-          {
-            label: "About us",
-            href: "/about-us",
-            description:
-              "Licensed by the CICC, working from Toronto and Kathmandu.",
-          },
-        ],
-      },
       {
         heading: "Free tools",
         links: [
@@ -203,13 +78,51 @@ const MENU: MenuItem[] = [
       },
     ],
     featured: {
-      image: MEDIA.heroConsulting,
-      title: "Your pathway to Canada",
-      body: "One regulated consultant owns your file from the first call through to the decision.",
-      href: "/immigration-consulting",
+      image: MEDIA.pathwaysBackdrop,
+      title: "Free tools for applicants",
+      body: "Your clients can check their CRS score, pathway and NOC code before they ever book.",
+      href: "/crs-calculator",
     },
   },
-  { label: "Security", href: "/#trust" },
+  {
+    label: "Company",
+    columns: [
+      {
+        links: [
+          {
+            label: "About",
+            href: "/about",
+            description: "Who we are and what we're building.",
+          },
+          {
+            label: "Careers",
+            href: "/careers",
+            description: "Help build the case management platform Canadian immigration firms run on.",
+          },
+        ],
+      },
+      {
+        links: [
+          {
+            label: "Goals & vision",
+            href: "/about#vision",
+            description: "Where the platform is going, and what it will never do.",
+          },
+          {
+            label: "Compliance",
+            href: "/#trust",
+            description: "Canadian data residency, audit trail, your own document storage.",
+          },
+        ],
+      },
+    ],
+    featured: {
+      image: MEDIA.productShot,
+      title: "Built inside a regulated firm",
+      body: "CaseBind grew out of a CICC-regulated practice in Toronto, used daily by its own consultants.",
+      href: "/about",
+    },
+  },
 ];
 
 export function SiteNav() {
@@ -217,7 +130,7 @@ export function SiteNav() {
     <MegaNav
       items={MENU}
       announcement={{
-        text: "BBI-CRM is open to a small group of alpha firms.",
+        text: "CaseBind is open to a small group of alpha firms.",
         href: "/#request",
       }}
       actions={
@@ -230,7 +143,7 @@ export function SiteNav() {
           </Link>
           <Link
             href="/#request"
-            className="rounded-[var(--radius)] bg-[var(--ink)] px-3.5 py-2 text-[13px] font-semibold text-[var(--on-ink)] transition-opacity hover:opacity-90"
+            className="rounded-[var(--radius)] bg-[var(--slab)] px-3.5 py-2 text-[13px] font-semibold text-[var(--on-ink)] transition-opacity hover:opacity-90"
           >
             Request access
           </Link>
@@ -299,7 +212,7 @@ export function BandHeader({
 export function PublicChrome({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className={`${jakarta.variable} ${dmMono.variable} ${instrumentSerif.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-[var(--paper)] font-[family-name:var(--font-jakarta)] text-[var(--ink)] antialiased`}
+      className={`${dmMono.variable} ${fraunces.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-[var(--paper)] font-[family-name:var(--font-inter)] text-[var(--ink)] antialiased`}
     >
       <SiteNav />
       {children}

@@ -63,7 +63,7 @@ export const MEDIA = {
   // show the actual thing. Re-export it when the dashboard UI changes.
   productShot: {
     src: "/dashboard-preview.png",
-    alt: "The genzdatalabs CRM dashboard",
+    alt: "The CaseBind dashboard",
     position: "0% 0%",
   },
 } as const satisfies Record<string, MediaSlot>;

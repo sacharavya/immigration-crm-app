@@ -11,7 +11,7 @@ import {
 import type { Metadata } from "next";
 import Image from "next/image";
 
-import { dmMono, instrumentSerif, jakarta } from "@/components/marketing/fonts";
+import { dmMono, fraunces } from "@/components/marketing/fonts";
 import { MarketingFooter } from "@/components/marketing/footer";
 import { MEDIA } from "@/components/marketing/media";
 import { SiteNav } from "@/components/marketing/shell";
@@ -32,7 +32,7 @@ import { RequestForm } from "./_crm/request-form";
 
 export const metadata: Metadata = {
   title:
-    "Immigration CRM Software for Canadian Firms | BBI-CRM by genzdatalabs Immigration",
+    "Immigration CRM Software for Canadian Firms | CaseBind",
   description:
     "Immigration case management software built inside a CICC-regulated firm: submission package builder, IRCC form autofill, client portal, compliance, billing, and Canadian data residency. Free through alpha and beta testing, with a week of hands-on training.",
 };
@@ -79,7 +79,7 @@ const PIPELINE = [
   { name: "Retainer", n: 2, cards: [{ name: "R. Gurung", type: "Study permit", pct: "10%", color: "var(--ink-faint)" }, { name: "S. Okafor", type: "Visitor", pct: "20%", color: "var(--ink-faint)" }] },
   { name: "Documents", n: 5, cards: [{ name: "P. Anand", type: "EE · CEC", pct: "75%", color: "var(--ink)" }, { name: "B. Khatiwada", type: "Family", pct: "60%", color: "var(--ink)" }] },
   { name: "Review", n: 1, cards: [{ name: "F. Al-Rashid", type: "Study permit", pct: "90%", color: "var(--ink)" }] },
-  { name: "Submitted", n: 3, cards: [{ name: "M. Santos", type: "WP · LMIA", pct: "100%", color: "#9AE5C8" }, { name: "C. Wei", type: "Spousal", pct: "100%", color: "#9AE5C8" }] },
+  { name: "Submitted", n: 3, cards: [{ name: "M. Santos", type: "WP · LMIA", pct: "100%", color: "#E6CFA9" }, { name: "C. Wei", type: "Spousal", pct: "100%", color: "#E6CFA9" }] },
   { name: "Decision", n: 9, cards: [{ name: "A. Mainali", type: "PNP · Approved", pct: "100%", color: "#1F7A3E" }, { name: "D. Khatiwada", type: "Business · Refused", pct: "100%", color: "#D32F2F" }] },
 ];
 
@@ -146,7 +146,7 @@ function FeatureCard({
 export default function CrmLandingPage() {
   return (
     <main
-      className={`${jakarta.variable} ${dmMono.variable} ${instrumentSerif.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-[var(--paper)] font-[family-name:var(--font-jakarta)] text-[var(--ink)] antialiased`}
+      className={`${dmMono.variable} ${fraunces.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-[var(--paper)] font-[family-name:var(--font-inter)] text-[var(--ink)] antialiased`}
     >
       <SiteNav />
       <HeroBand>
@@ -154,7 +154,7 @@ export default function CrmLandingPage() {
           <div className="mx-auto grid w-full max-w-[1180px] items-end gap-10 lg:grid-cols-[1.3fr_1fr]">
             <div className="flex flex-col items-start gap-6">
               <span className="inline-flex items-center gap-2.5 font-[family-name:var(--font-dm-mono)] text-[10.5px] uppercase tracking-[.18em] text-[var(--ink-muted)]">
-                <span className="rounded-[3px] bg-[var(--ink)] px-1.5 py-0.5 text-[10px] text-white">
+                <span className="rounded-[3px] bg-[var(--slab)] px-1.5 py-0.5 text-[10px] text-white">
                   ALPHA
                 </span>
                 Built inside a CICC-regulated firm · Toronto
@@ -188,7 +188,7 @@ export default function CrmLandingPage() {
             <BrowserFrame url="app.genzdatalabs.com/dashboard">
               <Image
                 src="/dashboard-preview.png"
-                alt="genzdatalabs Immigration CRM dashboard"
+                alt="CaseBind dashboard"
                 width={2778}
                 height={1706}
                 priority
@@ -315,7 +315,7 @@ export default function CrmLandingPage() {
           >
             <div className="text-xs font-bold">Submission package</div>
             <div className="flex flex-wrap gap-1.5">
-              <span className="rounded-full bg-[var(--ink)] px-2 py-0.5 text-[10.5px] text-white">
+              <span className="rounded-full bg-[var(--slab)] px-2 py-0.5 text-[10.5px] text-white">
                 IRCC 4 MB
               </span>
               <span className="rounded-full border border-[var(--rule)] bg-[var(--paper-raised)] px-2 py-0.5 text-[10.5px]">
@@ -338,7 +338,7 @@ export default function CrmLandingPage() {
             </div>
             <div className="mt-auto flex items-center gap-2 text-[11px]">
               <div className="h-1.5 flex-1 bg-[#E3EAF3]">
-                <div className="h-full w-[93%] bg-[var(--ink)]" />
+                <div className="h-full w-[93%] bg-[var(--slab)]" />
               </div>
               <span className="font-[family-name:var(--font-dm-mono)]">3.7 / 4 MB</span>
             </div>

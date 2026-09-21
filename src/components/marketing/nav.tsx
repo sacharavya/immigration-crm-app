@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-import { GenzLogo } from "@/components/brand/genz-logo";
+import { CaseBindLogo } from "@/components/brand/casebind-logo";
 import { cn } from "@/lib/utils/index";
 
 import type { MediaSlot } from "./media";
@@ -139,7 +139,7 @@ export function MegaNav({
       >
         <nav className="mx-auto flex w-full max-w-[1280px] items-center gap-6 px-6 py-3.5">
           <Link href="/" className="flex shrink-0 items-center">
-            <GenzLogo className="h-7 w-auto text-[var(--ink)]" title="genZ" />
+            <CaseBindLogo className="h-7 w-auto" />
           </Link>
 
           <div className="mx-auto hidden items-center gap-1 md:flex">
@@ -178,7 +178,7 @@ export function MegaNav({
                   {open === item.label && (
                     <span
                       aria-hidden
-                      className="absolute inset-x-2 -bottom-[14px] h-px bg-[var(--ink)]"
+                      className="absolute inset-x-2 -bottom-[14px] h-px bg-[var(--slab)]"
                     />
                   )}
                 </button>
@@ -253,7 +253,7 @@ export function MegaNav({
           <div
             onMouseEnter={cancelClose}
             onMouseLeave={scheduleClose}
-            className="absolute inset-x-0 top-full hidden border-b border-[var(--rule)] bg-[var(--paper)] shadow-[0_24px_48px_-32px_rgba(30,33,54,.35)] md:block"
+            className="absolute inset-x-0 top-full hidden border-b border-[var(--rule)] bg-[var(--paper)] shadow-[0_24px_48px_-32px_rgba(15, 81, 50,.35)] md:block"
           >
             <div className="mx-auto grid w-full max-w-[1280px] gap-x-10 gap-y-10 px-6 py-12 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,300px)]">
               {active.columns?.map((col, i) => (

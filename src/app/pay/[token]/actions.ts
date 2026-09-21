@@ -238,7 +238,10 @@ export async function submitCasePaymentProof(
       .select("id")
       .single();
     if (docErr || !doc) {
-      return { error: docErr?.message ?? "Could not record proof document." };
+      // Log the detail; never hand a raw database message to an
+      // unauthenticated client. It exposed constraint and column names.
+      console.error("[pay.submitCasePaymentProof] document insert failed:", docErr);
+      return { error: "We couldn't record your file. Please try again." };
     }
 
     const { data: payment, error: payErr } = await sb
@@ -260,7 +263,8 @@ export async function submitCasePaymentProof(
       .select("id")
       .single();
     if (payErr || !payment) {
-      return { error: payErr?.message ?? "Could not record payment." };
+      console.error("[pay.submitCasePaymentProof] payment insert failed:", payErr);
+      return { error: "We couldn't record your payment. Please try again." };
     }
 
     // Surface in the case timeline so staff sees the upload land in

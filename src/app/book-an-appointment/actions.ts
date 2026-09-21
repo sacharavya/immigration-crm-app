@@ -16,7 +16,7 @@ import {
 import { maybeSendConsultationAgreement } from "@/lib/consultation/send";
 import { ensureConsultationPaymentsFolder } from "@/lib/graph/folders";
 import { uploadFile } from "@/lib/graph/uploads";
-import { getPublicTenantId, requireTenantId } from "@/lib/tenant/context";
+import { getPublicTenantId } from "@/lib/tenant/context";
 
 import type { BookingResult } from "./_components/types";
 import {
@@ -402,7 +402,7 @@ export async function uploadPaymentProof(
   const { data: appt } = await supabase
     .schema("crm")
     .from("appointments")
-    .select("id, client_id, status, starts_at, snapshot_client_name, fee_cad_at_booking")
+    .select("id, tenant_id, client_id, status, starts_at, snapshot_client_name, fee_cad_at_booking")
     .eq("management_token", token)
     .is("deleted_at", null)
     .maybeSingle();
@@ -438,8 +438,12 @@ export async function uploadPaymentProof(
 
   let driveItem: { id: string; webUrl: string; driveId: string };
   try {
+    // The firm comes from the appointment the token resolved, never from the
+    // request host: a client paying a consultation fee has no session and
+    // may well be on a host that names no firm. This was the one public call
+    // that threw once a second firm existed.
     const folder = await ensureConsultationPaymentsFolder(
-      await requireTenantId(),
+      appt.tenant_id,
       year,
     );
     const uploaded = await uploadFile(

@@ -2,7 +2,7 @@ import { Building2, Inbox, LayoutGrid, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { GenzLogo } from "@/components/brand/genz-logo";
+import { CaseBindLogo } from "@/components/brand/casebind-logo";
 import { getPlatformAdmin } from "@/lib/auth/platform-admin";
 
 export const dynamic = "force-dynamic";
@@ -29,8 +29,8 @@ export default async function PlatformAdminLayout({
       <aside className="flex w-60 flex-none flex-col border-r border-stone-200 bg-white">
         <div className="border-b border-stone-200 px-5 py-5">
           {/* The operator portal is the platform itself, so it carries the
-              genZ mark. Each firm's own branding lives in their CRM. */}
-          <GenzLogo className="h-7 w-auto text-[#1E2136]" title="genZ" />
+              CaseBind mark. Each firm's own branding lives in their CRM. */}
+          <CaseBindLogo className="h-7 w-auto" />
           <div className="mt-2 text-xs text-stone-500">
             Manage firms. No access to their data.
           </div>

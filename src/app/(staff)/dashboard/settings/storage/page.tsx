@@ -6,6 +6,12 @@ import { getStorageSettings } from "@/lib/storage/settings";
 import { requireStaffTenantId } from "@/lib/tenant/context";
 import { createClient } from "@/lib/supabase/server";
 
+import { providerCredentials } from "@/lib/connections/providers";
+
+import {
+  ConnectedAccount,
+  type ConnectionView,
+} from "./_components/connected-account";
 import { StorageForm } from "./_components/storage-form";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +43,13 @@ export default async function StorageSettingsPage() {
   // is actually in use rather than only what is stored.
   const effective = await getStorageSettings(await requireStaffTenantId());
 
+  // Metadata only: who is connected and what the grant covers. The tokens
+  // themselves are unreachable from any session, including this one.
+  const { data: statusRows } = await supabase
+    .schema("crm")
+    .rpc("connection_status");
+  const connection = ((statusRows as ConnectionView[] | null) ?? [])[0] ?? null;
+
   return (
     <div className="space-y-4 p-6">
       <header>
@@ -44,10 +57,19 @@ export default async function StorageSettingsPage() {
           Storage settings
         </h1>
         <p className="mt-1 text-sm text-stone-600">
-          Control which drive holds case files and where the case folder tree
-          is anchored.
+          Where your firm&apos;s documents live. Connect your own Microsoft 365
+          or Google account and they go to your drive; the platform library
+          below is only used until you do.
         </p>
       </header>
+
+      <ConnectedAccount
+        connection={connection}
+        providersConfigured={{
+          microsoft: providerCredentials("microsoft") !== null,
+          google: providerCredentials("google") !== null,
+        }}
+      />
 
       <StorageForm
         hasEnvFallback={Boolean(process.env.GRAPH_DOCUMENT_LIBRARY_ID?.trim())}

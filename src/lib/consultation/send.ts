@@ -1,3 +1,4 @@
+import { getBaseUrl } from "@/lib/email/url";
 import { randomBytes } from "node:crypto";
 
 import { sendEmail } from "@/lib/email/client";
@@ -89,8 +90,8 @@ export async function maybeSendConsultationAgreement(
       .maybeSingle();
     if (!claimed) return null; // lost the race
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
-    const signingUrl = `${baseUrl}/sign/consultation/${token}`;
+    // A token link: lives on the app host like every other one.
+    const signingUrl = `${await getBaseUrl()}/sign/consultation/${token}`;
     const email = consultationAgreementInviteEmail({
       clientName: appt.snapshot_client_name,
       signingUrl,

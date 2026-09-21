@@ -11,12 +11,11 @@ const inter = Inter({
   display: "swap",
 });
 
+
 export const metadata: Metadata = {
-  title: "genzdatalabs Immigration Consulting Inc.",
-  description: "Internal case management system — coming soon.",
-  icons: {
-    icon: "/Maple_Leaf.svg",
-  },
+  title: "CaseBind",
+  description: "Immigration case management for Canadian firms.",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({

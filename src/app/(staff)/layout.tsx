@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getStaff } from "@/lib/auth/staff";
 import { StaffProvider } from "@/lib/auth/staff-context";
 
+import { FirmLogo } from "@/components/brand/firm-logo";
+
 import { StaffSidebar } from "./_components/staff-sidebar";
 
 export default async function StaffLayout({
@@ -29,9 +31,9 @@ export default async function StaffLayout({
 
   return (
     <StaffProvider staff={staff}>
-      <div className="app-surface flex h-dvh bg-[var(--surface-sunken)]">
-        <StaffSidebar />
-        <div className="min-w-0 flex-1 overflow-y-auto pb-10">{children}</div>
+      <div className="app-surface flex min-h-dvh bg-[var(--surface-sunken)]">
+        <StaffSidebar logo={<FirmLogo className="h-8 w-auto" />} />
+        <div className="min-w-0 flex-1 pb-10">{children}</div>
       </div>
     </StaffProvider>
   );

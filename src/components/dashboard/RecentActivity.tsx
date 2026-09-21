@@ -5,7 +5,7 @@ import type { RecentRow } from "@/lib/dashboard/types";
 import { STATUS_LABEL, type CaseStatus } from "@/lib/utils/phase";
 import { cn } from "@/lib/utils/index";
 
-// Status pill families, all from BBI tokens. Anything not listed maps to the
+// Status pill families, all from brand tokens. Anything not listed maps to the
 // nearest family in the lookup below.
 const STATUS_PILL: Record<CaseStatus, string> = {
   retainer_pending: "bg-muted text-muted-foreground",

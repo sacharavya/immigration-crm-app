@@ -1,3 +1,4 @@
+import { firmPublicUrl } from "@/lib/email/url";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -39,6 +40,7 @@ const INTERNAL_FALLBACK_EMAIL = "info@genzdatalabs.com";
 
 type AppointmentEmailRow = {
   id: string;
+  tenant_id: string;
   case_id: string | null;
   client_id: string | null;
   snapshot_client_name: string;
@@ -79,7 +81,7 @@ async function loadAppointment(
     .from("appointments")
     .select(
       `
-        id, case_id, client_id, snapshot_client_name, snapshot_client_email,
+        id, tenant_id, case_id, client_id, snapshot_client_name, snapshot_client_email,
         snapshot_client_phone, starts_at, ends_at, timezone, location_type,
         online_link, onsite_address, teams_join_url, fee_cad_at_booking,
         reason, status, booking_source, management_token, graph_event_id,
@@ -124,8 +126,11 @@ async function managementUrl(token: string | null): Promise<string | null> {
   return `${await getBaseUrl()}/book-an-appointment/manage/${token}`;
 }
 
-async function rebookUrl(): Promise<string> {
-  return `${await getBaseUrl()}/book-an-appointment`;
+// The booking page is a firm's own public page, so the link has to carry
+// the firm's host: its custom domain or its subdomain. The management and
+// dashboard links below are token/app links and stay on the app host.
+async function rebookUrl(tenantId: string): Promise<string> {
+  return `${await firmPublicUrl(tenantId)}/book-an-appointment`;
 }
 
 async function dashboardUrl(appointmentId: string): Promise<string> {
@@ -329,7 +334,7 @@ export async function sendAppointmentCancellation(
     timezoneDisplay: dates.timezoneDisplay,
     // Rebook URL only makes sense when /book-an-appointment is reachable to this prospect;
     // safe to always include since the page itself respects the feature flag.
-    rebookUrl: await rebookUrl(),
+    rebookUrl: await rebookUrl(row.tenant_id),
   });
 
   const res = await sendEmail({
@@ -643,7 +648,7 @@ export async function sendPaymentRejected(
     timeDisplay: dates.timeDisplay,
     timezoneDisplay: dates.timezoneDisplay,
     rejectionReason,
-    bookAgainUrl: await rebookUrl(),
+    bookAgainUrl: await rebookUrl(row.tenant_id),
   });
   const res = await sendEmail({
     to: row.snapshot_client_email,
@@ -686,7 +691,7 @@ export async function sendAbandonedBooking(
     dateDisplay: dates.dateDisplay,
     timeDisplay: dates.timeDisplay,
     timezoneDisplay: dates.timezoneDisplay,
-    bookAgainUrl: await rebookUrl(),
+    bookAgainUrl: await rebookUrl(row.tenant_id),
   });
   const res = await sendEmail({
     to: row.snapshot_client_email,

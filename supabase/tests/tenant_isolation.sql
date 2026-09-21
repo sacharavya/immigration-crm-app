@@ -212,24 +212,112 @@ RESET ROLE;
 
 -- ---- cross-tenant case assignment is refused ----------------------------
 DO $$
-DECLARE v_case UUID; v_bob UUID; v_st UUID;
+DECLARE v_case UUID; v_bob UUID; v_ann UUID; v_st UUID; v_tpl UUID; v_client UUID;
 BEGIN
-    SELECT id INTO v_st FROM ref.service_types LIMIT 1;
-    IF v_st IS NULL THEN RETURN; END IF;  -- no seeded service types; skip
+    -- Create the reference rows this needs rather than skipping when they are
+    -- absent. The previous version returned early if ref.service_types was
+    -- empty, so on a fresh database this whole check quietly did nothing —
+    -- and once real data appeared it failed on columns it never set.
+    SELECT id INTO v_st FROM ref.service_types WHERE tenant_id IS NULL LIMIT 1;
+    IF v_st IS NULL THEN
+        INSERT INTO ref.service_types (code, name, category_code)
+        VALUES ('test_svc', 'Test Service',
+                (SELECT code FROM ref.service_categories LIMIT 1))
+        RETURNING id INTO v_st;
+    END IF;
+
+    SELECT id INTO v_tpl FROM ref.service_templates WHERE service_type_id = v_st LIMIT 1;
+    IF v_tpl IS NULL THEN
+        INSERT INTO ref.service_templates (service_type_id, version, effective_from)
+        VALUES (v_st, 1, CURRENT_DATE) RETURNING id INTO v_tpl;
+    END IF;
 
     SELECT id INTO v_bob FROM crm.staff WHERE email = 'b@b.test';
-    INSERT INTO crm.cases (tenant_id, client_id, case_number, service_type_id)
-    SELECT current_setting('test.tenant_a')::uuid, c.id, 'BB-2026-9001', v_st
-      FROM crm.clients c WHERE c.legal_name_full = 'Alpha Client'
+    SELECT id INTO v_ann FROM crm.staff WHERE email = 'a@a.test';
+    SELECT id INTO v_client FROM crm.clients WHERE legal_name_full = 'Alpha Client';
+
+    INSERT INTO crm.cases (tenant_id, client_id, case_number, service_type_id,
+                           service_template_id, assigned_rcic, quoted_fee_cad)
+    VALUES (current_setting('test.tenant_a')::uuid, v_client, 'BB-2026-9001',
+            v_st, v_tpl, v_ann, 0)
     RETURNING id INTO v_case;
 
     BEGIN
         INSERT INTO crm.case_assignments (tenant_id, case_id, staff_id, role)
-        VALUES (current_setting('test.tenant_a')::uuid, v_case, v_bob, 'case_manager');
+        VALUES (current_setting('test.tenant_a')::uuid, v_case, v_bob, 'case_worker');
         RAISE EXCEPTION 'LEAK: assigned firm B staff to a firm A case';
     EXCEPTION WHEN raise_exception THEN
         IF SQLERRM LIKE 'LEAK:%' THEN RAISE; END IF;
     END;
+END $$;
+
+-- ---- derived rows inherit their firm (regression) ------------------------
+-- The public portals write documents, payments and case events as the
+-- service role, where current_tenant_id() is NULL. Those inserts used to die
+-- on NOT NULL; the parent row knows its firm, so it is derived instead.
+DO $$
+DECLARE v_case UUID; v_client UUID; v_case_tenant UUID; v_got UUID;
+BEGIN
+    -- Earlier blocks set request.jwt.claims for the transaction; RESET ROLE
+    -- does not clear it. Left in place, the column default would fill
+    -- tenant_id from that session and this test would pass without the
+    -- trigger ever deriving anything. Clear it and prove we are sessionless.
+    PERFORM set_config('request.jwt.claims', '{}', true);
+    IF crm.current_tenant_id() IS NOT NULL THEN
+        RAISE EXCEPTION 'test setup: a session is still in scope';
+    END IF;
+
+    SELECT id, client_id, tenant_id INTO v_case, v_client, v_case_tenant
+      FROM crm.cases WHERE case_number = 'BB-2026-9001';
+    IF v_case IS NULL THEN RAISE EXCEPTION 'fixture case missing'; END IF;
+
+    -- No tenant given, only a case: must land in the case's firm.
+    INSERT INTO crm.payments (case_id, client_id, amount_cad, method, received_date, is_refund)
+    VALUES (v_case, v_client, 100, 'e_transfer', CURRENT_DATE, FALSE)
+    RETURNING tenant_id INTO v_got;
+    IF v_got IS DISTINCT FROM v_case_tenant THEN
+        RAISE EXCEPTION 'payment did not inherit the case firm: % vs %', v_got, v_case_tenant;
+    END IF;
+
+    -- A wrong firm stated explicitly must be refused, not silently kept.
+    BEGIN
+        INSERT INTO crm.payments (tenant_id, case_id, client_id, amount_cad, method, received_date, is_refund)
+        VALUES (current_setting('test.tenant_b')::uuid, v_case, v_client, 1, 'e_transfer', CURRENT_DATE, FALSE);
+        RAISE EXCEPTION 'LEAK: payment accepted with a firm that contradicts its case';
+    EXCEPTION WHEN raise_exception THEN
+        IF SQLERRM LIKE 'LEAK:%' THEN RAISE; END IF;
+    END;
+
+    -- Nothing to derive from: refused.
+    BEGIN
+        INSERT INTO files.documents (display_name) VALUES ('orphan');
+        RAISE EXCEPTION 'LEAK: document inserted with no firm and no parent';
+    EXCEPTION WHEN raise_exception THEN
+        IF SQLERRM LIKE 'LEAK:%' THEN RAISE; END IF;
+    END;
+END $$;
+
+-- ---- no ambiguous function overloads -------------------------------------
+-- Adding a defaulted parameter with CREATE OR REPLACE silently creates an
+-- overload instead of replacing, and every existing call then fails with
+-- 'function is not unique'. It has happened twice: the number generators and
+-- staff_ids_with_permission. Catch the next one here rather than in the app.
+DO $$
+DECLARE v_dupes TEXT;
+BEGIN
+    SELECT string_agg(sig, ', ') INTO v_dupes
+      FROM (
+        SELECT n.nspname || '.' || p.proname AS sig
+          FROM pg_proc p
+          JOIN pg_namespace n ON n.oid = p.pronamespace
+         WHERE n.nspname IN ('crm', 'platform', 'files')
+           AND p.prokind = 'f'
+         GROUP BY n.nspname, p.proname
+        HAVING count(*) > 1
+      ) d;
+    IF v_dupes IS NOT NULL THEN
+        RAISE EXCEPTION 'Overloaded functions, likely accidental: %', v_dupes;
+    END IF;
 END $$;
 
 DO $$ BEGIN RAISE NOTICE 'ALL TENANT ISOLATION CHECKS PASSED'; END $$;

@@ -32,6 +32,11 @@ BEGIN
     PERFORM set_config('test.admin_user', v_admin_user::text, false);
     PERFORM set_config('test.staff_user', v_staff_user::text, false);
     PERFORM set_config('test.tenant_a', v_a::text, false);
+    -- Captured as superuser: the operator session below cannot count clients,
+    -- which is exactly the isolation this file asserts.
+    PERFORM set_config('test.expected_a',
+        (SELECT count(*)::text FROM crm.clients
+          WHERE tenant_id = v_a AND deleted_at IS NULL), false);
 END $$;
 
 SET LOCAL ROLE authenticated;
@@ -39,7 +44,7 @@ SELECT set_config('request.jwt.claims',
        json_build_object('sub', current_setting('test.admin_user'), 'role', 'authenticated')::text, true);
 
 DO $$
-DECLARE n INT; v_new UUID;
+DECLARE n INT; expected_a INT; v_new UUID;
 BEGIN
     IF NOT platform.is_admin() THEN RAISE EXCEPTION 'operator not recognised as admin'; END IF;
 
@@ -84,9 +89,14 @@ BEGIN
     SELECT count(*) INTO n FROM platform.tenant_usage();
     IF n < 3 THEN RAISE EXCEPTION 'tenant_usage returned % rows', n; END IF;
 
+    -- Compare against the real number rather than assuming an empty database:
+    -- the point is that the aggregate matches, not that it equals 1.
     SELECT client_count INTO n FROM platform.tenant_usage()
      WHERE tenant_id::text = current_setting('test.tenant_a');
-    IF n <> 1 THEN RAISE EXCEPTION 'usage count wrong: %', n; END IF;
+    expected_a := current_setting('test.expected_a')::int;
+    IF n <> expected_a THEN
+        RAISE EXCEPTION 'usage count %, expected %', n, expected_a;
+    END IF;
 
     -- Support inbox is visible and answerable.
     SELECT count(*) INTO n FROM platform.feedback;

@@ -1,3 +1,4 @@
+import { getBaseUrl } from "@/lib/email/url";
 import { adminClient } from "@/lib/supabase/admin";
 
 
@@ -45,7 +46,7 @@ export default async function ManagePage({
   // never missed.
   const consultationSignUrl =
     appt.consultation_agreement_token && !appt.consultation_agreement_signed_at
-      ? `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/sign/consultation/${appt.consultation_agreement_token}`
+      ? `${await getBaseUrl()}/sign/consultation/${appt.consultation_agreement_token}`
       : null;
 
   const now = new Date();

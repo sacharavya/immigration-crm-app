@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { firmPublicUrl } from "@/lib/email/url";
 import { createClient } from "@/lib/supabase/server";
 
 import type { TenantMember } from "../../actions";
 import { getFeatureCatalogue } from "@/lib/tenant/server";
 
+import { CopyUrl } from "../../_components/copy-url";
 import { DangerZone } from "../../_components/danger-zone";
 import { MembersTable } from "../../_components/members-table";
 import { OwnerForm } from "../../_components/owner-form";
@@ -33,6 +35,7 @@ export default async function TenantDetailPage({
   if (!tenant) notFound();
 
   const catalogue = await getFeatureCatalogue();
+  const publicUrl = await firmPublicUrl(tenant.id);
 
   // Account administration: names, emails, roles and sign-in status. Still
   // no clients, cases or documents — those stay behind tenant isolation.
@@ -56,6 +59,15 @@ export default async function TenantDetailPage({
         <p className="mt-1 text-sm text-stone-600">
           Configuration and access for this firm. Their client and case
           records are not reachable from this portal.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          <span className="text-stone-500">Public site</span>
+          <CopyUrl url={publicUrl} />
+        </div>
+        <p className="mt-1 text-xs text-stone-500">
+          The handle <span className="font-mono">{tenant.slug}</span> is this
+          firm&apos;s subdomain, so it cannot be changed after creation. A
+          custom domain can be added below.
         </p>
       </header>
 

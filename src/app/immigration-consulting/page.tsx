@@ -29,7 +29,7 @@ import Link from 'next/link';
 import { ContactForm } from '../_contact/contact-form';
 import { SiteNav } from '@/components/marketing/shell';
 import { MarketingFooter } from '@/components/marketing/footer';
-import { dmMono, instrumentSerif, jakarta } from '@/components/marketing/fonts';
+import { dmMono, fraunces } from '@/components/marketing/fonts';
 import { MEDIA } from '@/components/marketing/media';
 import {
   BleedPanel,
@@ -48,7 +48,7 @@ import {
 export const metadata: Metadata = {
   title: 'genzdatalabs Immigration Consulting Inc | Your pathway to Canada',
   description:
-    'A regulated Canadian immigration firm (RCIC# R7111111) guiding individuals and families through study, work and permanent residence, from Toronto and Kathmandu.',
+    'Guiding individuals and families through study, work and permanent residence, from Toronto and Kathmandu.',
 };
 
 const TILES = [
@@ -229,10 +229,6 @@ const STAT_TILES = [
     small: 'Branch office · Nepal',
   },
   {
-    big: 'RCIC',
-    small: 'Licensed by CICC · R7111111',
-  },
-  {
     big: 'Since 2021',
     small: 'Affordable, effective and expeditious solutions',
   },
@@ -259,7 +255,7 @@ const PATHWAYS = SERVICES.slice(0, 7).map((s) => ({
 export default function HomePage() {
   return (
     <main
-      className={`${jakarta.variable} ${dmMono.variable} ${instrumentSerif.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-[var(--paper)] font-[family-name:var(--font-jakarta)] text-[var(--ink)] antialiased`}
+      className={`${dmMono.variable} ${fraunces.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-[var(--paper)] font-[family-name:var(--font-inter)] text-[var(--ink)] antialiased`}
     >
       <SiteNav />
       <HeroBand deep>
@@ -275,8 +271,7 @@ export default function HomePage() {
             </Display>
             <div className='flex flex-col items-start gap-6 lg:pb-3'>
               <p className='max-w-[420px] text-[16px] leading-relaxed text-[var(--ink-muted)]'>
-                A regulated Canadian immigration firm guiding individuals and
-                families through every step, with clarity, honesty and care.
+                Guiding individuals and families through every step, with clarity, honesty and care.
               </p>
               <div className='flex flex-wrap gap-2.5'>
                 <PrimaryLink href='/book-an-appointment'>
@@ -297,21 +292,6 @@ export default function HomePage() {
 
           {/* Credential strip: the regulator line is the proof point, so it
               sits on its own rule rather than floating under the buttons. */}
-          <div className='mx-auto mt-16 flex w-full max-w-[1180px] flex-wrap items-center gap-x-6 gap-y-4 border-t border-[var(--rule)] pt-6'>
-            <Image
-              src='/RCIC.png'
-              alt='RCIC - Regulated Canadian Immigration Consultant'
-              width={280}
-              priority
-              unoptimized
-              height={100}
-              className='h-10 w-auto'
-            />
-            <span className='font-[family-name:var(--font-dm-mono)] text-[11px] uppercase leading-relaxed tracking-[.14em] text-[var(--ink-faint)]'>
-              Licensed by the College of Immigration and Citizenship
-              Consultants (CICC) · RCIC# R7111111
-            </span>
-          </div>
         </header>
       </HeroBand>
 
@@ -340,7 +320,7 @@ export default function HomePage() {
                 FOR FIRMS
               </span>
               <div className='font-[family-name:var(--font-display)] text-[26px] leading-[1.05] tracking-[-0.02em]'>
-                BBI-CRM alpha program
+                CaseBind alpha program
               </div>
               <p className='text-[13.5px] leading-relaxed text-white/90'>
                 The CRM we built to run this practice, now open to a small group
