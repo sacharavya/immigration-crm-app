@@ -12,9 +12,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  // src/app/icon.png is picked up as the favicon by file convention.
   title: "CaseBind",
   description: "Immigration case management for Canadian firms.",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({
