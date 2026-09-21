@@ -10,49 +10,49 @@
    ================================================================ */
 :root {
   /* ── Brand scales ─────────────────────────────────────────── */
-  /* The "navy" scale is now derived from the primary colour (#0D4231): the
+  /* The "navy" scale is now derived from the primary colour (#0F5132): the
      brand/action shades equal primary / primary-hover, and the tints are
      primary-hued light washes. Re-pointed here so every var(--navy*) consumer
      switches to primary in one place. */
-  --navy: #0D4231;
-  --navy-light: #1F5A46;
-  --navy-50: #EEF4F1;
-  --navy-100: #D6E4DC;
-  --navy-200: #AFC9BB;
-  --navy-400: #5E8A75;
-  --navy-600: #14523D;
-  --navy-700: #0D4231;
-  --navy-800: #0A3327;
-  --navy-900: #07261D;
+  --navy: #0F5132;
+  --navy-light: #2A6B4A;
+  --navy-50: #EEF4F0;
+  --navy-100: #D5E5DB;
+  --navy-200: #ACCBB8;
+  --navy-400: #5C8F73;
+  --navy-600: #146540;
+  --navy-700: #0F5132;
+  --navy-800: #0B3E26;
+  --navy-900: #082D1C;
   --maple-50: #FCEBE9;
   --maple-100: #F8D5D0;
   --maple-500: #D8453A;
   --maple-600: #C5362C;
   --maple-700: #9F2920;
-  --gold: #C4A067;
-  --gold-light: #DCC79E;
+  --gold: #D4AF7C;
+  --gold-light: #E6CFA9;
 
   /* ── Semantic tokens ──────────────────────────────────────── */
   --background: #FFFFFF;
-  --foreground: #181C22;
+  --foreground: #1F2937;
   --card: #FFFFFF;
-  --card-foreground: #181C22;
+  --card-foreground: #1F2937;
   --popover: #FFFFFF;
-  --popover-foreground: #181C22;
+  --popover-foreground: #1F2937;
   --muted: #EEF0F2;
-  --muted-foreground: #5C636D;
+  --muted-foreground: #4B5563;
   --border: #E3E5E9;
   /* Slightly stronger divider for dashed ghost controls (e.g. "Add another"). */
   --border-secondary: #D2D6DB;
   --input: #D2D6DB;
-  --ring: #0D4231;
-  --primary: #0D4231;
+  --ring: #0F5132;
+  --primary: #0F5132;
   --primary-foreground: #FFFFFF;
-  --primary-hover: #14523D;
+  --primary-hover: #146540;
   --secondary: #EEF0F2;
-  --secondary-foreground: #3A414B;
-  --accent: #EEF4F1;
-  --accent-foreground: #0D4231;
+  --secondary-foreground: #374151;
+  --accent: #EEF4F0;
+  --accent-foreground: #0F5132;
   --destructive: #C5362C;
   --destructive-foreground: #FFFFFF;
   /* Safe stop: the darker maple used for destructive *text* on light
@@ -73,15 +73,15 @@
   --success-text: #226A41;
 
   /* Quietest text tier, below muted-foreground. Small fact labels. */
-  --subtle-foreground: #868D96;
+  --subtle-foreground: #6B7280;
 
   /* Sunken page surface sitting behind white cards. */
-  --surface-sunken: #F6F7F9;
+  --surface-sunken: #FAF8F2;
 
   /* ── Charts ───────────────────────────────────────────────── */
-  --chart-1: #0D4231;
-  --chart-2: #C4A067;
-  --chart-3: #AFC9BB;
+  --chart-1: #0F5132;
+  --chart-2: #D4AF7C;
+  --chart-3: #ACCBB8;
   --chart-4: #2E7D4F;
   --chart-5: #B97D12;
 
@@ -89,14 +89,14 @@
   --radius: 0;
 
   /* ── Sidebar (dark primary) ───────────────────────────────── */
-  --sidebar: #0D4231;
+  --sidebar: #0F5132;
   --sidebar-foreground: #C9D6CF;
   --sidebar-primary: #FFFFFF;
-  --sidebar-primary-foreground: #0D4231;
+  --sidebar-primary-foreground: #0F5132;
   --sidebar-accent: rgba(255, 255, 255, 0.08);
   --sidebar-accent-foreground: #FFFFFF;
   --sidebar-border: rgba(255, 255, 255, 0.10);
-  --sidebar-ring: #C4A067;
+  --sidebar-ring: #D4AF7C;
 }
 
 @theme inline {
@@ -168,13 +168,13 @@
      sunken canvas without a hard edge. Shadows were previously killed
      globally; the scale is redefined here so the shadow-* utilities already
      in the codebase all resolve to this one family. */
-  --shadow-2xs: 0 1px 2px rgba(13, 66, 49, 0.04);
-  --shadow-xs: 0 1px 2px rgba(13, 66, 49, 0.05);
-  --shadow-sm: 0 1px 2px rgba(13, 66, 49, 0.05), 0 1px 3px rgba(13, 66, 49, 0.04);
-  --shadow-md: 0 2px 4px rgba(13, 66, 49, 0.04), 0 4px 12px rgba(13, 66, 49, 0.06);
-  --shadow-lg: 0 4px 8px rgba(13, 66, 49, 0.04), 0 12px 28px rgba(13, 66, 49, 0.08);
-  --shadow-xl: 0 8px 16px rgba(13, 66, 49, 0.05), 0 24px 48px rgba(13, 66, 49, 0.10);
-  --shadow-2xl: 0 16px 32px rgba(13, 66, 49, 0.06), 0 40px 80px rgba(13, 66, 49, 0.14);
+  --shadow-2xs: 0 1px 2px rgba(15, 81, 50, 0.04);
+  --shadow-xs: 0 1px 2px rgba(15, 81, 50, 0.05);
+  --shadow-sm: 0 1px 2px rgba(15, 81, 50, 0.05), 0 1px 3px rgba(15, 81, 50, 0.04);
+  --shadow-md: 0 2px 4px rgba(15, 81, 50, 0.04), 0 4px 12px rgba(15, 81, 50, 0.06);
+  --shadow-lg: 0 4px 8px rgba(15, 81, 50, 0.04), 0 12px 28px rgba(15, 81, 50, 0.08);
+  --shadow-xl: 0 8px 16px rgba(15, 81, 50, 0.05), 0 24px 48px rgba(15, 81, 50, 0.10);
+  --shadow-2xl: 0 16px 32px rgba(15, 81, 50, 0.06), 0 40px 80px rgba(15, 81, 50, 0.14);
 }
 
 /* THE one radius setting for the public marketing surface. The app keeps
@@ -189,13 +189,13 @@
   /* Paper canvas and ink. Near-monochrome by design: navy carries the brand
      and mint is rationed to small marks, so the pages read professional
      rather than promotional. */
-  --paper: #F7F7F4;
+  --paper: #FAF8F2;
   --paper-raised: #FFFFFF;
-  --ink: #0D4231;
-  --ink-muted: #5A6A85;
-  --ink-faint: #8B93A3;
+  --ink: #1F2937;
+  --ink-muted: #4B5563;
+  --ink-faint: #6B7280;
   --rule: #E2E2DC;
-  --slab: #0B3527;
+  --slab: #0F5132;
 
   /* The colour that sits ON an --ink fill. Paired so a filled button keeps
      contrast when the ink token is inverted on a dark surface. */
@@ -208,7 +208,7 @@
    light card back on a dark slab. */
 .on-dark {
   --ink: #FFFFFF;
-  --on-ink: #0B3527;
+  --on-ink: #0F5132;
   --ink-muted: rgba(255, 255, 255, 0.62);
   --ink-faint: rgba(255, 255, 255, 0.42);
   --rule: rgba(255, 255, 255, 0.14);
@@ -216,12 +216,12 @@
 }
 
 .on-light {
-  --ink: #0D4231;
+  --ink: #1F2937;
   --on-ink: #FFFFFF;
-  --ink-muted: #5A6A85;
-  --ink-faint: #8B93A3;
+  --ink-muted: #4B5563;
+  --ink-faint: #6B7280;
   --rule: #E2E2DC;
-  --paper: #F7F7F4;
+  --paper: #FAF8F2;
 }
 
 /* Focus list: the whole set sits faded, one entry is in focus. Pointing at
@@ -269,7 +269,7 @@
   /* Page ground behind the cards, cool enough that white surfaces read as
      lifted off it. Navy-tinted rather than neutral grey so it belongs to the
      brand family. */
-  --surface-sunken: #F4F7F5;
+  --surface-sunken: #FAF8F2;
 
   /* Pastel tile fills for accent icon squares. Each pairs with the matching
      *-tile-fg for the glyph so contrast holds on the wash. */
@@ -302,28 +302,28 @@
   --muted-foreground: #9BA1AA;
   --border: #272C34;
   --input: #2D333B;
-  --ring: #C4A067;
-  --primary: #C4A067;
+  --ring: #D4AF7C;
+  --primary: #D4AF7C;
   --primary-foreground: #0F1217;
   --secondary: #1C2128;
   --secondary-foreground: #C5CAD2;
-  --accent: #0D4231;
-  --accent-foreground: #D6E4DC;
+  --accent: #0F5132;
+  --accent-foreground: #D5E5DB;
   --destructive: #E0584C;
   --destructive-foreground: #0F1217;
-  --chart-1: #C4A067;
-  --chart-2: #81A087;
-  --chart-3: #AFC9BB;
+  --chart-1: #D4AF7C;
+  --chart-2: #8CA98F;
+  --chart-3: #ACCBB8;
   --chart-4: #4FB07A;
   --chart-5: #E0A33A;
-  --sidebar: #0A2A20;
+  --sidebar: #0B3E26;
   --sidebar-foreground: #C9D6CF;
-  --sidebar-primary: #C4A067;
+  --sidebar-primary: #D4AF7C;
   --sidebar-primary-foreground: #E8EBEF;
-  --sidebar-accent: #0D4231;
-  --sidebar-accent-foreground: #D6E4DC;
+  --sidebar-accent: #0F5132;
+  --sidebar-accent-foreground: #D5E5DB;
   --sidebar-border: rgba(255, 255, 255, 0.10);
-  --sidebar-ring: #C4A067;
+  --sidebar-ring: #D4AF7C;
 }
 
 @layer base {

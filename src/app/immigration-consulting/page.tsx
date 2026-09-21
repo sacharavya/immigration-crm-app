@@ -29,7 +29,7 @@ import Link from 'next/link';
 import { ContactForm } from '../_contact/contact-form';
 import { SiteNav } from '@/components/marketing/shell';
 import { MarketingFooter } from '@/components/marketing/footer';
-import { dmMono, instrumentSerif, jakarta } from '@/components/marketing/fonts';
+import { dmMono, fraunces } from '@/components/marketing/fonts';
 import { MEDIA } from '@/components/marketing/media';
 import {
   BleedPanel,
@@ -259,7 +259,7 @@ const PATHWAYS = SERVICES.slice(0, 7).map((s) => ({
 export default function HomePage() {
   return (
     <main
-      className={`${jakarta.variable} ${dmMono.variable} ${instrumentSerif.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-[var(--paper)] font-[family-name:var(--font-jakarta)] text-[var(--ink)] antialiased`}
+      className={`${dmMono.variable} ${fraunces.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-[var(--paper)] font-[family-name:var(--font-inter)] text-[var(--ink)] antialiased`}
     >
       <SiteNav />
       <HeroBand deep>

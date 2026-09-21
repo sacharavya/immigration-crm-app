@@ -42,7 +42,7 @@ export default function ResetPasswordPage() {
     <main className="flex min-h-dvh items-center justify-center px-6 py-12">
       <Card className="w-full max-w-sm">
         <CardHeader className="space-y-3 text-center">
-          <CaseBindLogo className="mx-auto h-14 w-auto text-[#0D4231]" />
+          <CaseBindLogo className="mx-auto h-14 w-auto text-[#0F5132]" />
           <CardTitle className="text-2xl text-[var(--navy)]">
             Set a new password
           </CardTitle>

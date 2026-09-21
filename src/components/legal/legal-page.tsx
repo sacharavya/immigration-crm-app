@@ -24,17 +24,17 @@ export function LegalPage({
         <div className="prose-legal space-y-6 text-[15px] leading-relaxed text-stone-700">
           {children}
         </div>
-        <div className="mt-12 border-t border-[#D9E2EC] pt-6 text-sm text-[#5A6A85]">
+        <div className="mt-12 border-t border-[#D9E2EC] pt-6 text-sm text-[#4B5563]">
           Related:{" "}
-          <Link href="/privacy-policy" className="text-[#0D4231] hover:underline">
+          <Link href="/privacy-policy" className="text-[#0F5132] hover:underline">
             Privacy Policy
           </Link>
           {" · "}
-          <Link href="/data-usage" className="text-[#0D4231] hover:underline">
+          <Link href="/data-usage" className="text-[#0F5132] hover:underline">
             Data Usage Summary
           </Link>
           {" · "}
-          <Link href="/terms" className="text-[#0D4231] hover:underline">
+          <Link href="/terms" className="text-[#0F5132] hover:underline">
             Terms of Use
           </Link>
         </div>

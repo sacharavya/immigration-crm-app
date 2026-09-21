@@ -16,7 +16,7 @@ export function AgentHeader() {
         aria-label="CaseBind"
         className="flex h-full items-center transition-opacity hover:opacity-80"
       >
-        <CaseBindLogo className="h-10 w-auto text-[#0D4231]" />
+        <CaseBindLogo className="h-10 w-auto text-[#0F5132]" />
       </Link>
 
       <div className="flex items-center gap-4">

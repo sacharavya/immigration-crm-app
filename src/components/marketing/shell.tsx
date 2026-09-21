@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { dmMono, instrumentSerif, jakarta } from "./fonts";
+import { dmMono, fraunces } from "./fonts";
 import { MarketingFooter } from "./footer";
 import { MEDIA } from "./media";
 import { MegaNav, type MenuItem } from "./nav";
@@ -151,28 +151,6 @@ const MENU: MenuItem[] = [
     label: "For applicants",
     columns: [
       {
-        heading: "Work with the firm",
-        links: [
-          {
-            label: "Immigration services",
-            href: "/immigration-consulting",
-            description:
-              "A regulated Canadian firm guiding individuals and families.",
-          },
-          {
-            label: "Book an appointment",
-            href: "/book-an-appointment",
-            description: "Consultation or case review with a licensed RCIC.",
-          },
-          {
-            label: "About us",
-            href: "/about-us",
-            description:
-              "Partnered with licensed RCICs, working from Toronto and Kathmandu.",
-          },
-        ],
-      },
-      {
         heading: "Free tools",
         links: [
           {
@@ -230,7 +208,7 @@ export function SiteNav() {
           </Link>
           <Link
             href="/#request"
-            className="rounded-[var(--radius)] bg-[var(--ink)] px-3.5 py-2 text-[13px] font-semibold text-[var(--on-ink)] transition-opacity hover:opacity-90"
+            className="rounded-[var(--radius)] bg-[var(--slab)] px-3.5 py-2 text-[13px] font-semibold text-[var(--on-ink)] transition-opacity hover:opacity-90"
           >
             Request access
           </Link>
@@ -299,7 +277,7 @@ export function BandHeader({
 export function PublicChrome({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className={`${jakarta.variable} ${dmMono.variable} ${instrumentSerif.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-[var(--paper)] font-[family-name:var(--font-jakarta)] text-[var(--ink)] antialiased`}
+      className={`${dmMono.variable} ${fraunces.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-[var(--paper)] font-[family-name:var(--font-inter)] text-[var(--ink)] antialiased`}
     >
       <SiteNav />
       {children}

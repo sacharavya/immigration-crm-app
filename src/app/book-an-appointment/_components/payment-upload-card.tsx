@@ -117,7 +117,7 @@ export function PaymentUploadCard({
             </p>
             <a
               href={signUrl}
-              className="mt-2 inline-flex h-9 items-center rounded-[10px] bg-[#0D4231] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#14523D]"
+              className="mt-2 inline-flex h-9 items-center rounded-[10px] bg-[#0F5132] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#146540]"
             >
               Sign now
             </a>
@@ -130,11 +130,11 @@ export function PaymentUploadCard({
   return (
     <div className="space-y-5 rounded-2xl border border-[#D9E2EC] bg-white p-6 shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)] sm:p-7">
       <div className="flex items-start gap-3.5">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E4F7EF] text-[#C4A067]">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E4F7EF] text-[#D4AF7C]">
           <Hourglass className="h-5 w-5" strokeWidth={1.75} />
         </div>
         <div>
-          <h1 className="text-xl font-extrabold tracking-[-.01em] text-[#0D4231]">
+          <h1 className="text-xl font-extrabold tracking-[-.01em] text-[#0F5132]">
             Almost there. Your slot is held.
           </h1>
           <p className="mt-1 text-sm text-stone-700">
@@ -154,7 +154,7 @@ export function PaymentUploadCard({
         for <strong>{formatFee(feeCad)}</strong> to{" "}
         <a
           href={`mailto:${FIRM_EMAIL}`}
-          className="text-[#0D4231] underline-offset-2 hover:underline"
+          className="text-[#0F5132] underline-offset-2 hover:underline"
         >
           {FIRM_EMAIL}
         </a>{" "}
@@ -163,7 +163,7 @@ export function PaymentUploadCard({
       </p>
 
       <div className="rounded-xl border border-[#D9E2EC] bg-[#F4F6F9] p-4">
-        <div className="font-[family-name:var(--font-dm-mono)] text-[11px] font-medium uppercase tracking-[.14em] text-[#5A6A85]">
+        <div className="font-[family-name:var(--font-dm-mono)] text-[11px] font-medium uppercase tracking-[.14em] text-[#4B5563]">
           Include this reference in the e-transfer message field
         </div>
         <div className="mt-1 flex items-center gap-2">
@@ -173,7 +173,7 @@ export function PaymentUploadCard({
           <button
             type="button"
             onClick={copyReference}
-            className="rounded-md border border-[#0D4231]/40 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#0D4231] transition-colors hover:bg-[#EEF4F1]"
+            className="rounded-md border border-[#0F5132]/40 bg-white px-2.5 py-1 text-[11px] font-semibold text-[#0F5132] transition-colors hover:bg-[#EEF4F0]"
           >
             {copied ? "Copied" : "Copy"}
           </button>
@@ -181,7 +181,7 @@ export function PaymentUploadCard({
       </div>
 
       <div className="space-y-2">
-        <label className="block text-xs font-semibold uppercase tracking-wider text-[#5A6A85]">
+        <label className="block text-xs font-semibold uppercase tracking-wider text-[#4B5563]">
           Upload payment screenshot or receipt
         </label>
         <input
@@ -190,7 +190,7 @@ export function PaymentUploadCard({
           accept={ALLOWED_MIME.join(",")}
           onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
           disabled={pending}
-          className="block w-full text-sm text-stone-600 file:mr-3 file:rounded-lg file:border file:border-[#D9E2EC] file:bg-white file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-[#0D4231] hover:file:border-[#0D4231]/60"
+          className="block w-full text-sm text-stone-600 file:mr-3 file:rounded-lg file:border file:border-[#D9E2EC] file:bg-white file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-[#0F5132] hover:file:border-[#0F5132]/60"
         />
         <p className="text-[11px] text-stone-500">{ALLOWED_HUMAN}</p>
         {file && (
@@ -205,7 +205,7 @@ export function PaymentUploadCard({
           type="button"
           onClick={submit}
           disabled={pending || !file}
-          className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#0D4231] px-5 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#14523D] disabled:opacity-50"
+          className="inline-flex h-11 items-center gap-2 rounded-[10px] bg-[#0F5132] px-5 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#146540] disabled:opacity-50"
         >
           {pending ? (
             <>

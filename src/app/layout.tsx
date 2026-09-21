@@ -11,6 +11,7 @@ const inter = Inter({
   display: "swap",
 });
 
+
 export const metadata: Metadata = {
   title: "CaseBind",
   description: "Immigration case management for Canadian firms.",

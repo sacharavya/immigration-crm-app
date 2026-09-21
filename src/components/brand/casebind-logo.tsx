@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import logo from "../../../public/casebind-logo.png";
+import logoDark from "../../../public/casebind-logo-dark.png";
 
 /**
  * The CaseBind Systems logo — the platform's own mark.
@@ -9,13 +10,10 @@ import logo from "../../../public/casebind-logo.png";
  * firm has uploaded one, and on every surface that belongs to the platform
  * rather than to a firm: login, the operator portal, the marketing site.
  *
- * The artwork is black type with a green/sage/gold mark, drawn for a light
- * surface. `tone="dark"` knocks the whole thing out to white for dark panels;
- * the mark's colours are lost there, but a white silhouette is what a dark
- * footer wants anyway.
- *
- * Static import so the intrinsic size is known and nothing shifts while the
- * PNG loads. Callers size it with a height class (`h-8 w-auto`).
+ * `tone="dark"` is the brand sheet's on-green lockup — white wordmark, the
+ * forest slab turned white, sage and gold kept — for anything on a dark
+ * surface. Static imports so the intrinsic size is known and nothing shifts
+ * while the PNG loads. Callers size it with a height class (`h-8 w-auto`).
  */
 export function CaseBindLogo({
   className,
@@ -28,12 +26,10 @@ export function CaseBindLogo({
 }) {
   return (
     <Image
-      src={logo}
+      src={tone === "dark" ? logoDark : logo}
       alt={title}
       priority
-      className={[className, tone === "dark" && "brightness-0 invert"]
-        .filter(Boolean)
-        .join(" ")}
+      className={className}
     />
   );
 }

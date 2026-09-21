@@ -252,22 +252,22 @@ export function StepPickSlot({
     <div className="grid items-start gap-5 lg:grid-cols-[380px_minmax(0,1fr)]">
       {/* ── Details card ─────────────────────────────────────── */}
       <div className="rounded-2xl border border-[#D9E2EC] bg-white p-6 shadow-[0_20px_40px_-32px_rgba(27,54,93,.35)] sm:p-7">
-        <span className="rounded-full bg-[#EEF4F1] px-2.5 py-1.5 font-[family-name:var(--font-dm-mono)] text-[10.5px] font-medium uppercase tracking-[.16em] text-[#0D4231]">
+        <span className="rounded-full bg-[#EEF4F0] px-2.5 py-1.5 font-[family-name:var(--font-dm-mono)] text-[10.5px] font-medium uppercase tracking-[.16em] text-[#0F5132]">
           {paid ? "Paid consultation" : "Free consultation"}
         </span>
         <h2 className="mt-4 text-[26px] font-extrabold tracking-[-.02em]">
           {type.name}
         </h2>
-        <div className="mt-4 space-y-2.5 text-[15px] text-[#0D4231]">
+        <div className="mt-4 space-y-2.5 text-[15px] text-[#0F5132]">
           <div className="flex items-center gap-3">
-            <Clock className="h-4.5 w-4.5 text-[#C4A067]" strokeWidth={1.75} />
+            <Clock className="h-4.5 w-4.5 text-[#D4AF7C]" strokeWidth={1.75} />
             {type.duration_minutes} minutes
           </div>
           <div className="flex items-center gap-3">
             {type.default_location_type === "online" ? (
-              <Video className="h-4.5 w-4.5 text-[#C4A067]" strokeWidth={1.75} />
+              <Video className="h-4.5 w-4.5 text-[#D4AF7C]" strokeWidth={1.75} />
             ) : (
-              <MapPin className="h-4.5 w-4.5 text-[#C4A067]" strokeWidth={1.75} />
+              <MapPin className="h-4.5 w-4.5 text-[#D4AF7C]" strokeWidth={1.75} />
             )}
             {type.default_location_type === "online"
               ? "Online meeting"
@@ -275,7 +275,7 @@ export function StepPickSlot({
           </div>
           {paid && (
             <div className="flex items-center gap-3">
-              <DollarSign className="h-4.5 w-4.5 text-[#C4A067]" strokeWidth={1.75} />
+              <DollarSign className="h-4.5 w-4.5 text-[#D4AF7C]" strokeWidth={1.75} />
               ${type.fee_cad} CAD
             </div>
           )}
@@ -284,7 +284,7 @@ export function StepPickSlot({
         {type.description && (
           <>
             <div className="my-5 border-t border-[#EDF1F7]" />
-            <p className="text-[15px] leading-relaxed text-[#0D4231]/90">
+            <p className="text-[15px] leading-relaxed text-[#0F5132]/90">
               {type.description}
             </p>
           </>
@@ -292,13 +292,13 @@ export function StepPickSlot({
 
         {expectations.map((section) => (
           <div key={section.heading} className="mt-6">
-            <div className="font-[family-name:var(--font-dm-mono)] text-[11px] font-medium uppercase tracking-[.14em] text-[#5A6A85]">
+            <div className="font-[family-name:var(--font-dm-mono)] text-[11px] font-medium uppercase tracking-[.14em] text-[#4B5563]">
               {section.heading}
             </div>
             <ul className="mt-3 space-y-2.5">
               {section.items.map((item) => (
-                <li key={item} className="flex gap-2.5 text-[15px] leading-snug text-[#0D4231]/90">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#C4A067]" strokeWidth={2.5} />
+                <li key={item} className="flex gap-2.5 text-[15px] leading-snug text-[#0F5132]/90">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#D4AF7C]" strokeWidth={2.5} />
                   {item}
                 </li>
               ))}
@@ -314,16 +314,16 @@ export function StepPickSlot({
             <h2 className="text-xl font-extrabold tracking-[-.01em]">
               Select an appointment time
             </h2>
-            <p className="mt-0.5 text-sm text-[#5A6A85]">{displayTz}</p>
+            <p className="mt-0.5 text-sm text-[#4B5563]">{displayTz}</p>
           </div>
-          <span className="rounded-full bg-[#EEF4F1] px-3.5 py-1.5 text-sm font-semibold text-[#0D4231]">
+          <span className="rounded-full bg-[#EEF4F0] px-3.5 py-1.5 text-sm font-semibold text-[#0F5132]">
             {fmtDayLong(selectedDate)}
             {selectedSlot ? ` · ${timeLabel(selectedSlot)}` : ""}
           </span>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-sm text-[#5A6A85]">
+          <div className="flex items-center justify-center py-20 text-sm text-[#4B5563]">
             Loading available times...
           </div>
         ) : error ? (
@@ -343,7 +343,7 @@ export function StepPickSlot({
                     type="button"
                     onClick={prevMonth}
                     aria-label="Previous month"
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] text-[#5A6A85] hover:border-[#0D4231] hover:text-[#0D4231]"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] text-[#4B5563] hover:border-[#0F5132] hover:text-[#0F5132]"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
@@ -351,13 +351,13 @@ export function StepPickSlot({
                     type="button"
                     onClick={nextMonth}
                     aria-label="Next month"
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] text-[#5A6A85] hover:border-[#0D4231] hover:text-[#0D4231]"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[#D9E2EC] text-[#4B5563] hover:border-[#0F5132] hover:text-[#0F5132]"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
               </div>
-              <div className="mt-4 grid grid-cols-7 text-center text-xs font-semibold text-[#5A6A85]">
+              <div className="mt-4 grid grid-cols-7 text-center text-xs font-semibold text-[#4B5563]">
                 {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
                   <span key={`${d}${i}`} className="py-1">
                     {d}
@@ -381,11 +381,11 @@ export function StepPickSlot({
                       onClick={() => selectDate(iso)}
                       className={`relative mx-auto flex h-10 w-10 flex-col items-center justify-center rounded-lg text-sm font-medium transition-colors ${
                         isSelected
-                          ? "bg-[#0D4231] text-white"
+                          ? "bg-[#0F5132] text-white"
                           : isPast
-                            ? "cursor-default text-[#AFC9BB]"
+                            ? "cursor-default text-[#ACCBB8]"
                             : has
-                              ? "text-[#0D4231] hover:bg-[#EEF4F1]"
+                              ? "text-[#0F5132] hover:bg-[#EEF4F0]"
                               : "text-[#8CA0B8] hover:bg-[#F4F6F9]"
                       }`}
                     >
@@ -393,7 +393,7 @@ export function StepPickSlot({
                       {has && !isPast && (
                         <span
                           className={`absolute bottom-1 h-1 w-1 rounded-full ${
-                            isSelected ? "bg-white" : "bg-[#C4A067]"
+                            isSelected ? "bg-white" : "bg-[#D4AF7C]"
                           }`}
                         />
                       )}
@@ -405,7 +405,7 @@ export function StepPickSlot({
 
             {/* Time slots */}
             <div className="flex flex-col">
-              <div className="text-sm font-bold text-[#0D4231]">
+              <div className="text-sm font-bold text-[#0F5132]">
                 Available times · {fmtDayLong(selectedDate)}
               </div>
               {/* Only periods that actually have times are offered. */}
@@ -423,14 +423,14 @@ export function StepPickSlot({
                         }}
                         className={`flex-1 rounded-lg border px-2 py-2 text-center text-[13px] font-semibold transition-colors ${
                           period === p.key
-                            ? "border-[#0D4231] bg-[#0D4231] text-white"
-                            : "border-[#D9E2EC] bg-white text-[#0D4231] hover:border-[#0D4231]/60"
+                            ? "border-[#0F5132] bg-[#0F5132] text-white"
+                            : "border-[#D9E2EC] bg-white text-[#0F5132] hover:border-[#0F5132]/60"
                         }`}
                       >
                         {p.label}
                         <span
                           className={`ml-1.5 text-[11px] font-medium ${
-                            period === p.key ? "text-white/75" : "text-[#5A6A85]"
+                            period === p.key ? "text-white/75" : "text-[#4B5563]"
                           }`}
                         >
                           {n}
@@ -442,11 +442,11 @@ export function StepPickSlot({
               </div>
               <div className="mt-3 flex max-h-[300px] flex-col gap-2 overflow-y-auto pr-1">
                 {daySlots.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-[#5A6A85]">
+                  <p className="py-8 text-center text-sm text-[#4B5563]">
                     No times available this day. Pick a day with a gold dot.
                   </p>
                 ) : periodSlots.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-[#5A6A85]">
+                  <p className="py-8 text-center text-sm text-[#4B5563]">
                     No times in this range today. Try another range above.
                   </p>
                 ) : (
@@ -459,12 +459,12 @@ export function StepPickSlot({
                         onClick={() => setSelectedSlot(s)}
                         className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left text-[15px] font-semibold transition-colors ${
                           isSel
-                            ? "border-[#0D4231] bg-[#EEF4F1] text-[#0D4231] ring-1 ring-[#0D4231]/40"
-                            : "border-[#D9E2EC] bg-white text-[#0D4231] hover:border-[#0D4231]/60"
+                            ? "border-[#0F5132] bg-[#EEF4F0] text-[#0F5132] ring-1 ring-[#0F5132]/40"
+                            : "border-[#D9E2EC] bg-white text-[#0F5132] hover:border-[#0F5132]/60"
                         }`}
                       >
                         {timeLabel(s)}
-                        <span className="text-xs font-medium text-[#5A6A85]">
+                        <span className="text-xs font-medium text-[#4B5563]">
                           {type.duration_minutes} min
                         </span>
                       </button>
@@ -476,7 +476,7 @@ export function StepPickSlot({
                 type="button"
                 disabled={!selectedSlot}
                 onClick={() => selectedSlot && onSelect(selectedSlot)}
-                className="mt-4 rounded-[10px] bg-[#0D4231] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#14523D] disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-4 rounded-[10px] bg-[#0F5132] px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(61,111,216,.7)] transition-colors hover:bg-[#146540] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Continue →
               </button>

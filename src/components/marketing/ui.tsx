@@ -106,7 +106,7 @@ export function PrimaryLink({
       className={cn(
         "inline-flex items-center gap-2 rounded-[var(--radius)] px-4 py-2.5 text-[13px] font-semibold transition-colors",
         tone === "primary"
-          ? "bg-[var(--ink)] text-[var(--on-ink)] hover:opacity-90"
+          ? "bg-[var(--slab)] text-[var(--on-ink)] hover:opacity-90"
           : "bg-[var(--gold)] text-[var(--on-ink)] hover:opacity-90",
         className,
       )}
@@ -129,7 +129,7 @@ export function WhiteLink({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center gap-2 rounded-[var(--radius)] border border-[var(--ink)]/20 bg-transparent px-4 py-2.5 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:border-[var(--ink)]/40 hover:bg-[var(--ink)]/[0.03]",
+        "inline-flex items-center gap-2 rounded-[var(--radius)] border border-[var(--ink)]/20 bg-transparent px-4 py-2.5 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:border-[var(--ink)]/40 hover:bg-[var(--slab)]/[0.03]",
         className,
       )}
     >
@@ -173,7 +173,7 @@ export function GradientBlock({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(60% 70% at 100% 100%,rgba(196,160,103,.16),transparent 70%)",
+            "radial-gradient(60% 70% at 100% 100%,rgba(212,175,124,.16),transparent 70%)",
         }}
       />
       {children}
@@ -189,7 +189,7 @@ export function BrowserFrame({
   children: React.ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-[calc(var(--radius)*1.5)] border border-[var(--rule)] bg-white shadow-[0_40px_80px_-48px_rgba(13, 66, 49,.45)]">
+    <div className="overflow-hidden rounded-[calc(var(--radius)*1.5)] border border-[var(--rule)] bg-white shadow-[0_40px_80px_-48px_rgba(15, 81, 50,.45)]">
       <div className="flex items-center gap-2 border-b border-[var(--rule)] bg-[var(--paper)] px-3.5 py-2.5">
         <span className="block h-2.5 w-2.5 rounded-full bg-[var(--rule)]" />
         <span className="block h-2.5 w-2.5 rounded-full bg-[var(--rule)]" />
@@ -285,7 +285,7 @@ export function DarkSection({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(80% 60% at 50% 0%,rgba(196,160,103,.10),transparent 70%)",
+            "radial-gradient(80% 60% at 50% 0%,rgba(212,175,124,.10),transparent 70%)",
         }}
       />
       <div className="relative mx-auto w-full max-w-[1180px] px-6">{children}</div>

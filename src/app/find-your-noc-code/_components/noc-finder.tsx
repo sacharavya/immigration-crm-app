@@ -188,7 +188,7 @@ export function NocFinder({ onSelect }: NocFinderProps) {
   return (
     <div>
       <div className="mx-auto max-w-6xl">
-        <p className="mb-4 text-xs text-[#5A6A85]">
+        <p className="mb-4 text-xs text-[#4B5563]">
           Uses the full NOC 2021 dataset from Statistics Canada.
         </p>
 
