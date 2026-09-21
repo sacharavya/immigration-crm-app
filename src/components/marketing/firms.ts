@@ -5,4 +5,5 @@ export type Firm = { name: string; logo: string };
 
 export const FIRMS: Firm[] = [
   { name: "Big Bang Immigration", logo: "/bigbang.png" },
+  { name: "MDS Visa", logo: "/mdsvisa.png" },
 ];
