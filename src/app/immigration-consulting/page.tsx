@@ -48,7 +48,7 @@ import {
 export const metadata: Metadata = {
   title: 'genzdatalabs Immigration Consulting Inc | Your pathway to Canada',
   description:
-    'A regulated Canadian immigration firm (RCIC# R7111111) guiding individuals and families through study, work and permanent residence, from Toronto and Kathmandu.',
+    'Guiding individuals and families through study, work and permanent residence, from Toronto and Kathmandu.',
 };
 
 const TILES = [
@@ -229,10 +229,6 @@ const STAT_TILES = [
     small: 'Branch office · Nepal',
   },
   {
-    big: 'RCIC',
-    small: 'Partnered with licensed RCIC · R7111111',
-  },
-  {
     big: 'Since 2021',
     small: 'Affordable, effective and expeditious solutions',
   },
@@ -275,8 +271,7 @@ export default function HomePage() {
             </Display>
             <div className='flex flex-col items-start gap-6 lg:pb-3'>
               <p className='max-w-[420px] text-[16px] leading-relaxed text-[var(--ink-muted)]'>
-                A regulated Canadian immigration firm guiding individuals and
-                families through every step, with clarity, honesty and care.
+                Guiding individuals and families through every step, with clarity, honesty and care.
               </p>
               <div className='flex flex-wrap gap-2.5'>
                 <PrimaryLink href='/book-an-appointment'>
@@ -297,20 +292,6 @@ export default function HomePage() {
 
           {/* Credential strip: the regulator line is the proof point, so it
               sits on its own rule rather than floating under the buttons. */}
-          <div className='mx-auto mt-16 flex w-full max-w-[1180px] flex-wrap items-center gap-x-6 gap-y-4 border-t border-[var(--rule)] pt-6'>
-            <Image
-              src='/RCIC.png'
-              alt='RCIC - Regulated Canadian Immigration Consultant'
-              width={280}
-              priority
-              unoptimized
-              height={100}
-              className='h-10 w-auto'
-            />
-            <span className='font-[family-name:var(--font-dm-mono)] text-[11px] uppercase leading-relaxed tracking-[.14em] text-[var(--ink-faint)]'>
-              Partnered with licensed RCIC · RCIC# R7111111
-            </span>
-          </div>
         </header>
       </HeroBand>
 

@@ -57,8 +57,6 @@ export function MarketingFooter() {
           <div className="flex flex-col gap-4">
             <CaseBindLogo tone="dark" className="h-8 w-auto self-start" />
             <p className="max-w-[300px] text-[13px] leading-relaxed text-white/55">
-              A regulated Canadian immigration firm.
-              <br />
               211-2390 Eglinton Avenue East, Toronto, ON M1K 2P5
               <br />
               +1 (416) 386-5351 · info@genzdatalabs.com
@@ -85,9 +83,6 @@ export function MarketingFooter() {
 
         <div className="mt-14 flex flex-wrap justify-between gap-3 border-t border-white/10 pt-6 text-[11.5px] text-white/40">
           <span>© 2026 CaseBind Systems</span>
-          <span>
-            Partnered with licensed RCIC · RCIC# R7111111
-          </span>
         </div>
       </div>
     </footer>

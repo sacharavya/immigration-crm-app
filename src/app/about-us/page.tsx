@@ -9,13 +9,12 @@ import { MarketingShell } from "@/components/marketing/shell";
 export const metadata: Metadata = {
   title: "About Us — genzdatalabs Immigration Consulting Inc",
   description:
-    "A licensed Canadian immigration firm (RCIC# R7111111) founded in 2021, serving clients from Toronto and Kathmandu with efficient, transparent and accountable representation.",
+    "Founded in 2021, serving clients from Toronto and Kathmandu with efficient, transparent and accountable representation.",
 };
 
 const STAT_TILES = [
   { big: "Toronto", small: "Head office · 211-2390 Eglinton Ave E", bg: "linear-gradient(180deg,#F1F5FD,#fff)" },
   { big: "Kathmandu", small: "Branch office · Nepal", bg: "linear-gradient(180deg,#F6F1FC,#fff)" },
-  { big: "RCIC", small: "Partnered with licensed RCIC · R7111111", bg: "linear-gradient(180deg,#E4F7EF,#fff)" },
   { big: "Since 2021", small: "Affordable, effective and expeditious solutions", bg: "linear-gradient(180deg,#EEF6FB,#fff)" },
 ];
 
@@ -40,7 +39,7 @@ export default function AboutUsPage() {
     <MarketingShell
       crumbs={[{ label: "About us" }]}
       title="Licensed, local, and with you for the long run."
-      subtitle="genzdatalabs Immigration Consulting Inc is a regulated Canadian immigration firm guiding individuals and families through study, work and permanent residence."
+      subtitle="genzdatalabs Immigration Consulting Inc guides individuals and families through study, work and permanent residence."
     >
       {/* Who we are */}
       <section className="grid items-start gap-10 pt-10 lg:grid-cols-2">
@@ -57,9 +56,8 @@ export default function AboutUsPage() {
           </div>
           <p>
             We are a Toronto-based immigration consultancy founded in 2021,
-            partnered with licensed RCICs regulated by the College of
-            Immigration and Citizenship Consultants (CICC), with a branch office in Kathmandu serving clients across
-            South Asia and around the world.
+            with a branch office in Kathmandu serving clients across South Asia
+            and around the world.
           </p>
           <p>
             Study permits, work permits, Express Entry, provincial nomination,

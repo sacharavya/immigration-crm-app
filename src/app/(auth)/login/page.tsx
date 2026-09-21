@@ -1,7 +1,7 @@
 "use client";
 
 import { CaseBindLogo } from "@/components/brand/casebind-logo";
-import { ArrowRight, Globe, Scale, ShieldCheck } from "lucide-react";
+import { ArrowRight, Globe, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { use, useActionState } from "react";
 
@@ -191,10 +191,6 @@ export default function LoginPage({ searchParams }: Props) {
             <div className="flex items-center gap-1.5 text-xs">
               <ShieldCheck className="h-4 w-4 text-[var(--gold)]" />
               Secure
-            </div>
-            <div className="flex items-center gap-1.5 text-xs">
-              <Scale className="h-4 w-4 text-[var(--gold)]" />
-              Partnered with licensed RCIC
             </div>
             <div className="flex items-center gap-1.5 text-xs">
               <Globe className="h-4 w-4 text-[var(--gold)]" />

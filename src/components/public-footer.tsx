@@ -59,7 +59,6 @@ export function PublicFooter() {
           </Link>
         </div>
         &copy; {new Date().getFullYear()} genzdatalabs Immigration Consulting Inc.
-        &middot; Partnered with licensed RCIC &middot; RCIC# R7111111
       </div>
     </footer>
   );
