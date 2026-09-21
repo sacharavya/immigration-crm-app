@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { FIRMS } from "@/components/marketing/firms";
+import { LIVE_FIRMS, SHOW_MARQUEE } from "@/components/marketing/firms";
 import { PublicChrome } from "@/components/marketing/shell";
 import { DarkSection, Display, Eyebrow, PrimaryLink } from "@/components/marketing/ui";
 
@@ -13,12 +13,12 @@ export const metadata: Metadata = {
 
 // Fill the strip regardless of how many firms there are; the animation
 // moves exactly one set, so the loop is seamless at any count.
-const SETS = Math.max(2, Math.ceil(10 / FIRMS.length));
+const SETS = Math.max(2, Math.ceil(10 / Math.max(1, LIVE_FIRMS.length)));
 
 function LogoRow({ ariaHidden }: { ariaHidden?: boolean }) {
   return (
     <ul aria-hidden={ariaHidden} className="flex shrink-0 items-center gap-16 pr-16">
-      {Array.from({ length: SETS }, () => FIRMS).flat().map((f, i) => (
+      {Array.from({ length: SETS }, () => LIVE_FIRMS).flat().map((f, i) => (
         <li key={`${f.name}-${i}`} className="shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element -- firm-uploaded asset, sized by height */}
           <img src={f.logo} alt={ariaHidden ? "" : f.name} className="max-h-9 w-auto max-w-[180px] object-contain opacity-60 grayscale" />
@@ -58,15 +58,17 @@ export default function FirmsPage() {
         </header>
 
         {/* Marquee, edge to edge, faded at both ends. */}
-        <div
-          className="marquee relative overflow-hidden py-8"
-          style={{ maskImage: "linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)" }}
-        >
-          <div className="marquee-track flex w-max">
-            <LogoRow />
-            <LogoRow ariaHidden />
+        {SHOW_MARQUEE && (
+          <div
+            className="marquee relative overflow-hidden py-8"
+            style={{ maskImage: "linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)" }}
+          >
+            <div className="marquee-track flex w-max">
+              <LogoRow />
+              <LogoRow ariaHidden />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Logo collection: dark tiles, every mark in the same grey and the
             same box. grayscale+invert turns each logo light and any opaque
@@ -77,7 +79,7 @@ export default function FirmsPage() {
             Trusted by Canadian immigration practices.
           </h2>
           <ul className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {FIRMS.map((f) => (
+            {LIVE_FIRMS.map((f) => (
               <li
                 key={f.name}
                 className="flex aspect-[5/3] items-center justify-center rounded-[calc(var(--radius)*1.5)] bg-white/[0.06] p-8 transition-colors hover:bg-white/[0.09]"
