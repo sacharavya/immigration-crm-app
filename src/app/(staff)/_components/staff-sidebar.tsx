@@ -1,6 +1,6 @@
 "use client";
 
-import { GenzLogo } from "@/components/brand/genz-logo";
+import { CaseBindLogo } from "@/components/brand/casebind-logo";
 import {
   Archive,
   BarChart3,
@@ -69,10 +69,10 @@ export function StaffSidebar({ logo }: { logo?: React.ReactNode }) {
       <div className="flex h-16 items-center border-b border-border px-4">
         <Link
           href="/dashboard"
-          aria-label="genzdatalabs Immigration CRM"
+          aria-label="CaseBind"
           className="block transition-opacity hover:opacity-80"
         >
-          {logo ?? <GenzLogo className="h-8 w-auto text-[#1E2136]" />}
+          {logo ?? <CaseBindLogo className="h-8 w-auto" />}
         </Link>
       </div>
 

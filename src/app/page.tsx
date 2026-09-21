@@ -32,7 +32,7 @@ import { RequestForm } from "./_crm/request-form";
 
 export const metadata: Metadata = {
   title:
-    "Immigration CRM Software for Canadian Firms | BBI-CRM by genzdatalabs Immigration",
+    "Immigration CRM Software for Canadian Firms | CaseBind",
   description:
     "Immigration case management software built inside a CICC-regulated firm: submission package builder, IRCC form autofill, client portal, compliance, billing, and Canadian data residency. Free through alpha and beta testing, with a week of hands-on training.",
 };
@@ -188,7 +188,7 @@ export default function CrmLandingPage() {
             <BrowserFrame url="app.genzdatalabs.com/dashboard">
               <Image
                 src="/dashboard-preview.png"
-                alt="genzdatalabs Immigration CRM dashboard"
+                alt="CaseBind dashboard"
                 width={2778}
                 height={1706}
                 priority

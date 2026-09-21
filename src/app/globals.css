@@ -254,22 +254,6 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
 }
 
-/* genZ logo accent.
-   The supplied artwork uses #D8FF3E, which is drawn for a dark surface and
-   is effectively invisible on white (~1.1:1). On light surfaces we use a
-   deeper lime that still reads as the same colour; the original is kept for
-   dark ones. The wordmark itself inherits currentColor, so it is the caller's
-   text colour rather than a baked-in white. */
-:root {
-  --logo-accent: #7FA100;
-}
-
-.on-dark,
-:root[data-theme="dark"],
-.dark {
-  --logo-accent: #D8FF3E;
-}
-
 /* The signed-in CRM. Square everywhere reads as severe on data-dense
    screens, so the staff shell opts into a soft radius — same escape hatch
    the marketing pages use. Set to 0 to go back to square. */

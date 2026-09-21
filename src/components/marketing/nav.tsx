@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-import { GenzLogo } from "@/components/brand/genz-logo";
+import { CaseBindLogo } from "@/components/brand/casebind-logo";
 import { cn } from "@/lib/utils/index";
 
 import type { MediaSlot } from "./media";
@@ -139,7 +139,7 @@ export function MegaNav({
       >
         <nav className="mx-auto flex w-full max-w-[1280px] items-center gap-6 px-6 py-3.5">
           <Link href="/" className="flex shrink-0 items-center">
-            <GenzLogo className="h-7 w-auto text-[var(--ink)]" title="genZ" />
+            <CaseBindLogo className="h-7 w-auto" />
           </Link>
 
           <div className="mx-auto hidden items-center gap-1 md:flex">

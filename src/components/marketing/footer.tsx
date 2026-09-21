@@ -1,4 +1,4 @@
-import { GenzLogo } from "@/components/brand/genz-logo";
+import { CaseBindLogo } from "@/components/brand/casebind-logo";
 import Link from "next/link";
 
 // THE shared footer for every public page. Audience-neutral columns so the
@@ -55,7 +55,7 @@ export function MarketingFooter() {
 
         <div className="grid gap-10 pt-12 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
           <div className="flex flex-col gap-4">
-            <GenzLogo tone="dark" className="h-8 w-auto self-start" />
+            <CaseBindLogo tone="dark" className="h-8 w-auto self-start" />
             <p className="max-w-[300px] text-[13px] leading-relaxed text-white/55">
               A regulated Canadian immigration firm.
               <br />
@@ -84,7 +84,7 @@ export function MarketingFooter() {
         </div>
 
         <div className="mt-14 flex flex-wrap justify-between gap-3 border-t border-white/10 pt-6 text-[11.5px] text-white/40">
-          <span>© 2026 genzdatalabs Immigration Consulting Inc.</span>
+          <span>© 2026 CaseBind Systems</span>
           <span>
             Licensed by the College of Immigration and Citizenship Consultants
             (CICC) · RCIC# R7111111

@@ -54,7 +54,7 @@ export type RetainerData = {
   client_signature_image_url: string | null;
 
   // Letterhead asset (base64 data URL). Inlined so the PDF renderer
-  // doesn't need a base URL to resolve /genzdatalabs-logo.png.
+  // doesn't need a base URL to resolve /casebind-logo.png.
   letterhead_logo_url: string;
 };
 

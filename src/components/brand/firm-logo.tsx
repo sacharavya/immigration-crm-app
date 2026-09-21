@@ -3,7 +3,7 @@ import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
 import { getStaffTenantId } from "@/lib/tenant/context";
 
-import { GenzLogo } from "./genz-logo";
+import { CaseBindLogo } from "./casebind-logo";
 
 /**
  * The logo for the firm whose CRM this is.
@@ -23,7 +23,7 @@ export async function FirmLogo({
   tone?: "auto" | "dark";
 }) {
   const id = tenantId ?? (await getStaffTenantId());
-  if (!id) return <GenzLogo className={className} tone={tone} />;
+  if (!id) return <CaseBindLogo className={className} tone={tone} />;
 
   // Service role on purpose. The client-facing portals have no session, and
   // crm.tenants only grants SELECT to authenticated users, so through the
@@ -37,7 +37,7 @@ export async function FirmLogo({
     .eq("id", id)
     .maybeSingle();
 
-  if (!data?.logo_url) return <GenzLogo className={className} tone={tone} />;
+  if (!data?.logo_url) return <CaseBindLogo className={className} tone={tone} />;
 
   // Deliberately a plain img rather than next/image: the URL is a firm's
   // uploaded asset on the storage origin, so it would need a remote-pattern

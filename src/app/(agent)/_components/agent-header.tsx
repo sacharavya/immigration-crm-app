@@ -1,6 +1,6 @@
 "use client";
 
-import { GenzLogo } from "@/components/brand/genz-logo";
+import { CaseBindLogo } from "@/components/brand/casebind-logo";
 import { LogOut } from "lucide-react";
 import Link from "next/link";
 
@@ -13,10 +13,10 @@ export function AgentHeader() {
     <header className="flex h-16 items-center justify-between border-b border-stone-200 bg-white px-6">
       <Link
         href="/portal"
-        aria-label="genzdatalabs Immigration"
+        aria-label="CaseBind"
         className="flex h-full items-center transition-opacity hover:opacity-80"
       >
-        <GenzLogo className="h-10 w-auto text-[#1E2136]" />
+        <CaseBindLogo className="h-10 w-auto text-[#1E2136]" />
       </Link>
 
       <div className="flex items-center gap-4">

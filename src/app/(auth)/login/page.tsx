@@ -1,6 +1,6 @@
 "use client";
 
-import { GenzLogo } from "@/components/brand/genz-logo";
+import { CaseBindLogo } from "@/components/brand/casebind-logo";
 import { ArrowRight, Globe, Scale, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { use, useActionState } from "react";
@@ -34,14 +34,14 @@ export default function LoginPage({ searchParams }: Props) {
       <div className="flex w-full flex-col justify-center px-8 py-12 lg:w-1/2 lg:px-16 xl:px-24">
         <div className="mx-auto w-full max-w-md">
           {/* Logo */}
-          <GenzLogo className="h-12 w-auto text-[#1E2136]" />
+          <CaseBindLogo className="h-12 w-auto text-[#1E2136]" />
 
           {/* Heading */}
           <h1 className="mt-8 text-2xl font-semibold tracking-tight text-stone-900">
             Sign in to your account
           </h1>
           <p className="mt-2 text-sm text-stone-600">
-            Access the genzdatalabs Immigration staff console to manage cases,
+            Access your firm&apos;s staff console to manage cases,
             clients, and appointments.
           </p>
 
@@ -78,7 +78,7 @@ export default function LoginPage({ searchParams }: Props) {
                 autoComplete="email"
                 required
                 aria-invalid={Boolean(state.fieldErrors?.email)}
-                placeholder="you@genzdatalabs.com"
+                placeholder="you@yourfirm.com"
                 className="mt-1.5 h-11 w-full border border-stone-300 bg-white px-3 text-sm"
               />
               {state.fieldErrors?.email && (
@@ -136,8 +136,7 @@ export default function LoginPage({ searchParams }: Props) {
           </form>
 
           <p className="mt-8 text-center text-xs text-stone-500">
-            &copy; {new Date().getFullYear()} genzdatalabs Immigration Consulting
-            Inc.
+            &copy; {new Date().getFullYear()} CaseBind Systems
           </p>
         </div>
       </div>
@@ -149,7 +148,7 @@ export default function LoginPage({ searchParams }: Props) {
           <div className="mx-auto w-full overflow-hidden rounded-xl border border-white/10 bg-white/[0.07] p-1 shadow-2xl">
             <div className="rounded-lg bg-white/[0.05] px-6 py-10">
               <div className="flex items-center justify-center gap-3">
-                <GenzLogo tone="dark" className="h-10 w-auto" />
+                <CaseBindLogo tone="dark" className="h-10 w-auto" />
               </div>
               <div className="mt-6 grid grid-cols-3 gap-3">
                 {[
@@ -183,8 +182,8 @@ export default function LoginPage({ searchParams }: Props) {
             and serve clients — all in one place
           </h2>
           <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-stone-300">
-            The complete immigration case management platform built for
-            genzdatalabs Immigration Consulting.
+            The complete case management platform built for Canadian
+            immigration firms.
           </p>
 
           {/* Trust badges */}

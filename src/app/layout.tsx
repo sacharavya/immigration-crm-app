@@ -12,11 +12,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "genzdatalabs Immigration Consulting Inc.",
-  description: "Internal case management system — coming soon.",
-  icons: {
-    icon: "/Maple_Leaf.svg",
-  },
+  // src/app/icon.png is picked up as the favicon by file convention.
+  title: "CaseBind",
+  description: "Immigration case management for Canadian firms.",
 };
 
 export default function RootLayout({
