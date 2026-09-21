@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 
 import { FIRMS } from "@/components/marketing/firms";
 import { PublicChrome } from "@/components/marketing/shell";
-import { Display, Eyebrow, PrimaryLink } from "@/components/marketing/ui";
+import { DarkSection, Display, Eyebrow, PrimaryLink } from "@/components/marketing/ui";
 
 export const metadata: Metadata = {
   title: "Firms on CaseBind",
@@ -68,30 +68,30 @@ export default function FirmsPage() {
           </div>
         </div>
 
-        {/* Logo collection: every mark in the same grey and the same box, so
-            mixed brand colours and aspect ratios read as one set. Light tiles
-            on purpose — some logos ship with an opaque white background,
-            which a knock-out on a dark tile turns into a white slab. */}
-        <section className="mx-auto w-full max-w-[1180px] px-6 pb-28 pt-12">
-          <h2 className="max-w-[24ch] text-balance font-[family-name:var(--font-display)] text-[clamp(28px,3.4vw,44px)] leading-[1.05] tracking-[-0.02em] text-[var(--ink)]">
+        {/* Logo collection: dark tiles, every mark in the same grey and the
+            same box. grayscale+invert turns each logo light and any opaque
+            white background black; screen blending then drops that black
+            into the tile, so a logo shipped on white reads like a cut-out. */}
+        <DarkSection className="py-24">
+          <h2 className="max-w-[24ch] text-balance font-[family-name:var(--font-display)] text-[clamp(28px,3.4vw,44px)] leading-[1.05] tracking-[-0.02em]">
             Trusted by Canadian immigration practices.
           </h2>
           <ul className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {FIRMS.map((f) => (
               <li
                 key={f.name}
-                className="flex aspect-[5/3] items-center justify-center rounded-[calc(var(--radius)*1.5)] border border-[var(--rule)] bg-[var(--paper-raised)] p-8"
+                className="flex aspect-[5/3] items-center justify-center rounded-[calc(var(--radius)*1.5)] bg-white/[0.06] p-8 transition-colors hover:bg-white/[0.09]"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- firm-uploaded asset, sized by its box */}
                 <img
                   src={f.logo}
                   alt={f.name}
-                  className="max-h-12 w-auto max-w-[190px] object-contain opacity-60 grayscale transition-opacity hover:opacity-90"
+                  className="max-h-12 w-auto max-w-[190px] object-contain opacity-75 grayscale invert mix-blend-screen"
                 />
               </li>
             ))}
           </ul>
-        </section>
+        </DarkSection>
       </main>
     </PublicChrome>
   );
