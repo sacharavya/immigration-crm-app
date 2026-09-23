@@ -1,5 +1,6 @@
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
+import { supabaseServerUrl } from "./env";
 import type { Database } from "./types";
 
 /**
@@ -12,7 +13,7 @@ import type { Database } from "./types";
  * (autoRefreshToken / persistSession off) live in exactly one place.
  */
 export function adminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = supabaseServerUrl();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
     throw new Error(

@@ -61,3 +61,6 @@ public/pdfium/
 .ds-sync/
 ds-bundle/
 .design-sync/
+
+# Docker trial stack data
+docker/volumes/

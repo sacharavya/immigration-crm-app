@@ -1,4 +1,5 @@
 import type { NextRequest, NextResponse } from "next/server";
+import { supabaseServerUrl } from "@/lib/supabase/env";
 
 // Establishes the upload-portal cookie on the proxy response before the
 // /upload/<token> page renders.
@@ -28,7 +29,7 @@ export async function maybeSetUploadPortalCookie(
 
   if (request.cookies.get(COOKIE_NAME)?.value === token) return;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseUrl = supabaseServerUrl();
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) return;
 
