@@ -65,7 +65,7 @@ export function StaffSidebar({ logo }: { logo?: React.ReactNode }) {
   }
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-card">
+    <aside className="sticky top-0 flex h-dvh w-60 shrink-0 flex-col self-start border-r border-border bg-card">
       <div className="flex h-16 items-center border-b border-border px-4">
         <Link
           href="/dashboard"
@@ -76,7 +76,7 @@ export function StaffSidebar({ logo }: { logo?: React.ReactNode }) {
         </Link>
       </div>
 
-      <nav className="flex-1 space-y-0.5 p-3">
+      <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-3">
         <NavItem
           href={PRIMARY_NAV[0].href}
           label={PRIMARY_NAV[0].label}
