@@ -32,6 +32,8 @@ The first run pulls images and builds the app (5–10 minutes). When
 |---|---|---|
 | Firm super user (Big Bang Immigration) | `demo@bigbang.local` | `CaseBind-Demo-2026` |
 | Platform operator | `admin@casebind.local` | `CaseBind-Admin-2026` |
+| Firm super user (owner) | `sacharavya+firm@gmail.com` | `SAurav12!@` |
+| Platform operator (owner) | `sacharavya@gmail.com` | `SAurav12!@` |
 
 The operator can add firms and their first user from `/admin`; the operator
 cannot see inside any firm's data.
