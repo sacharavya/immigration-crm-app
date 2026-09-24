@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Self-contained server bundle for the Docker image; no effect on Vercel.
+  output: "standalone",
   experimental: {
     serverActions: {
       // Default is 1MB. Bumped to 5MB so document uploads (Graph

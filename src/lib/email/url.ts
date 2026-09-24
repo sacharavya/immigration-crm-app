@@ -30,7 +30,7 @@ export async function getBaseUrl(): Promise<string> {
   // this was crm.genzdatalabs.com, which doesn't resolve. If
   // NEXT_PUBLIC_APP_URL is somehow missing AND we're outside a
   // request context, this is what every link in every email points at.
-  return "https://app.genzdatalabs.com";
+  return "https://app.casebindsystems.com";
 }
 
 /**

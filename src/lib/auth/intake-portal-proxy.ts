@@ -1,4 +1,5 @@
 import type { NextRequest, NextResponse } from "next/server";
+import { supabaseServerUrl } from "@/lib/supabase/env";
 
 // Establishes the intake-portal cookie on the proxy response before
 // the page renders.
@@ -32,7 +33,7 @@ export async function maybeSetIntakePortalCookie(
   // Fast path: matching cookie already present.
   if (request.cookies.get(COOKIE_NAME)?.value === token) return;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseUrl = supabaseServerUrl();
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) {
     // Env misconfigured — let the page render its invalid-link card.

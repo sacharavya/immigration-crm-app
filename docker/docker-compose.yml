@@ -1,0 +1,205 @@
+# CaseBind trial stack: the CRM plus a self-contained Supabase (Postgres,
+# Auth, PostgREST, Storage) behind one gateway, with migrations and demo
+# accounts applied on first start. `docker compose up` and nothing else.
+#
+# Every secret below is a throwaway for trying the product on a laptop.
+# Change all of them before this stack faces the internet.
+name: casebind
+
+x-keys: &keys
+  # HS256 keys minted for the JWT secret below; they never expire.
+  ANON_KEY: &anon eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjIwMDAwMDAwMDB9.lO4dhmteQy_KS-yTR_SYE3nI-VwtP1K7khtMVUJICek
+  SERVICE_KEY: &service eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjAwMDAwMDAwMH0.RdatoSoipfIQUtAoE2fujyMXlz9D3WjLyDHmASEma2U
+
+services:
+  db:
+    image: supabase/postgres:17.6.1.166
+    restart: unless-stopped
+    volumes:
+      - ./db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
+      - ./db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:ro
+      - ./db/schemas.sql:/docker-entrypoint-initdb.d/init-scripts/99-schemas.sql:ro
+      - db-data:/var/lib/postgresql/data
+      - db-config:/etc/postgresql-custom
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: 5432
+      POSTGRES_PORT: 5432
+      PGPASSWORD: &pgpass casebind-trial-postgres
+      POSTGRES_PASSWORD: *pgpass
+      PGDATABASE: postgres
+      POSTGRES_DB: postgres
+      JWT_EXP: 3600
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  auth:
+    image: supabase/gotrue:v2.196.0
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: http://localhost:8000/auth/v1
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:casebind-trial-postgres@db:5432/postgres
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_URI_ALLOW_LIST: http://localhost:3000/*
+      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_SECRET: &jwt casebind-trial-jwt-secret-change-me-before-any-real-use-0123456789
+      GOTRUE_JWT_ISSUER: http://localhost:8000/auth/v1
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      # Every auth email (password reset, invites) lands in Mailpit at :8025.
+      GOTRUE_SMTP_HOST: mailpit
+      GOTRUE_SMTP_PORT: 1025
+      GOTRUE_SMTP_ADMIN_EMAIL: noreply@casebind.local
+      GOTRUE_SMTP_SENDER_NAME: CaseBind
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rest:
+    image: postgrest/postgrest:v14.17
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      PGRST_DB_URI: postgres://authenticator:casebind-trial-postgres@db:5432/postgres
+      # supabase/config.toml [api].schemas, minus graphql_public (unused here).
+      PGRST_DB_SCHEMAS: public,crm,files,portal,ref,platform,audit
+      PGRST_DB_EXTRA_SEARCH_PATH: public,extensions
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_DB_MAX_ROWS: 1000
+      PGRST_JWT_SECRET: *jwt
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      # `postgrest --ready` (the healthcheck) talks to this admin port.
+      PGRST_ADMIN_SERVER_PORT: 3001
+      PGRST_ADMIN_SERVER_HOST: localhost
+      PGRST_APP_SETTINGS_JWT_EXP: 3600
+    healthcheck:
+      test: ["CMD", "postgrest", "--ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  storage:
+    image: supabase/storage-api:v1.74.0
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+      rest: { condition: service_healthy }
+    environment:
+      ANON_KEY: *anon
+      SERVICE_KEY: *service
+      POSTGREST_URL: http://rest:3000
+      AUTH_JWT_SECRET: *jwt
+      DATABASE_URL: postgres://supabase_storage_admin:casebind-trial-postgres@db:5432/postgres
+      STORAGE_PUBLIC_URL: http://localhost:8000
+      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      GLOBAL_S3_BUCKET: stub
+      TENANT_ID: stub
+      REGION: stub
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+    volumes:
+      - storage-data:/var/lib/storage
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5000/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  kong:
+    image: kong:2.8.1
+    restart: unless-stopped
+    entrypoint: bash -c 'eval "echo \"$$(cat ~/temp.yml)\"" > ~/kong.yml && /docker-entrypoint.sh kong docker-start'
+    ports:
+      - "8000:8000"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      SUPABASE_ANON_KEY: *anon
+      SUPABASE_SERVICE_KEY: *service
+    volumes:
+      - ./kong.yml:/home/kong/temp.yml:ro
+    depends_on:
+      auth: { condition: service_healthy }
+      rest: { condition: service_healthy }
+      storage: { condition: service_healthy }
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+
+  # Applies supabase/migrations in order, then the demo accounts. Exits 0.
+  init:
+    image: postgres:17-alpine
+    depends_on:
+      db: { condition: service_healthy }
+      auth: { condition: service_healthy }
+      storage: { condition: service_healthy }
+    environment:
+      POSTGRES_PASSWORD: *pgpass
+    volumes:
+      - ../supabase/migrations:/migrations:ro
+      - ./init:/init:ro
+    command: ["sh", "/init/apply.sh"]
+    restart: "no"
+
+  app:
+    build:
+      context: ..
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: http://localhost:8000
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: *anon
+        NEXT_PUBLIC_APP_URL: http://localhost:3000
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      init: { condition: service_completed_successfully }
+      kong: { condition: service_started }
+    environment:
+      # The browser reaches Supabase on the host port; the container reaches
+      # the gateway by its service name.
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:8000
+      SUPABASE_INTERNAL_URL: http://kong:8000
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: *anon
+      SUPABASE_SERVICE_ROLE_KEY: *service
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      TOKEN_ENCRYPTION_KEY: casebind-trial-token-key-not-for-real-use-abcdefghijklmnop
+      # Not wired in the trial: document storage (Microsoft Graph / connected
+      # accounts), outbound client email (Resend), NOC keyword extraction (Groq).
+      # Add real values here to try those.
+
+volumes:
+  db-data:
+  db-config:
+  storage-data:

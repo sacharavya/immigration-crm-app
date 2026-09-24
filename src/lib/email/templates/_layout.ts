@@ -19,7 +19,7 @@ function logoUrl(): string {
   // does not resolve, so a missing NEXT_PUBLIC_APP_URL there means the
   // logo never loads in any client.
   const base =
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://app.genzdatalabs.com";
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://app.casebindsystems.com";
   return `${base.replace(/\/$/, "")}/casebind-logo.png`;
 }
 

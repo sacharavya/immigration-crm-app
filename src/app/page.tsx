@@ -185,7 +185,7 @@ export default function CrmLandingPage() {
           {/* The product is the hero image: full width, bleeding past the
               fold so the page opens on the real thing. */}
           <div className="relative z-[1] mx-auto mt-16 w-full max-w-[1180px] text-[var(--ink)]">
-            <BrowserFrame url="app.genzdatalabs.com/dashboard">
+            <BrowserFrame url="app.casebindsystems.com/dashboard">
               <Image
                 src="/dashboard-preview.png"
                 alt="CaseBind dashboard"

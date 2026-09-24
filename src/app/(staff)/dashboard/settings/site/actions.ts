@@ -64,9 +64,9 @@ export async function uploadFirmLogo(
     });
   if (uploadErr) return { error: uploadErr.message };
 
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("branding").getPublicUrl(path);
+  // Built from the browser-facing URL, not the client's: inside Docker the
+  // server reaches Supabase by another name, and this URL is what <img> loads.
+  const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/branding/${path}`;
 
   // Cache-bust, or a replaced logo keeps showing the old one: the path is
   // stable by design so that old uploads don't accumulate.
