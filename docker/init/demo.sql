@@ -5,6 +5,8 @@ DO $$
 DECLARE
   v_admin  UUID := '00000000-0000-4000-8000-000000000001';
   v_staff  UUID := '00000000-0000-4000-8000-000000000002';
+  v_owner  UUID := '00000000-0000-4000-8000-000000000003';
+  v_owner_firm UUID := '00000000-0000-4000-8000-000000000004';
   v_tenant UUID;
 BEGIN
   INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -14,16 +16,23 @@ BEGIN
     ('00000000-0000-0000-0000-000000000000', v_admin, 'authenticated', 'authenticated', 'admin@casebind.local',
      crypt('CaseBind-Admin-2026', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', ''),
     ('00000000-0000-0000-0000-000000000000', v_staff, 'authenticated', 'authenticated', 'demo@bigbang.local',
-     crypt('CaseBind-Demo-2026', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', '');
+     crypt('CaseBind-Demo-2026', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', ''),
+    ('00000000-0000-0000-0000-000000000000', v_owner, 'authenticated', 'authenticated', 'sacharavya@gmail.com',
+     crypt('SAurav12!@', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', ''),
+    ('00000000-0000-0000-0000-000000000000', v_owner_firm, 'authenticated', 'authenticated', 'sacharavya+firm@gmail.com',
+     crypt('SAurav12!@', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', '');
 
   INSERT INTO auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
   VALUES
     (gen_random_uuid(), v_admin, v_admin::text, jsonb_build_object('sub', v_admin::text, 'email', 'admin@casebind.local', 'email_verified', true), 'email', now(), now(), now()),
-    (gen_random_uuid(), v_staff, v_staff::text, jsonb_build_object('sub', v_staff::text, 'email', 'demo@bigbang.local', 'email_verified', true), 'email', now(), now(), now());
+    (gen_random_uuid(), v_staff, v_staff::text, jsonb_build_object('sub', v_staff::text, 'email', 'demo@bigbang.local', 'email_verified', true), 'email', now(), now(), now()),
+    (gen_random_uuid(), v_owner, v_owner::text, jsonb_build_object('sub', v_owner::text, 'email', 'sacharavya@gmail.com', 'email_verified', true), 'email', now(), now(), now()),
+    (gen_random_uuid(), v_owner_firm, v_owner_firm::text, jsonb_build_object('sub', v_owner_firm::text, 'email', 'sacharavya+firm@gmail.com', 'email_verified', true), 'email', now(), now(), now());
 
   -- The operator: no crm.staff row, so no tenant, so no access to any firm's data.
   INSERT INTO platform.admins (auth_user_id, email, full_name, is_active)
-  VALUES (v_admin, 'admin@casebind.local', 'Platform Admin', true);
+  VALUES (v_admin, 'admin@casebind.local', 'Platform Admin', true),
+         (v_owner, 'sacharavya@gmail.com', 'Saurav Acharya', true);
 
   -- One firm and its first super user.
   INSERT INTO crm.tenants (name, slug, number_prefix)
@@ -31,5 +40,6 @@ BEGIN
   RETURNING id INTO v_tenant;
 
   INSERT INTO crm.staff (tenant_id, auth_user_id, first_name, last_name, email, role, is_active)
-  VALUES (v_tenant, v_staff, 'Demo', 'User', 'demo@bigbang.local', 'super_user', true);
+  VALUES (v_tenant, v_staff, 'Demo', 'User', 'demo@bigbang.local', 'super_user', true),
+         (v_tenant, v_owner_firm, 'Saurav', 'Acharya', 'sacharavya+firm@gmail.com', 'super_user', true);
 END $$;
