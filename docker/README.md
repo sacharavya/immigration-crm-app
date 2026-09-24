@@ -20,6 +20,12 @@ The first run pulls images and builds the app (5–10 minutes). When
 | Every email the system sends (password resets, invites) | http://localhost:8025 |
 | Supabase API gateway | http://localhost:8000 |
 
+> Run it through `docker compose`, not `docker run casebind-app`. On its own
+> the app container publishes no port (the browser gets "connection
+> refused") and has no database or auth behind it. Compose does both.
+>
+> The stack lives on the `feat/multitenancy` branch until it is merged.
+
 ## Demo accounts
 
 | Role | Email | Password |
