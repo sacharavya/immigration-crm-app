@@ -7,7 +7,7 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY scripts/copy-pdfium-wasm.mjs scripts/
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 FROM node:22-alpine AS build
 WORKDIR /app
