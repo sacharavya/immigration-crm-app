@@ -183,6 +183,7 @@ export async function sendCaseDecisionEmail(
 
   await logEmail({
     supabase,
+    tenantId: ctx.tenantId,
     caseId: ctx.caseId,
     clientId: ctx.clientId,
     staffId: opts?.staffId,
@@ -259,6 +260,7 @@ export async function sendCaseEventEmail(
 
   await logEmail({
     supabase,
+    tenantId: ctx.tenantId,
     caseId: ctx.caseId,
     clientId: ctx.clientId,
     staffId: opts?.staffId,
@@ -330,6 +332,7 @@ export async function sendCasePhaseAdvanceEmail(
 
   await logEmail({
     supabase,
+    tenantId: ctx.tenantId,
     caseId: ctx.caseId,
     clientId: ctx.clientId,
     staffId: opts?.staffId,

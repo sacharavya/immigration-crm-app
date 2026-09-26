@@ -8,6 +8,8 @@ type Args = {
   supabase: SupabaseClient<Database>;
   caseId?: string | null;
   clientId?: string | null;
+  /** Required when called as the service role (portal flows); staff sessions default it. */
+  tenantId?: string | null;
   staffId?: string | null;
   to: string | string[];
   subject: string;
@@ -26,6 +28,7 @@ export async function logEmail(args: Args): Promise<void> {
       .schema("crm")
       .from("communications")
       .insert({
+        ...(args.tenantId ? { tenant_id: args.tenantId } : {}),
         case_id: args.caseId ?? null,
         client_id: args.clientId ?? null,
         channel: "email",

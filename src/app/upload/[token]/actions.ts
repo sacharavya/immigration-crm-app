@@ -298,6 +298,7 @@ export async function uploadFileAsClient(
     .schema("files")
     .from("documents")
     .insert({
+      tenant_id: ctx.caseRow.tenant_id,
       case_id: ctx.caseRow.id,
       client_id: ctx.caseRow.client_id,
       document_code: documentCode,
@@ -327,6 +328,7 @@ export async function uploadFileAsClient(
     .schema("crm")
     .from("case_events")
     .insert({
+      tenant_id: ctx.caseRow.tenant_id,
       case_id: ctx.caseRow.id,
       event_type: "document_received",
       event_data: {
@@ -470,6 +472,7 @@ export async function reuploadFileAsClient(
     .schema("files")
     .from("documents")
     .insert({
+      tenant_id: ctx.caseRow.tenant_id,
       case_id: ctx.caseRow.id,
       client_id: ctx.caseRow.client_id,
       document_code: live.document_code,
@@ -502,6 +505,7 @@ export async function reuploadFileAsClient(
     .schema("crm")
     .from("case_events")
     .insert({
+      tenant_id: ctx.caseRow.tenant_id,
       case_id: ctx.caseRow.id,
       event_type: "document_received",
       event_data: {
@@ -720,6 +724,7 @@ export async function uploadAsClientAdditional(
     .schema("files")
     .from("documents")
     .insert({
+      tenant_id: caseRow.tenant_id,
       case_id: caseRow.id,
       client_id: caseRow.client_id,
       document_code: null,
@@ -750,6 +755,7 @@ export async function uploadAsClientAdditional(
     .schema("crm")
     .from("case_events")
     .insert({
+      tenant_id: caseRow.tenant_id,
       case_id: caseRow.id,
       event_type: "document_received",
       event_data: {

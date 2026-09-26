@@ -106,6 +106,7 @@ async function loadCaseFolderId(caseId: string): Promise<string | null> {
 }
 
 type SignedNotificationContext = {
+  tenantId: string;
   caseId: string;
   caseNumber: string;
   clientId: string;
@@ -122,7 +123,7 @@ async function loadSignedNotificationContext(
   const { data: caseRow } = await supabase
     .schema("crm")
     .from("cases")
-    .select("id, case_number, client_id, assigned_rcic")
+    .select("id, tenant_id, case_number, client_id, assigned_rcic")
     .eq("id", caseId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -154,6 +155,7 @@ async function loadSignedNotificationContext(
     "there";
 
   return {
+    tenantId: caseRow.tenant_id,
     caseId: caseRow.id,
     caseNumber: caseRow.case_number,
     clientId: caseRow.client_id,
@@ -200,6 +202,7 @@ async function sendSignedNotifications(args: {
       }
       await logEmail({
         supabase,
+        tenantId: args.ctx.tenantId,
         caseId: args.ctx.caseId,
         clientId: args.ctx.clientId,
         to: args.ctx.clientEmail,
@@ -235,6 +238,7 @@ async function sendSignedNotifications(args: {
       }
       await logEmail({
         supabase,
+        tenantId: args.ctx.tenantId,
         caseId: args.ctx.caseId,
         clientId: args.ctx.clientId,
         to: args.ctx.rcicEmail,
@@ -355,6 +359,7 @@ async function finishOnlineSignature(
     .schema("crm")
     .from("case_events")
     .insert({
+      tenant_id: retainer.tenant_id,
       case_id: retainer.case_id,
       event_type: "retainer_signed",
       description:
@@ -396,6 +401,7 @@ async function finishOnlineSignature(
         .schema("files")
         .from("documents")
         .insert({
+          tenant_id: retainer.tenant_id,
           case_id: retainer.case_id,
           category: "retainer",
           document_code: "SIGNED_RETAINER",
@@ -440,6 +446,7 @@ async function finishOnlineSignature(
         .schema("crm")
         .from("case_events")
         .insert({
+          tenant_id: retainer.tenant_id,
           case_id: retainer.case_id,
           event_type: "other",
           description:
@@ -542,6 +549,7 @@ export async function submitScannedDocument(
       .schema("files")
       .from("documents")
       .insert({
+        tenant_id: retainer.tenant_id,
         case_id: retainer.case_id,
         category: "retainer",
         document_code: "SIGNED_RETAINER",
@@ -580,6 +588,7 @@ export async function submitScannedDocument(
       .schema("crm")
       .from("case_events")
       .insert({
+        tenant_id: retainer.tenant_id,
         case_id: retainer.case_id,
         event_type: "retainer_uploaded",
         description: "Signed retainer uploaded by client",

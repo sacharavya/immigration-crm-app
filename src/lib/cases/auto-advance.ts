@@ -36,7 +36,7 @@ export async function tryAutoAdvanceFromRetainerPending(
   const { data: caseRow } = await supabase
     .schema("crm")
     .from("cases")
-    .select("status")
+    .select("status, tenant_id")
     .eq("id", caseId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -82,6 +82,7 @@ export async function tryAutoAdvanceFromRetainerPending(
     .schema("crm")
     .from("case_events")
     .insert({
+      tenant_id: caseRow.tenant_id,
       case_id: caseId,
       event_type: "status_changed",
       event_data: {

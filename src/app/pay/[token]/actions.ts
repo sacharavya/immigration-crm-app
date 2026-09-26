@@ -220,6 +220,7 @@ export async function submitCasePaymentProof(
       .schema("files")
       .from("documents")
       .insert({
+        tenant_id: caseRow.tenant_id,
         case_id: caseRow.id,
         client_id: caseRow.client_id,
         category: "payment_proof",
@@ -248,6 +249,7 @@ export async function submitCasePaymentProof(
       .schema("crm")
       .from("payments")
       .insert({
+        tenant_id: caseRow.tenant_id,
         case_id: caseRow.id,
         client_id: caseRow.client_id,
         amount_cad: amount,
@@ -274,6 +276,7 @@ export async function submitCasePaymentProof(
       .schema("crm")
       .from("case_events")
       .insert({
+        tenant_id: caseRow.tenant_id,
         case_id: caseRow.id,
         event_type: "fee_collected",
         event_data: {

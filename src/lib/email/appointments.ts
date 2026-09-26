@@ -224,6 +224,7 @@ export async function sendAppointmentConfirmation(
 
   await logEmail({
     supabase,
+    tenantId: row.tenant_id,
     caseId: row.case_id,
     clientId: row.client_id,
     to: row.snapshot_client_email,
@@ -294,6 +295,7 @@ export async function sendAppointmentReschedule(
 
   await logEmail({
     supabase,
+    tenantId: row.tenant_id,
     caseId: row.case_id,
     clientId: row.client_id,
     to: row.snapshot_client_email,
@@ -354,6 +356,7 @@ export async function sendAppointmentCancellation(
 
   await logEmail({
     supabase,
+    tenantId: row.tenant_id,
     caseId: row.case_id,
     clientId: row.client_id,
     to: row.snapshot_client_email,
@@ -421,6 +424,7 @@ export async function sendAppointmentReminder(
 
   await logEmail({
     supabase,
+    tenantId: row.tenant_id,
     caseId: row.case_id,
     clientId: row.client_id,
     to: row.snapshot_client_email,
@@ -491,6 +495,7 @@ export async function sendInternalNotification(
 
   await logEmail({
     supabase,
+    tenantId: row.tenant_id,
     caseId: row.case_id,
     clientId: row.client_id,
     staffId: row.assigned_staff_id ?? undefined,
@@ -563,6 +568,7 @@ export async function sendPaymentPending(
   }
   await logEmail({
     supabase,
+    tenantId: row.tenant_id,
     caseId: row.case_id,
     clientId: row.client_id,
     to: row.snapshot_client_email,
@@ -616,6 +622,7 @@ export async function sendPaymentStaffNotification(
   }
   await logEmail({
     supabase,
+    tenantId: row.tenant_id,
     caseId: row.case_id,
     clientId: row.client_id,
     staffId: row.assigned_staff_id ?? undefined,
@@ -662,6 +669,7 @@ export async function sendPaymentRejected(
   }
   await logEmail({
     supabase,
+    tenantId: row.tenant_id,
     caseId: row.case_id,
     clientId: row.client_id,
     to: row.snapshot_client_email,
@@ -705,6 +713,7 @@ export async function sendAbandonedBooking(
   }
   await logEmail({
     supabase,
+    tenantId: row.tenant_id,
     caseId: row.case_id,
     clientId: row.client_id,
     to: row.snapshot_client_email,

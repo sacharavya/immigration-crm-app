@@ -470,6 +470,7 @@ export async function uploadPaymentProof(
     .schema("files")
     .from("documents")
     .insert({
+      tenant_id: appt.tenant_id,
       client_id: appt.client_id,
       file_name: safeName,
       display_name: `Payment proof — ${appt.snapshot_client_name}`,
@@ -532,6 +533,7 @@ export async function uploadPaymentProof(
       .schema("crm")
       .from("payments")
       .insert({
+        tenant_id: appt.tenant_id,
         client_id: appt.client_id,
         case_id: null,
         amount_cad: fee,

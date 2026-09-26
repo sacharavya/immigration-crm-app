@@ -77,6 +77,7 @@ export async function submitConsultationSignature(input: {
       .schema("files")
       .from("documents")
       .insert({
+        tenant_id: appt.tenant_id,
         client_id: appt.client_id,
         file_name: safeName,
         display_name: `Initial Consultation Agreement — ${appt.snapshot_client_name}`,
