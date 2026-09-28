@@ -42,7 +42,7 @@ export function AttentionList({ queues }: { queues: AttentionQueue[] }) {
             const { Icon, cls } = TONE[q.tone];
             const more = q.count - q.items.length;
             return (
-              <div key={q.key} className="px-5 py-3">
+              <div key={q.key} className={cn("px-5 py-3", q.tone === "critical" && "bg-[var(--destructive-subtle)]/40")}>
                 <div className="flex items-center gap-3">
                   <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full", cls)}>
                     <Icon className="h-3.5 w-3.5" />

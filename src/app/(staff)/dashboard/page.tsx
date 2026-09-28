@@ -153,20 +153,26 @@ export default async function DashboardPage() {
 
   return (
     <main className="space-y-6 px-6 py-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-1">
+      <div className="relative flex flex-col gap-4 overflow-hidden rounded-[calc(var(--radius)*1.4)] border border-border bg-card px-6 py-6 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "radial-gradient(60% 120% at 0% 0%, color-mix(in srgb, var(--navy) 9%, transparent), transparent 70%)" }}
+        />
+        <div className="relative flex flex-col gap-1.5">
           <p className="text-xs font-medium uppercase tracking-[0.08em] text-[var(--subtle-foreground)]">
             {date}
           </p>
           <h1 className="text-[28px] font-semibold tracking-[-0.02em] text-foreground">
             {greeting}, {me.first_name}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            {glance.length === 0 ? "Nothing is waiting on you — a good day to get ahead." : `Today: ${glance.join(" · ")}.`}
+          <p className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-[var(--surface-sunken)] px-3 py-1 text-[12.5px] text-muted-foreground">
+            <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", glance.length === 0 ? "bg-[var(--success)]" : "bg-[var(--warning)]")} />
+            {glance.length === 0 ? "Nothing is waiting on you — a good day to get ahead." : `Today: ${glance.join(" · ")}`}
           </p>
         </div>
         {(canCreateCases || canCreateClients || canAppointments) && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="relative flex shrink-0 flex-wrap items-center gap-2">
             {apptDialogData && (
               <NewAppointmentDialog
                 types={apptDialogData.types}
@@ -179,7 +185,7 @@ export default async function DashboardPage() {
             {canCreateClients && (
               <Link
                 href="/dashboard/clients/new"
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "rounded-full")}
               >
                 + New client
               </Link>
@@ -187,7 +193,7 @@ export default async function DashboardPage() {
             {canCreateCases && (
               <Link
                 href="/dashboard/cases/new"
-                className={cn(buttonVariants({ size: "sm" }))}
+                className={cn(buttonVariants({ size: "sm" }), "rounded-full")}
               >
                 + New case
               </Link>

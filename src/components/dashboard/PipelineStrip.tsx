@@ -55,6 +55,22 @@ export function PipelineStrip({
         </Link>
       </div>
 
+      {total > 0 && (
+        <div
+          aria-hidden
+          className="flex h-2 w-full gap-0.5 overflow-hidden rounded-full bg-muted"
+          title={phases.map((p) => `${p.label}: ${p.count}`).join(" · ")}
+        >
+          {phases.map((p) => (
+            <span
+              key={p.phase}
+              className={cn("h-full rounded-full transition-[width] duration-500", RAIL[p.phase])}
+              style={{ width: `${Math.max((p.count / total) * 100, p.count > 0 ? 3 : 0)}%` }}
+            />
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {phases.map((p) => (
           <Link
@@ -62,11 +78,11 @@ export function PipelineStrip({
             href={p.href}
             className="group overflow-hidden rounded-[var(--radius)] border border-border bg-card shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring/40"
           >
-            <span aria-hidden className={cn("block h-[3px]", RAIL[p.phase])} />
             <div className="p-4">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  {p.phase}. {p.label}
+                <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <span aria-hidden className={cn("h-2 w-2 rounded-full", RAIL[p.phase])} />
+                  {p.label}
                 </span>
                 <ArrowUpRight
                   aria-hidden
@@ -74,7 +90,7 @@ export function PipelineStrip({
                 />
               </div>
 
-              <div className="mt-3 text-[28px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-foreground">
+              <div className="mt-3 text-[32px] font-semibold leading-none tabular-nums tracking-[-0.03em] text-foreground">
                 {p.count}
               </div>
 
