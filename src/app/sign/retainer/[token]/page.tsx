@@ -55,7 +55,7 @@ export default async function PublicSigningPage({ params }: Props) {
   }
 
   return (
-    <main className="min-h-dvh bg-stone-100">
+    <main className="app-surface min-h-dvh bg-[var(--surface-sunken)]">
       <header className="border-b border-stone-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
           <FirmLogo className="h-10 w-auto" tenantId={portalTenantId ?? undefined} />
@@ -111,7 +111,7 @@ export default async function PublicSigningPage({ params }: Props) {
 
 function ExpiredOrInvalid() {
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-stone-100 p-6">
+    <main className="app-surface flex min-h-dvh items-center justify-center bg-[var(--surface-sunken)] p-6">
       <div className="max-w-md rounded-2xl border border-stone-200 bg-white p-6 text-center shadow-sm">
         <h1 className="text-lg font-semibold text-stone-900">
           Signing link unavailable

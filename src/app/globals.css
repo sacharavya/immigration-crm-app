@@ -295,18 +295,20 @@
    screens, so the staff shell opts into a soft radius — same escape hatch
    the marketing pages use. Set to 0 to go back to square. */
 .app-surface {
-  --radius: 10px;
+  --radius: 12px;
 
   /* Hairline borders. The default --border is tuned for square edges and
      looks heavy once corners are rounded, and elevation now carries most of
      the separation that borders used to do alone. */
-  --border: #ECEEF1;
-  --border-secondary: #DDE1E6;
+  --border: #E6E8EC;
+  --border-secondary: #D9DDE3;
 
-  /* Page ground behind the cards, cool enough that white surfaces read as
-     lifted off it. Navy-tinted rather than neutral grey so it belongs to the
-     brand family. */
-  --surface-sunken: #FAF8F2;
+  /* Cards lift off the ground with a soft, short shadow rather than a line. */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 2px 8px rgba(15, 23, 42, 0.05);
+
+  /* Page ground behind the cards: a cool, quiet grey so white cards read as
+     lifted off it. */
+  --surface-sunken: #F5F6F8;
 
   /* Pastel tile fills for accent icon squares. Each pairs with the matching
      *-tile-fg for the glyph so contrast holds on the wash. */

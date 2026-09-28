@@ -30,8 +30,8 @@ export default async function PayLayout({
   const portalTenantId = await tenantForPortalToken(token);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-stone-50 text-stone-900">
-      <header className="border-b border-stone-200 bg-white">
+    <div className="app-surface flex min-h-dvh flex-col bg-[var(--surface-sunken)] text-foreground">
+      <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-6 py-4">
           <FirmLogo className="h-10 w-auto" tenantId={portalTenantId ?? undefined} />
         </div>

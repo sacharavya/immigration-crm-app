@@ -212,7 +212,7 @@ export default async function ClientUploadPage({ params }: Props) {
   const showOriginalChecklist = !caseRow.additional_docs_only;
 
   return (
-    <main className="min-h-dvh bg-[var(--surface-sunken)]">
+    <main className="app-surface min-h-dvh bg-[var(--surface-sunken)]">
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-2xl items-center gap-4 px-5 py-5">
           <FirmLogo className="h-11 w-auto" tenantId={portalTenantId ?? undefined} />

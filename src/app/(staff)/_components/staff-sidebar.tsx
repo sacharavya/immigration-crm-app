@@ -65,8 +65,8 @@ export function StaffSidebar({ logo }: { logo?: React.ReactNode }) {
   }
 
   return (
-    <aside className="sticky top-0 flex h-dvh w-60 shrink-0 flex-col self-start border-r border-border bg-card">
-      <div className="flex h-16 items-center border-b border-border px-4">
+    <aside className="sticky top-0 flex h-dvh w-56 shrink-0 flex-col self-start border-r border-border bg-card">
+      <div className="flex h-14 items-center border-b border-border px-4">
         <Link
           href="/dashboard"
           aria-label="CaseBind"
@@ -76,7 +76,7 @@ export function StaffSidebar({ logo }: { logo?: React.ReactNode }) {
         </Link>
       </div>
 
-      <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-3">
+      <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2.5">
         <NavItem
           href={PRIMARY_NAV[0].href}
           label={PRIMARY_NAV[0].label}
@@ -179,10 +179,10 @@ function NavItem({
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+        "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors",
         active
           ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
-          : "text-muted-foreground hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
+          : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >
       <Icon className="h-4 w-4" />
@@ -209,10 +209,10 @@ function CasesSection({ pathname }: { pathname: string }) {
           href="/dashboard/cases"
           aria-current={sectionActive ? "page" : undefined}
           className={cn(
-            "flex flex-1 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+            "flex flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors",
             sectionActive
               ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
-              : "text-muted-foreground hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
         >
           <Briefcase className="h-4 w-4" />
@@ -273,10 +273,10 @@ function AppointmentsSection({ pathname }: { pathname: string }) {
           href="/dashboard/appointments"
           aria-current={sectionActive ? "page" : undefined}
           className={cn(
-            "flex flex-1 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+            "flex flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors",
             sectionActive
               ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
-              : "text-muted-foreground hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
         >
           <CalendarDays className="h-4 w-4" />
@@ -354,10 +354,10 @@ function AdminSection({ pathname }: { pathname: string }) {
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
           className={cn(
-            "flex flex-1 items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+            "flex flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors",
             sectionActive
               ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
-              : "text-muted-foreground hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
         >
           <SettingsIcon className="h-4 w-4" />
@@ -443,7 +443,7 @@ function SubNavItem({
         "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors",
         active
           ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
-          : "text-muted-foreground hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]",
+          : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >
       <Icon className="h-3.5 w-3.5" />

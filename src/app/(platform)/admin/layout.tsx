@@ -25,9 +25,9 @@ export default async function PlatformAdminLayout({
   if (!admin) redirect("/login?error=unauthorized");
 
   return (
-    <div className="flex min-h-screen bg-[var(--surface-sunken)]">
-      <aside className="flex w-60 flex-none flex-col border-r border-stone-200 bg-white">
-        <div className="border-b border-stone-200 px-5 py-5">
+    <div className="app-surface flex min-h-screen bg-[var(--surface-sunken)] text-foreground">
+      <aside className="sticky top-0 flex h-dvh w-56 flex-none flex-col self-start border-r border-border bg-card">
+        <div className="border-b border-border px-5 py-4">
           {/* The operator portal is the platform itself, so it carries the
               CaseBind mark. Each firm's own branding lives in their CRM. */}
           <CaseBindLogo className="h-7 w-auto" />
@@ -36,12 +36,12 @@ export default async function PlatformAdminLayout({
           </div>
         </div>
 
-        <nav className="flex-1 space-y-0.5 p-3">
+        <nav className="flex-1 space-y-0.5 p-2.5">
           {NAV.map(({ href, label, Icon }) => (
             <Link
               key={href}
               href={href}
-              className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-stone-600 transition-colors hover:bg-[var(--primary)]/5 hover:text-[var(--primary)]"
+              className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <Icon className="h-4 w-4" />
               {label}
@@ -49,7 +49,7 @@ export default async function PlatformAdminLayout({
           ))}
         </nav>
 
-        <div className="border-t border-stone-200 p-3">
+        <div className="border-t border-border p-3">
           <div className="px-2 py-1 text-sm font-medium text-stone-900">
             {admin.full_name}
           </div>

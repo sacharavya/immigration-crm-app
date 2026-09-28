@@ -56,7 +56,7 @@ export default async function FirmsPage() {
 
       <CreateTenantForm />
 
-      <div className="overflow-x-auto rounded-lg border border-stone-200 bg-white">
+      <div className="overflow-x-auto rounded-[var(--radius)] border border-border bg-card shadow-sm">
         <table className="w-full text-sm">
           <thead className="border-b border-stone-200 bg-stone-50 text-left text-xs uppercase tracking-wide text-stone-500">
             <tr>

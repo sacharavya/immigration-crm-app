@@ -41,9 +41,9 @@ export function PipelineStrip({ phases }: { phases: PipelinePhase[] }) {
         </div>
         <Link
           href="/dashboard/cases?view=board"
-          className="shrink-0 text-xs font-medium text-primary hover:underline"
+          className="shrink-0 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
-          Open board
+          Open board ›
         </Link>
       </div>
 

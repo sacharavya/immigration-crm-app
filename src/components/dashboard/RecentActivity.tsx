@@ -27,8 +27,8 @@ function statusPill(status: string): string {
 
 export function RecentActivity({ rows }: { rows: RecentRow[] }) {
   return (
-    <section className="space-y-3">
-      <div className="flex items-end justify-between gap-3">
+    <section className="overflow-hidden rounded-[var(--radius)] border border-border bg-card shadow-sm">
+      <div className="flex items-end justify-between gap-3 px-5 pb-3 pt-4">
         <div>
           <h2 className="text-sm font-semibold tracking-tight text-foreground">
             Recently updated
@@ -39,13 +39,13 @@ export function RecentActivity({ rows }: { rows: RecentRow[] }) {
         </div>
         <Link
           href="/dashboard/cases"
-          className="shrink-0 text-xs font-medium text-primary hover:underline"
+          className="shrink-0 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
-          View all
+          View all ›
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+      <div className="border-t border-border">
         {rows.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-muted-foreground">
             No active cases yet.
@@ -56,7 +56,7 @@ export function RecentActivity({ rows }: { rows: RecentRow[] }) {
               <li key={row.caseId}>
                 <Link
                   href={`/dashboard/cases/${row.caseId}`}
-                  className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-muted/50"
+                  className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-muted/50"
                 >
                   <span className="font-mono text-[11px] uppercase tracking-wider text-[var(--subtle-foreground)]">
                     {row.caseNumber}
