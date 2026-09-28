@@ -28,19 +28,24 @@ function statusPill(status: string): string {
 export function RecentActivity({ rows }: { rows: RecentRow[] }) {
   return (
     <section className="overflow-hidden rounded-[var(--radius)] border border-border bg-card shadow-sm">
-      <div className="flex items-center justify-between gap-3 px-5 pb-2 pt-5">
+      <div className="flex items-end justify-between gap-3 px-5 pb-3 pt-4">
         <div>
-          <h2 className="text-[13px] font-medium text-foreground">Recently updated</h2>
+          <h2 className="text-sm font-semibold tracking-tight text-foreground">
+            Recently updated
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Most recent activity across active cases.
+          </p>
         </div>
         <Link
           href="/dashboard/cases"
-          className="shrink-0 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+          className="shrink-0 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
-          Cases ›
+          View all ›
         </Link>
       </div>
 
-      <div>
+      <div className="border-t border-border">
         {rows.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-muted-foreground">
             No active cases yet.

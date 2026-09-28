@@ -1,36 +1,36 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { AttentionList } from "@/components/dashboard/AttentionList";
-import { NextTwoWeeks, PipelineRows, StatStrip } from "@/components/dashboard/copilot-cards";
-import { formatKpiValue } from "@/lib/dashboard/metrics";
+import { KpiBar } from "@/components/dashboard/KpiBar";
+import { MyTasks } from "@/components/dashboard/MyTasks";
+import { PipelineStrip } from "@/components/dashboard/PipelineStrip";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { SuccessRadar } from "@/components/dashboard/success-radar-lazy";
 import { buttonVariants } from "@/components/ui/button";
 import { staffCan } from "@/lib/auth/permissions";
 import { NewAppointmentDialog } from "./appointments/_components/new-appointment-dialog";
 import { loadNewAppointmentDialogData } from "./appointments/new-appointment-data";
 import { getStaff } from "@/lib/auth/staff";
 import { loadActiveBoardCards, type EnrichedCard } from "@/lib/dashboard/boardCards";
-import { getAttention, sortAttention } from "@/lib/dashboard/getAttention";
 import { getKpis } from "@/lib/dashboard/getKpis";
 import { getMyTasks } from "@/lib/dashboard/getMyTasks";
 import { getPipeline } from "@/lib/dashboard/getPipeline";
 import { getRecentActivity } from "@/lib/dashboard/getRecentActivity";
+import { getSuccessRate } from "@/lib/dashboard/getSuccessRate";
 import { getUpcomingAppointments } from "@/lib/dashboard/getUpcomingAppointments";
 import type {
   DashboardTask,
+  RadarData,
   RecentRow,
 } from "@/lib/dashboard/types";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils/index";
 
 import type { AppointmentRow } from "./appointments/_components/types";
+import { UpcomingAppointmentsCard } from "./appointments/_components/upcoming-appointments-card";
 
-// Server-rendered home for the signed-in person. It opens on what is waiting
-// on them, then the slice of the work that fits their role (own caseload for
-// a consultant, the calendar for reception, the firm's numbers for whoever
-// runs it), then the firm-wide picture. Every panel reads finished view models
-// from lib/dashboard; the only client island is the radar's toggle.
+// Server-rendered firm overview. Every panel reads finished view models from
+// lib/dashboard; the only client island is the radar's Service/Category toggle.
 export const dynamic = "force-dynamic";
 
 // The firm operates out of Toronto, so the header's date and greeting follow
@@ -68,10 +68,12 @@ export default async function DashboardPage() {
 
   const supabase = await createClient();
 
-  const [attention, kpis, cards, recent, tasks, appointments] = await Promise.all([
-    getAttention(supabase, me),
+  const [kpis, cards, radar, recent, tasks, appointments] = await Promise.all([
     getKpis(supabase),
     canCases ? loadActiveBoardCards(supabase) : Promise.resolve([] as EnrichedCard[]),
+    canCases
+      ? getSuccessRate(supabase)
+      : Promise.resolve({ service: [], category: [] } as RadarData),
     canCases ? getRecentActivity(supabase) : Promise.resolve([] as RecentRow[]),
     canTasks ? getMyTasks(supabase, me.id) : Promise.resolve([] as DashboardTask[]),
     canAppointments
@@ -81,92 +83,27 @@ export default async function DashboardPage() {
 
   const pipeline = getPipeline(cards);
 
-  // A consultant or paralegal opens on their own files; everyone else on the
-  // firm's. The firm-wide strip still follows for anyone who can see cases.
-  const isOwnWorkRole = me.role === "rcic" || me.role === "paralegal" || me.role === "staff";
-  const myCards = cards.filter((c) => c.rcicId === me.id || c.card.workerId === me.id);
-  const myPipeline = isOwnWorkRole && myCards.length > 0 ? getPipeline(myCards) : null;
+  // Outstanding fees is financial; hide that card from staff without the
+  // permission. The other three are not sensitive.
+  const visibleKpis = kpis.filter(
+    (k) => k.key !== "outstanding_fees" || canFinancials,
+  );
 
   // Only load the appointment dialog's data when the button will render.
   const apptDialogData = canAppointments
     ? await loadNewAppointmentDialogData()
     : null;
 
-  // Two queues come from the board model rather than the loader: cases where
-  // the next move is the firm's, and permits about to expire.
-  const scope = myPipeline ? myCards : cards;
-  const onUs = scope.filter((c) => c.card.ballInCourt === "firm");
-  const expiring = scope
-    .filter((c) => c.daysUntilExpiry !== null && c.daysUntilExpiry <= 60)
-    .sort((a, b) => (a.daysUntilExpiry ?? 0) - (b.daysUntilExpiry ?? 0));
-  const caseHref = (c: EnrichedCard) => `/dashboard/cases/${c.card.id}`;
-  const queues = sortAttention([
-    ...attention,
-    ...(canCases && expiring.length > 0
-      ? [{
-          key: "expiring",
-          count: expiring.length,
-          noun: ["permit expiring within 60 days", "permits expiring within 60 days"] as [string, string],
-          href: myPipeline ? `/dashboard/cases?view=board&assigned=${me.id}` : "/dashboard/cases?view=board",
-          tone: (expiring.some((c) => (c.daysUntilExpiry ?? 99) <= 14) ? "critical" : "action") as "critical" | "action",
-          items: expiring.slice(0, 3).map((c) => ({
-            title: c.card.clientName,
-            meta: `${c.card.caseNumber} · ${(c.daysUntilExpiry ?? 0) < 0 ? `expired ${-(c.daysUntilExpiry ?? 0)} days ago` : `expires in ${c.daysUntilExpiry} days`}`,
-            href: caseHref(c),
-          })),
-        }]
-      : []),
-    ...(canCases && onUs.length > 0
-      ? [{
-          key: "on_us",
-          count: onUs.length,
-          noun: (myPipeline ? ["of your cases is waiting on you", "of your cases are waiting on you"] : ["case waiting on the firm", "cases waiting on the firm"]) as [string, string],
-          href: myPipeline ? `/dashboard/cases?view=board&assigned=${me.id}` : "/dashboard/cases?view=board",
-          tone: "action" as const,
-          items: onUs
-            .sort((a, b) => b.card.phaseAgeDays - a.card.phaseAgeDays)
-            .slice(0, 3)
-            .map((c) => ({
-              title: c.card.clientName,
-              meta: `${c.card.caseNumber} · ${c.card.statusText} · ${c.card.phaseAgeDays} days in phase`,
-              href: caseHref(c),
-            })),
-        }]
-      : []),
-  ]);
-
-  // One line under the greeting that says what today looks like.
-  const glance = queues.slice(0, 4).map((q) => `${q.count} ${q.count === 1 ? q.noun[0] : q.noun[1]}`);
-
   const { date, greeting } = torontoHeader();
 
-  const kpi = (key: string) => kpis.find((k) => k.key === key);
-  const activeKpi = kpi("active_cases");
-  const clientsKpi = kpi("clients");
-  const retainedKpi = kpi("retained_mtd");
-  const outstandingKpi = kpi("outstanding_fees");
-  const boardHref = myPipeline ? `/dashboard/cases?view=board&assigned=${me.id}` : "/dashboard/cases?view=board";
-  const shownPipeline = myPipeline ?? pipeline;
-  const stats = [
-    canCases && {
-      label: myPipeline ? "My active cases" : "Active cases",
-      value: String(myPipeline ? myCards.length : (activeKpi?.current ?? 0)),
-      view: myPipeline ? undefined : activeKpi,
-      sub: `${onUs.length} waiting on ${myPipeline ? "you" : "the firm"}`,
-      href: boardHref,
-    },
-    canCases && clientsKpi && { label: "Clients", value: String(clientsKpi.current), view: clientsKpi, sub: "on file", href: "/dashboard/clients" },
-    canCases && retainedKpi && { label: "Retained this month", value: String(retainedKpi.current), view: retainedKpi, sub: "new cases opened", href: "/dashboard/cases" },
-    canFinancials && outstandingKpi && { label: "Outstanding fees", value: formatKpiValue(outstandingKpi), view: outstandingKpi, sub: "across active cases", href: "/dashboard/payments" },
-  ].filter((x): x is Exclude<typeof x, false | null | undefined> => Boolean(x));
-
   return (
-    <main className="px-6 py-6">
-      {/* Slim top row: where you are, what day it is, and the two or three things you create most. */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[12px] text-muted-foreground">{date}</p>
-          <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-foreground">
+    <main className="space-y-6 px-6 py-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <p className="text-xs font-medium uppercase tracking-[0.08em] text-[var(--subtle-foreground)]">
+            {date}
+          </p>
+          <h1 className="text-[28px] font-semibold tracking-[-0.02em] text-foreground">
             {greeting}, {me.first_name}
           </h1>
         </div>
@@ -182,12 +119,18 @@ export default async function DashboardPage() {
               />
             )}
             {canCreateClients && (
-              <Link href="/dashboard/clients/new" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              <Link
+                href="/dashboard/clients/new"
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              >
                 + New client
               </Link>
             )}
             {canCreateCases && (
-              <Link href="/dashboard/cases/new" className={cn(buttonVariants({ size: "sm" }))}>
+              <Link
+                href="/dashboard/cases/new"
+                className={cn(buttonVariants({ size: "sm" }))}
+              >
                 + New case
               </Link>
             )}
@@ -195,21 +138,29 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* The numbers that frame the day, then two columns: what needs doing
-          and how the work is moving on the left; what is coming up on the right. */}
-      <div className="flex flex-col gap-4">
-        {stats.length > 0 && <StatStrip stats={stats} />}
-        <div className="grid gap-4 min-[1080px]:grid-cols-2">
-          <div className="flex flex-col gap-4">
-            <AttentionList queues={queues} />
-            {canCases && <RecentActivity rows={recent} />}
-          </div>
-          <div className="flex flex-col gap-4">
-            {canCases && <PipelineRows phases={shownPipeline} href={boardHref} />}
-            {(canAppointments || canTasks) && (
-              <NextTwoWeeks appointments={canAppointments ? appointments : []} tasks={canTasks ? tasks : []} />
-            )}
-          </div>
+      <KpiBar
+        views={visibleKpis}
+        links={canCases ? { active_cases: "/dashboard/cases" } : undefined}
+      />
+
+      {canCases && <PipelineStrip phases={pipeline} />}
+
+      <div className="grid gap-6 pt-1 min-[1080px]:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-6">
+          {canCases && <RecentActivity rows={recent} />}
+          {canCases && <SuccessRadar data={radar} />}
+        </div>
+
+        <div className="space-y-6">
+          {canAppointments && (
+            <UpcomingAppointmentsCard
+              title="Upcoming appointments"
+              appointments={appointments}
+              viewAllHref="/dashboard/appointments"
+              prominent
+            />
+          )}
+          {canTasks && <MyTasks tasks={tasks} />}
         </div>
       </div>
     </main>
