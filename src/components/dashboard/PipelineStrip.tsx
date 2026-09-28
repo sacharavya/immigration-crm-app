@@ -16,7 +16,15 @@ const RAIL: Record<number, string> = {
   5: "bg-gold",
 };
 
-export function PipelineStrip({ phases }: { phases: PipelinePhase[] }) {
+export function PipelineStrip({
+  phases,
+  title = "Pipeline",
+  boardHref = "/dashboard/cases?view=board",
+}: {
+  phases: PipelinePhase[];
+  title?: string;
+  boardHref?: string;
+}) {
   const total = phases.reduce((n, p) => n + p.count, 0);
   const onUs = phases.reduce((n, p) => (p.withIrcc ? n : n + p.onUs), 0);
 
@@ -25,7 +33,7 @@ export function PipelineStrip({ phases }: { phases: PipelinePhase[] }) {
       <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
         <div className="flex items-baseline gap-2.5">
           <h2 className="text-sm font-semibold tracking-tight text-foreground">
-            Pipeline
+            {title}
           </h2>
           <span className="text-xs tabular-nums text-muted-foreground">
             {total} active
@@ -40,7 +48,7 @@ export function PipelineStrip({ phases }: { phases: PipelinePhase[] }) {
           </span>
         </div>
         <Link
-          href="/dashboard/cases?view=board"
+          href={boardHref}
           className="shrink-0 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           Open board ›

@@ -8,6 +8,9 @@ import { isPaymentVerified } from "@/lib/payments/verified";
 import { createClient } from "@/lib/supabase/server";
 import { PHASE_LABELS, STATUS_LABEL, phaseIndex } from "@/lib/utils/phase";
 
+import { SuccessRadar } from "@/components/dashboard/success-radar-lazy";
+import { getSuccessRate } from "@/lib/dashboard/getSuccessRate";
+
 import { ReportsFilters } from "./_components/reports-filters";
 
 export const dynamic = "force-dynamic";
@@ -70,6 +73,7 @@ export default async function ReportsPage({ searchParams }: Props) {
   const toDate = isIsoDate(sp.to) ? sp.to! : null;
 
   const supabase = await createClient();
+  const radar = await getSuccessRate(supabase);
   const now = new Date();
 
   const defaultWindowStartIso = new Date(now.getTime() - 30 * 86400000).toISOString();
@@ -341,7 +345,7 @@ export default async function ReportsPage({ searchParams }: Props) {
       <div>
         <h1 className="text-xl font-semibold text-stone-900">Reports</h1>
         <p className="mt-1 text-sm text-stone-500">
-          Pipeline, revenue, workload, and client acquisition.
+          Pipeline, revenue, workload, client acquisition, and outcomes.
         </p>
       </div>
 
@@ -526,6 +530,9 @@ export default async function ReportsPage({ searchParams }: Props) {
           )}
         </Section>
       </div>
+
+      {/* ── Outcomes ──────────────────────────────────────── */}
+      <SuccessRadar data={radar} />
     </div>
   );
 }

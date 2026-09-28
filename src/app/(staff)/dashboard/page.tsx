@@ -1,26 +1,25 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AttentionList } from "@/components/dashboard/AttentionList";
 import { KpiBar } from "@/components/dashboard/KpiBar";
 import { MyTasks } from "@/components/dashboard/MyTasks";
 import { PipelineStrip } from "@/components/dashboard/PipelineStrip";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { SuccessRadar } from "@/components/dashboard/success-radar-lazy";
 import { buttonVariants } from "@/components/ui/button";
 import { staffCan } from "@/lib/auth/permissions";
 import { NewAppointmentDialog } from "./appointments/_components/new-appointment-dialog";
 import { loadNewAppointmentDialogData } from "./appointments/new-appointment-data";
 import { getStaff } from "@/lib/auth/staff";
 import { loadActiveBoardCards, type EnrichedCard } from "@/lib/dashboard/boardCards";
+import { getAttention, sortAttention } from "@/lib/dashboard/getAttention";
 import { getKpis } from "@/lib/dashboard/getKpis";
 import { getMyTasks } from "@/lib/dashboard/getMyTasks";
 import { getPipeline } from "@/lib/dashboard/getPipeline";
 import { getRecentActivity } from "@/lib/dashboard/getRecentActivity";
-import { getSuccessRate } from "@/lib/dashboard/getSuccessRate";
 import { getUpcomingAppointments } from "@/lib/dashboard/getUpcomingAppointments";
 import type {
   DashboardTask,
-  RadarData,
   RecentRow,
 } from "@/lib/dashboard/types";
 import { createClient } from "@/lib/supabase/server";
@@ -29,8 +28,11 @@ import { cn } from "@/lib/utils/index";
 import type { AppointmentRow } from "./appointments/_components/types";
 import { UpcomingAppointmentsCard } from "./appointments/_components/upcoming-appointments-card";
 
-// Server-rendered firm overview. Every panel reads finished view models from
-// lib/dashboard; the only client island is the radar's Service/Category toggle.
+// Server-rendered home for the signed-in person. It opens on what is waiting
+// on them, then the slice of the work that fits their role (own caseload for
+// a consultant, the calendar for reception, the firm's numbers for whoever
+// runs it), then the firm-wide picture. Every panel reads finished view models
+// from lib/dashboard; the only client island is the radar's toggle.
 export const dynamic = "force-dynamic";
 
 // The firm operates out of Toronto, so the header's date and greeting follow
@@ -68,12 +70,10 @@ export default async function DashboardPage() {
 
   const supabase = await createClient();
 
-  const [kpis, cards, radar, recent, tasks, appointments] = await Promise.all([
+  const [attention, kpis, cards, recent, tasks, appointments] = await Promise.all([
+    getAttention(supabase, me),
     getKpis(supabase),
     canCases ? loadActiveBoardCards(supabase) : Promise.resolve([] as EnrichedCard[]),
-    canCases
-      ? getSuccessRate(supabase)
-      : Promise.resolve({ service: [], category: [] } as RadarData),
     canCases ? getRecentActivity(supabase) : Promise.resolve([] as RecentRow[]),
     canTasks ? getMyTasks(supabase, me.id) : Promise.resolve([] as DashboardTask[]),
     canAppointments
@@ -82,6 +82,15 @@ export default async function DashboardPage() {
   ]);
 
   const pipeline = getPipeline(cards);
+
+  // A consultant or paralegal opens on their own files; everyone else on the
+  // firm's. The firm-wide strip still follows for anyone who can see cases.
+  const isOwnWorkRole = me.role === "rcic" || me.role === "paralegal" || me.role === "staff";
+  const myCards = cards.filter((c) => c.rcicId === me.id || c.card.workerId === me.id);
+  const myPipeline = isOwnWorkRole && myCards.length > 0 ? getPipeline(myCards) : null;
+  // Front desk lives by the calendar; the firm's numbers matter to whoever runs it.
+  const calendarFirst = me.role === "reception";
+  const showKpis = !isOwnWorkRole && me.role !== "reception" && me.role !== "document_officer";
 
   // Outstanding fees is financial; hide that card from staff without the
   // permission. The other three are not sensitive.
@@ -93,6 +102,25 @@ export default async function DashboardPage() {
   const apptDialogData = canAppointments
     ? await loadNewAppointmentDialogData()
     : null;
+
+  // Cases where the next move is the firm's come from the board model, so
+  // they join the attention list here rather than in the loader.
+  const scope = myPipeline ? myCards : cards;
+  const onUs = scope.filter((c) => c.card.ballInCourt === "firm").length;
+  const attentionItems = sortAttention(
+    canCases && onUs > 0
+      ? [
+          ...attention,
+          {
+            key: "on_us",
+            count: onUs,
+            noun: myPipeline ? ["of your cases is waiting on you", "of your cases are waiting on you"] : ["case waiting on the firm", "cases waiting on the firm"],
+            href: myPipeline ? `/dashboard/cases?view=board&assigned=${me.id}` : "/dashboard/cases?view=board",
+            tone: "action" as const,
+          },
+        ]
+      : attention,
+  );
 
   const { date, greeting } = torontoHeader();
 
@@ -138,21 +166,41 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <KpiBar
-        views={visibleKpis}
-        links={canCases ? { active_cases: "/dashboard/cases" } : undefined}
-      />
+      {/* Row 1: what is waiting on you, beside the queue your day runs on. */}
+      <div className="grid gap-6 min-[1080px]:grid-cols-[minmax(0,1fr)_340px]">
+        <AttentionList items={attentionItems} />
+        {calendarFirst && canAppointments ? (
+          <UpcomingAppointmentsCard
+            title="Today and next"
+            appointments={appointments}
+            viewAllHref="/dashboard/appointments"
+            prominent
+          />
+        ) : canTasks ? (
+          <MyTasks tasks={tasks} />
+        ) : null}
+      </div>
 
-      {canCases && <PipelineStrip phases={pipeline} />}
+      {/* Row 2: your own files, or the firm's numbers, depending on the role. */}
+      {myPipeline && (
+        <PipelineStrip phases={myPipeline} title="My caseload" boardHref={`/dashboard/cases?view=board&assigned=${me.id}`} />
+      )}
+      {showKpis && (
+        <KpiBar
+          views={visibleKpis}
+          links={canCases ? { active_cases: "/dashboard/cases" } : undefined}
+        />
+      )}
+      {canCases && <PipelineStrip phases={pipeline} title={myPipeline ? "Firm pipeline" : "Pipeline"} />}
 
+      {/* Row 3: activity and outcomes, with whatever queue row 1 did not take. */}
       <div className="grid gap-6 pt-1 min-[1080px]:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-6">
           {canCases && <RecentActivity rows={recent} />}
-          {canCases && <SuccessRadar data={radar} />}
         </div>
 
         <div className="space-y-6">
-          {canAppointments && (
+          {!calendarFirst && canAppointments && (
             <UpcomingAppointmentsCard
               title="Upcoming appointments"
               appointments={appointments}
@@ -160,7 +208,13 @@ export default async function DashboardPage() {
               prominent
             />
           )}
-          {canTasks && <MyTasks tasks={tasks} />}
+          {calendarFirst && canTasks && <MyTasks tasks={tasks} />}
+          {!showKpis && (
+            <KpiBar
+              views={visibleKpis.filter((k) => k.key !== "outstanding_fees")}
+              links={canCases ? { active_cases: "/dashboard/cases" } : undefined}
+            />
+          )}
         </div>
       </div>
     </main>

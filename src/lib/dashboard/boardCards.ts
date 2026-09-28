@@ -27,6 +27,8 @@ export type EnrichedCard = {
   // Whole days until the client's permit expiry (negative when overdue), or
   // null when the case is not at risk.
   daysUntilExpiry: number | null;
+  /** The RCIC of record, for a consultant's own-caseload view. */
+  rcicId: string | null;
 };
 
 export async function loadActiveBoardCards(
@@ -49,6 +51,7 @@ export async function loadActiveBoardCards(
         retainer_minimum_cad,
         service_type_id,
         assigned_paralegal,
+        assigned_rcic,
         client:clients(legal_name_full)
       `,
     )
@@ -209,6 +212,7 @@ export async function loadActiveBoardCards(
       retainerSigned: signedRetainer !== null,
       awaitingReview: docsByCase.get(c.id)?.awaitingReview ?? 0,
       daysUntilExpiry: risk?.daysUntilExpiry ?? null,
+      rcicId: c.assigned_rcic ?? null,
     };
   });
 }
