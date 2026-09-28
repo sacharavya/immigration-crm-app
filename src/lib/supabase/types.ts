@@ -3916,7 +3916,7 @@ export type Database = {
         | "super_user"
         | "document_officer"
         | "reception"
-      storage_provider: "onedrive" | "google_drive"
+      storage_provider: "onedrive" | "google_drive" | "r2"
       task_status: "open" | "in_progress" | "blocked" | "done" | "cancelled"
       task_type:
         | "document_collection"
@@ -5059,7 +5059,7 @@ export const Constants = {
         "document_officer",
         "reception",
       ],
-      storage_provider: ["onedrive", "google_drive"],
+      storage_provider: ["onedrive", "google_drive", "r2"],
       task_status: ["open", "in_progress", "blocked", "done", "cancelled"],
       task_type: [
         "document_collection",

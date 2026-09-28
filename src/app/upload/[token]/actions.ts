@@ -202,17 +202,16 @@ async function resolvePortalUploadContext(
     }
   }
 
-  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) return { ok: false, error: "Storage not configured." };
-
   let categoryFolderId: string;
+  let driveId: string;
   try {
-    const { folderItemId } = await ensureCaseCategoryFolder(
+    const folder = await ensureCaseCategoryFolder(
       caseRow.tenant_id,
       caseRow.sharepoint_folder_id,
       templateDoc.group.name,
     );
-    categoryFolderId = folderItemId;
+    categoryFolderId = folder.folderItemId;
+    driveId = folder.driveId;
   } catch (err) {
     console.error("[resolvePortalUploadContext] folder ensure failed:", err);
     return {

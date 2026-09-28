@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { resolveStorage } from "@/lib/storage/provider";
 import { getStaffTenantId } from "@/lib/tenant/context";
 import type { StagedUpload } from "@/lib/uploads/types";
 import { takeStagedFile } from "@/lib/uploads/staged";
@@ -187,23 +188,19 @@ async function resolveUploadContext(
     }
   }
 
-  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) {
-    return { ok: false, error: "GRAPH_DOCUMENT_LIBRARY_ID is not set" };
-  }
-
   // Self-healing: if the category subfolder doesn't exist (template
   // edited mid-case), ensureCaseCategoryFolder creates it lazily on
   // demand. Idempotent under 409 races.
   let categoryFolderId: string;
+  let driveId: string;
   try {
-    const { folderItemId } = await ensureCaseCategoryFolder(
+    const folder = await ensureCaseCategoryFolder(
       await requireStaffTenantId(),
-      
       caseRow.sharepoint_folder_id,
       templateDoc.group.name,
     );
-    categoryFolderId = folderItemId;
+    categoryFolderId = folder.folderItemId;
+    driveId = folder.driveId;
   } catch (err) {
     console.error(
       "[resolveUploadContext] ensureCaseCategoryFolder failed:",
@@ -702,8 +699,8 @@ export async function uploadAdditionalDocument(
   }
   const displayName = reqDoc.custom_label ?? "Additional document";
 
-  const driveId = process.env.GRAPH_DOCUMENT_LIBRARY_ID;
-  if (!driveId) return { error: "GRAPH_DOCUMENT_LIBRARY_ID is not set" };
+  // Additional documents land in the case root; the key names the firm's store.
+  const { key: driveId } = await resolveStorage(await requireStaffTenantId());
 
   const sanitizedOriginalName = sanitizeFileName(file.name);
   const uploadName = `additional_${requiredDocumentId.slice(0, 8)}_${sanitizedOriginalName}`;

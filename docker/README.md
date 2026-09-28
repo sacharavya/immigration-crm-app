@@ -43,8 +43,11 @@ cannot see inside any firm's data.
 These need real credentials and are left empty on purpose. The app runs
 without them; the related feature reports that it isn't configured.
 
-- Document storage — Microsoft Graph / a firm's connected OneDrive or Google
-  Drive (`GRAPH_*`, `MS_OAUTH_*`, `GOOGLE_OAUTH_*`).
+- Documents go to the stack's own object storage by default, so uploads work
+  out of the box. To use a real Cloudflare R2 bucket, set `R2_ENDPOINT`,
+  `R2_BUCKET`, `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` in the shell
+  before `docker compose up`. A firm's own OneDrive or Google Drive needs the
+  connected-account credentials (`MS_OAUTH_*`, `GOOGLE_OAUTH_*`).
 - Outbound client email through Resend (`RESEND_API_KEY`). Auth emails still
   work and land in Mailpit.
 - NOC keyword extraction (`GROQ_API_KEY`).

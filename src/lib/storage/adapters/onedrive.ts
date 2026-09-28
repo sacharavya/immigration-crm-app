@@ -1,4 +1,4 @@
-import { putUploadSession } from "@/lib/graph/uploads";
+import { putUploadSession } from "@/lib/graph/upload-session";
 import "server-only";
 
 import type {

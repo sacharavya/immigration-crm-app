@@ -1,5 +1,7 @@
 import "server-only";
 
+import { isStorageKey, storageForKey } from "@/lib/storage/provider";
+
 import { getAccessToken, invalidateToken } from "./auth";
 
 const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
@@ -32,6 +34,10 @@ export async function streamFileFromGraph(
   itemId: string,
   options: StreamFileOptions = {},
 ): Promise<StreamedGraphFile> {
+  if (isStorageKey(driveId)) {
+    return (await storageForKey(driveId)).streamFile(itemId, options);
+  }
+
   const query = options.format === "pdf" ? "?format=pdf" : "";
   const url = `${GRAPH_BASE}/drives/${driveId}/items/${itemId}/content${query}`;
 

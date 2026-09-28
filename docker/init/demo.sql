@@ -1,6 +1,9 @@
 -- Demo accounts for the trial stack. Passwords are in docker/README.md.
 -- Users are written straight into GoTrue's tables the way its admin API
 -- would, so no service needs to be called during init.
+-- The trial's document store: a private bucket on the stack's own S3 endpoint.
+INSERT INTO storage.buckets (id, name, public) VALUES ('documents', 'documents', FALSE) ON CONFLICT (id) DO NOTHING;
+
 DO $$
 DECLARE
   v_admin  UUID := '00000000-0000-4000-8000-000000000001';

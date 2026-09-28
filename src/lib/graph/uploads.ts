@@ -1,12 +1,9 @@
-import { graphFetch } from "./client";
+import { isStorageKey, storageForKey } from "@/lib/storage/provider";
 
-export type UploadedDriveItem = {
-  id: string;
-  name: string;
-  webUrl: string;
-  size: number;
-  file?: { mimeType?: string };
-};
+import { graphFetch } from "./client";
+import { putUploadSession, type UploadedDriveItem } from "./upload-session";
+
+export type { UploadedDriveItem } from "./upload-session";
 
 const SMALL_UPLOAD_LIMIT_BYTES = 4 * 1024 * 1024;
 
@@ -31,6 +28,20 @@ export async function uploadFile(
         ? content.byteLength
         : content.byteLength;
 
+  // A storage key ("t:<firm>:<provider>") means the firm's resolved store —
+  // R2, a connected drive, or the platform library — not a raw Graph drive.
+  if (isStorageKey(driveId)) {
+    const store = await storageForKey(driveId);
+    const bytes =
+      content instanceof Blob
+        ? new Uint8Array(await content.arrayBuffer())
+        : content instanceof Uint8Array
+          ? content
+          : new Uint8Array(content);
+    const item = await store.uploadFile(parentItemId, fileName, bytes, mimeType);
+    return { id: item.id, name: item.name, webUrl: item.webUrl, size: item.size, file: { mimeType: item.mimeType } };
+  }
+
   const itemPath = `/drives/${driveId}/items/${parentItemId}:/${encodeURIComponent(fileName)}:`;
 
   if (size <= SMALL_UPLOAD_LIMIT_BYTES) {
@@ -47,28 +58,4 @@ export async function uploadFile(
     body: JSON.stringify({ item: { "@microsoft.graph.conflictBehavior": "rename", name: fileName } }),
   });
   return putUploadSession(session.uploadUrl, content as BodyInit, size);
-}
-
-/**
- * The session URL is pre-authorised; Graph rejects an Authorization header on
- * it, so this is a plain fetch rather than graphFetch.
- */
-export async function putUploadSession(
-  uploadUrl: string,
-  body: BodyInit,
-  size: number,
-): Promise<UploadedDriveItem> {
-  const res = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: {
-      "Content-Length": String(size),
-      "Content-Range": `bytes 0-${size - 1}/${size}`,
-    },
-    body,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Graph upload session ${res.status}: ${text.slice(0, 300)}`);
-  }
-  return (await res.json()) as UploadedDriveItem;
 }

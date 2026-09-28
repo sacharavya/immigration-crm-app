@@ -4,7 +4,7 @@
  * logic stays importable from tests.
  */
 
-export type StorageProvider = "onedrive" | "google_drive";
+export type StorageProvider = "r2" | "onedrive" | "google_drive";
 
 export type StorageSettings = {
   provider: StorageProvider;
@@ -28,12 +28,14 @@ export type StorageEnv = {
 };
 
 export const PROVIDER_LABELS: Record<StorageProvider, string> = {
+  r2: "CaseBind cloud storage",
   onedrive: "Microsoft OneDrive / SharePoint",
   google_drive: "Google Drive",
 };
 
-/** Providers with a working adapter. Google Drive is schema-only for now. */
+/** Providers a firm can pick here. Google Drive comes through a connected account, not this setting. */
 export const IMPLEMENTED_PROVIDERS: ReadonlySet<StorageProvider> = new Set([
+  "r2",
   "onedrive",
 ]);
 
@@ -52,7 +54,7 @@ export function resolveStorageSettings(
   const envRootFolder = env.rootFolder?.trim() ?? "";
 
   return {
-    provider: isProvider(row?.provider) ? row.provider : "onedrive",
+    provider: isProvider(row?.provider) ? row.provider : "r2",
     driveId: row?.drive_id?.trim() || envDriveId,
     rootFolder: row ? row.root_folder.trim() : envRootFolder,
   };
@@ -78,5 +80,5 @@ export function oneDriveConfigError(settings: StorageSettings): string | null {
 }
 
 export function isProvider(value: unknown): value is StorageProvider {
-  return value === "onedrive" || value === "google_drive";
+  return value === "r2" || value === "onedrive" || value === "google_drive";
 }

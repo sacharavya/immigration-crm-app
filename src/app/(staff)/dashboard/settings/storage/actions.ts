@@ -22,7 +22,7 @@ type Err = { ok?: false; error: string };
 export type StorageSettingsResult = Ok | Err;
 
 const schema = z.object({
-  provider: z.enum(["onedrive", "google_drive"]),
+  provider: z.enum(["r2", "onedrive", "google_drive"]),
   // "" from the form means "fall back to GRAPH_DOCUMENT_LIBRARY_ID".
   drive_id: z.string().trim().max(500).nullable().or(z.literal("")),
   // Path prefix; "" anchors at the drive root. Reject absolute paths and
@@ -63,7 +63,7 @@ export async function updateStorageSettings(
   }
 
   const driveId = input.drive_id?.trim() || null;
-  if (!driveId && !process.env.GRAPH_DOCUMENT_LIBRARY_ID?.trim()) {
+  if (input.provider === "onedrive" && !driveId && !process.env.GRAPH_DOCUMENT_LIBRARY_ID?.trim()) {
     return {
       error:
         "Enter a document library id — there is no GRAPH_DOCUMENT_LIBRARY_ID fallback configured on this deployment.",

@@ -18,10 +18,17 @@ const PROVIDERS: {
   available: boolean;
 }[] = [
   {
-    value: "onedrive",
-    label: "Microsoft OneDrive / SharePoint",
+    value: "r2",
+    label: "CaseBind cloud storage",
     blurb:
-      "Case folders, uploads, and generated PDFs live in your Microsoft 365 document library.",
+      "Included with the platform. Nothing to set up; connect your own Microsoft or Google account above whenever you want files in your own drive instead.",
+    available: true,
+  },
+  {
+    value: "onedrive",
+    label: "Microsoft OneDrive / SharePoint library",
+    blurb:
+      "A specific document library the platform's Microsoft app can reach. Needs the library id below.",
     available: true,
   },
   {

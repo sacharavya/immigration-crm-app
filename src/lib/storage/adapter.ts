@@ -26,7 +26,7 @@ export type StreamedFile = {
 };
 
 export interface StorageAdapter {
-  readonly provider: "onedrive" | "google_drive";
+  readonly provider: "onedrive" | "google_drive" | "r2";
 
   /**
    * Returns the id of the folder at `segments` beneath the root, creating

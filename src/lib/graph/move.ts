@@ -1,3 +1,5 @@
+import { isStorageKey, storageForKey } from "@/lib/storage/provider";
+
 import { graphFetch } from "./client";
 
 // Increment 5: moves + renames an existing drive item in a single
@@ -31,6 +33,11 @@ export async function moveAndRenameDriveItem(
   targetParentItemId: string,
   newName: string,
 ): Promise<MoveAndRenameResult> {
+  if (isStorageKey(driveId)) {
+    const moved = await (await storageForKey(driveId)).moveAndRename(itemId, targetParentItemId, newName);
+    return { itemId: moved.id, webUrl: moved.webUrl, name: moved.name };
+  }
+
   const updated = await graphFetch<{
     id: string;
     name: string;

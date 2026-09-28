@@ -51,7 +51,7 @@ describe("resolveStorageSettings", () => {
   it("uses env config entirely when the row is missing", () => {
     const s = resolveStorageSettings(null, ENV);
     assert.deepEqual(s, {
-      provider: "onedrive",
+      provider: "r2",
       driveId: "b!envLibrary",
       rootFolder: "Test-CRM",
     });
@@ -68,9 +68,9 @@ describe("resolveStorageSettings", () => {
     assert.equal(s.provider, "google_drive");
   });
 
-  it("defaults an unrecognised provider value to onedrive", () => {
+  it("defaults an unrecognised provider value to r2", () => {
     const s = resolveStorageSettings(row({ provider: "dropbox" }), ENV);
-    assert.equal(s.provider, "onedrive");
+    assert.equal(s.provider, "r2");
   });
 });
 

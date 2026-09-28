@@ -1,15 +1,9 @@
-import { rootFolderParts } from "@/lib/storage/paths";
-import { requireOneDriveSettings } from "@/lib/storage/settings";
+import { resolveStorage } from "@/lib/storage/provider";
 import { createClient } from "@/lib/supabase/server";
 
-import { GraphApiError, graphFetch } from "./client";
-
-type DriveItem = {
-  id: string;
-  name: string;
-  webUrl: string;
-  folder?: { childCount?: number };
-};
+// Every helper here resolves the firm's store (R2 by default, or the drive
+// the firm connected) and returns its key as `driveId`. Callers store that
+// key on the document; uploads, downloads and moves route on it.
 
 export type CaseFolderResult = {
   driveItemId: string;
@@ -33,7 +27,7 @@ export async function createCaseFolderStructure(
   tenantId: string,
   caseId: string,
 ): Promise<CaseFolderResult> {
-  const { driveId, rootFolder } = await requireOneDriveSettings(tenantId);
+  const { storage } = await resolveStorage(tenantId);
 
   const supabase = await createClient();
 
@@ -110,26 +104,14 @@ export async function createCaseFolderStructure(
     `${caseRow.case_number} ${service?.name ?? ""}`.trim(),
   );
 
-  const rootParts = rootFolderParts(rootFolder, sanitize);
-
-  const pathParts = [...rootParts, year, clientFolder, caseFolder].filter(
-    Boolean,
-  );
-
-  const root = await graphFetch<DriveItem>(`/drives/${driveId}/root`);
-  let parent: DriveItem = root;
-  for (const part of pathParts) {
-    parent = await ensureFolder(driveId, parent.id, part);
-  }
+  const parent = await storage.ensureFolderPath([year, clientFolder, caseFolder]);
 
   // RET-4: "00 Retainer" + the N category subfolders are all siblings of
   // the case folder, so create them in parallel. The numeric prefix on
-  // "00 Retainer" still pins it at the top of the OneDrive listing.
+  // "00 Retainer" still pins it at the top of the listing.
   await Promise.all([
-    ensureFolder(driveId, parent.id, "00 Retainer"),
-    ...(categories ?? []).map((cat) =>
-      ensureFolder(driveId, parent.id, sanitize(cat.name)),
-    ),
+    storage.ensureChildFolder(parent.id, "00 Retainer"),
+    ...(categories ?? []).map((cat) => storage.ensureChildFolder(parent.id, sanitize(cat.name))),
   ]);
 
   return { driveItemId: parent.id, webUrl: parent.webUrl };
@@ -145,9 +127,9 @@ export async function ensureCaseRetainerFolder(
   tenantId: string,
   caseFolderItemId: string,
 ): Promise<{ driveId: string; folderItemId: string }> {
-  const { driveId } = await requireOneDriveSettings(tenantId);
-  const folder = await ensureFolder(driveId, caseFolderItemId, "00 Retainer");
-  return { driveId, folderItemId: folder.id };
+  const { storage, key } = await resolveStorage(tenantId);
+  const folder = await storage.ensureChildFolder(caseFolderItemId, "00 Retainer");
+  return { driveId: key, folderItemId: folder.id };
 }
 
 /**
@@ -158,9 +140,9 @@ export async function ensureCaseFinalFolder(
   tenantId: string,
   caseFolderItemId: string,
 ): Promise<{ driveId: string; folderItemId: string }> {
-  const { driveId } = await requireOneDriveSettings(tenantId);
-  const folder = await ensureFolder(driveId, caseFolderItemId, "Final");
-  return { driveId, folderItemId: folder.id };
+  const { storage, key } = await resolveStorage(tenantId);
+  const folder = await storage.ensureChildFolder(caseFolderItemId, "Final");
+  return { driveId: key, folderItemId: folder.id };
 }
 
 /**
@@ -173,18 +155,9 @@ export async function ensureConsultationPaymentsFolder(
   tenantId: string,
   year: string,
 ): Promise<{ driveId: string; folderItemId: string }> {
-  const { driveId, rootFolder } = await requireOneDriveSettings(tenantId);
-
-  const rootParts = rootFolderParts(rootFolder, sanitize);
-
-  const root = await graphFetch<DriveItem>(`/drives/${driveId}/root`);
-  let parent: DriveItem = root;
-  for (const part of rootParts) {
-    parent = await ensureFolder(driveId, parent.id, part);
-  }
-  parent = await ensureFolder(driveId, parent.id, "Consultation Payments");
-  parent = await ensureFolder(driveId, parent.id, sanitize(year));
-  return { driveId, folderItemId: parent.id };
+  const { storage, key } = await resolveStorage(tenantId);
+  const folder = await storage.ensureFolderPath(["Consultation Payments", sanitize(year)]);
+  return { driveId: key, folderItemId: folder.id };
 }
 
 // Signed Initial Consultation Agreements. Separate tree from case retainers
@@ -194,18 +167,9 @@ export async function ensureConsultationAgreementsFolder(
   tenantId: string,
   year: string,
 ): Promise<{ driveId: string; folderItemId: string }> {
-  const { driveId, rootFolder } = await requireOneDriveSettings(tenantId);
-
-  const rootParts = rootFolderParts(rootFolder, sanitize);
-
-  const root = await graphFetch<DriveItem>(`/drives/${driveId}/root`);
-  let parent: DriveItem = root;
-  for (const part of rootParts) {
-    parent = await ensureFolder(driveId, parent.id, part);
-  }
-  parent = await ensureFolder(driveId, parent.id, "Consultation Agreements");
-  parent = await ensureFolder(driveId, parent.id, sanitize(year));
-  return { driveId, folderItemId: parent.id };
+  const { storage, key } = await resolveStorage(tenantId);
+  const folder = await storage.ensureFolderPath(["Consultation Agreements", sanitize(year)]);
+  return { driveId: key, folderItemId: folder.id };
 }
 
 /**
@@ -230,9 +194,9 @@ export async function ensureRejectedFolderUnder(
   tenantId: string,
   parentFolderItemId: string,
 ): Promise<{ driveId: string; folderItemId: string }> {
-  const { driveId } = await requireOneDriveSettings(tenantId);
-  const folder = await ensureFolder(driveId, parentFolderItemId, "99 Rejected");
-  return { driveId, folderItemId: folder.id };
+  const { storage, key } = await resolveStorage(tenantId);
+  const folder = await storage.ensureChildFolder(parentFolderItemId, "99 Rejected");
+  return { driveId: key, folderItemId: folder.id };
 }
 
 /**
@@ -245,9 +209,9 @@ export async function ensureCasePaymentsFolder(
   tenantId: string,
   caseFolderItemId: string,
 ): Promise<{ driveId: string; folderItemId: string }> {
-  const { driveId } = await requireOneDriveSettings(tenantId);
-  const folder = await ensureFolder(driveId, caseFolderItemId, "00 Payments");
-  return { driveId, folderItemId: folder.id };
+  const { storage, key } = await resolveStorage(tenantId);
+  const folder = await storage.ensureChildFolder(caseFolderItemId, "00 Payments");
+  return { driveId: key, folderItemId: folder.id };
 }
 
 /**
@@ -271,132 +235,34 @@ export async function ensureCaseCategoryFolder(
   caseFolderItemId: string,
   categoryName: string,
 ): Promise<{ driveId: string; folderItemId: string; wasCreated: boolean }> {
-  const { driveId } = await requireOneDriveSettings(tenantId);
-  const name = sanitize(categoryName);
-  // findChildFolder first so we can report wasCreated honestly (useful
-  // for logs + the backfill script). ensureFolder would do the same
-  // probe internally but doesn't return create-vs-found.
-  const existing = await findChildFolder(driveId, caseFolderItemId, name);
-  if (existing) {
-    return {
-      driveId,
-      folderItemId: existing.id,
-      wasCreated: false,
-    };
-  }
-  const created = await ensureFolder(driveId, caseFolderItemId, name);
-  // Visibility: lazy provisioning is the symptom of a mid-case template
-  // edit, which the firm wants to know about. Cheap log, easy to grep.
-  console.log(
-    "[onedrive.lazy-provision]",
-    JSON.stringify({
-      case_folder_item_id: caseFolderItemId,
-      category_name: name,
-      new_folder_id: created.id,
-    }),
-  );
-  return {
-    driveId,
-    folderItemId: created.id,
-    wasCreated: true,
-  };
+  const { storage, key } = await resolveStorage(tenantId);
+  const folder = await storage.ensureChildFolder(caseFolderItemId, sanitize(categoryName));
+  // Adapters don't report created-vs-found; nothing reads wasCreated today.
+  return { driveId: key, folderItemId: folder.id, wasCreated: false };
 }
 
 /**
- * Returns the named child folder under `parentItemId`, creating it if it
- * doesn't exist. Idempotent under a single caller; concurrent callers
- * racing on the same name should get one survivor via the 409 fallback.
- */
-/**
  * Returns the drive id + the parent item id of the "Staff Signatures"
- * folder, creating the folder under the configured GRAPH_ROOT_FOLDER (if
- * any) when missing. Used by the staff signature settings page.
+ * folder, creating it when missing. Used by the staff signature settings page.
  */
-export async function ensureStaffSignaturesFolder(tenantId: string): Promise<{
-  driveId: string;
-  folderItemId: string;
-}> {
-  const { driveId, rootFolder } = await requireOneDriveSettings(tenantId);
-
-  const rootParts = rootFolderParts(rootFolder, sanitize);
-
-  const root = await graphFetch<DriveItem>(`/drives/${driveId}/root`);
-  let parent: DriveItem = root;
-  for (const part of rootParts) {
-    parent = await ensureFolder(driveId, parent.id, part);
-  }
-  parent = await ensureFolder(driveId, parent.id, "Staff Signatures");
-  return { driveId, folderItemId: parent.id };
+export async function ensureStaffSignaturesFolder(tenantId: string): Promise<{ driveId: string; folderItemId: string }> {
+  const { storage, key } = await resolveStorage(tenantId);
+  const folder = await storage.ensureFolderPath(["Staff Signatures"]);
+  return { driveId: key, folderItemId: folder.id };
 }
 
 /**
  * Resolves (and lazily creates) "Forms Library/<form number>" in the firm
- * document library, under the configured GRAPH_ROOT_FOLDER when set. Blank
- * form version PDFs are stored here, one subfolder per form. Same drive
- * resolution as ensureStaffSignaturesFolder.
+ * document store. Blank form version PDFs are stored here, one subfolder
+ * per form.
  */
 export async function ensureFormsLibraryFolder(
   tenantId: string,
   formNumber: string,
-): Promise<{
-  driveId: string;
-  folderItemId: string;
-}> {
-  const { driveId, rootFolder } = await requireOneDriveSettings(tenantId);
-
-  const rootParts = rootFolderParts(rootFolder, sanitize);
-
-  const root = await graphFetch<DriveItem>(`/drives/${driveId}/root`);
-  let parent: DriveItem = root;
-  for (const part of rootParts) {
-    parent = await ensureFolder(driveId, parent.id, part);
-  }
-  parent = await ensureFolder(driveId, parent.id, "Forms Library");
-  parent = await ensureFolder(driveId, parent.id, sanitize(formNumber));
-  return { driveId, folderItemId: parent.id };
-}
-
-async function ensureFolder(
-  driveId: string,
-  parentItemId: string,
-  name: string,
-): Promise<DriveItem> {
-  const existing = await findChildFolder(driveId, parentItemId, name);
-  if (existing) return existing;
-
-  try {
-    return await graphFetch<DriveItem>(
-      `/drives/${driveId}/items/${parentItemId}/children`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          folder: {},
-          "@microsoft.graph.conflictBehavior": "fail",
-        }),
-      },
-    );
-  } catch (err) {
-    if (err instanceof GraphApiError && err.status === 409) {
-      const found = await findChildFolder(driveId, parentItemId, name);
-      if (found) return found;
-    }
-    throw err;
-  }
-}
-
-async function findChildFolder(
-  driveId: string,
-  parentItemId: string,
-  name: string,
-): Promise<DriveItem | null> {
-  // Filter on name; $select keeps the payload small.
-  const escaped = name.replace(/'/g, "''");
-  const list = await graphFetch<{ value: DriveItem[] }>(
-    `/drives/${driveId}/items/${parentItemId}/children?$select=id,name,webUrl,folder&$filter=name eq '${encodeURIComponent(escaped)}'`,
-  );
-  return list.value.find((i) => i.folder && i.name === name) ?? null;
+): Promise<{ driveId: string; folderItemId: string }> {
+  const { storage, key } = await resolveStorage(tenantId);
+  const folder = await storage.ensureFolderPath(["Forms Library", sanitize(formNumber)]);
+  return { driveId: key, folderItemId: folder.id };
 }
 
 function sanitize(name: string): string {
