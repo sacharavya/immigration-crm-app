@@ -6,7 +6,6 @@ import type { DashboardTask, KpiView, PipelinePhase } from "@/lib/dashboard/type
 import { changeBadge, formatKpiValue } from "@/lib/dashboard/metrics";
 import { cn } from "@/lib/utils/index";
 
-import { Sparkline } from "./Sparkline";
 
 // The dashboard's card vocabulary, after Copilot: a white panel with a small
 // title top-left and a muted "Somewhere ›" link top-right, no rules inside,
@@ -55,65 +54,37 @@ function ChangePill({ view }: { view: KpiView }) {
   );
 }
 
-/** Centred figure over its trend — Copilot's "Monthly spending". */
-export function CaseloadCard({
-  active,
-  onUs,
-  clients,
-  mine,
-  href,
+/**
+ * One row of figures with hairlines between them — the numbers that frame
+ * the day, without charts: what is open, what is waiting, who is on file,
+ * what is owed.
+ */
+export function StatStrip({
+  stats,
 }: {
-  active: KpiView;
-  onUs: number;
-  clients: number;
-  mine: boolean;
-  href: string;
+  stats: Array<{ label: string; value: string; sub?: string; view?: KpiView; href?: string }>;
 }) {
-  const last = active.series.at(-1) ?? active.current;
   return (
-    <Panel title={mine ? "My caseload" : "Caseload"} link={{ label: "Cases", href }}>
-      <div className="flex flex-col items-center gap-1 pt-2 text-center">
-        <div className="text-[26px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-foreground">
-          {active.current} {active.current === 1 ? "active case" : "active cases"}
-        </div>
-        <div className="text-[12px] text-muted-foreground">
-          {onUs > 0 ? `${onUs} waiting on ${mine ? "you" : "the firm"}` : "nothing waiting on the firm"} · {clients} {clients === 1 ? "client" : "clients"}
-        </div>
-      </div>
-      <div className="relative mt-5 h-[88px]">
-        <Sparkline id="caseload" points={active.series} width={400} height={88} className="h-full w-full" />
-        {active.series.length >= 2 && (
-          <span className="absolute right-0 top-1 rounded-md bg-[var(--navy)] px-1.5 py-0.5 text-[11px] font-medium text-white">
-            {last} now
-          </span>
-        )}
-      </div>
-    </Panel>
-  );
-}
-
-/** Two figures side by side with change pills — Copilot's "Net worth". */
-export function MoneyCard({ retained, outstanding }: { retained: KpiView; outstanding: KpiView }) {
-  return (
-    <Panel title="Fees" link={{ label: "Payments", href: "/dashboard/payments" }}>
-      <div className="grid grid-cols-2 gap-4 pt-1">
-        {[retained, outstanding].map((v, i) => (
-          <div key={v.key} className="flex flex-col items-center gap-1.5 text-center">
-            <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-              <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", i === 0 ? "bg-[var(--success)]" : "bg-[var(--warning)]")} />
-              {v.label}
+    <section className="grid grid-cols-2 divide-border rounded-[var(--radius)] border border-border bg-card shadow-sm sm:grid-cols-4 sm:divide-x">
+      {stats.map((st) => {
+        const inner = (
+          <>
+            <div className="text-[12px] text-muted-foreground">{st.label}</div>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-[24px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-foreground">{st.value}</span>
+              {st.view && <ChangePill view={st.view} />}
             </div>
-            <div className="text-[22px] font-semibold leading-none tabular-nums tracking-[-0.02em] text-foreground">
-              {formatKpiValue(v)}
-            </div>
-            <ChangePill view={v} />
-          </div>
-        ))}
-      </div>
-      <div className="mt-5 h-[64px]">
-        <Sparkline id="money" points={retained.series} width={400} height={64} className="h-full w-full" />
-      </div>
-    </Panel>
+            {st.sub && <div className="mt-1 text-[12px] text-muted-foreground">{st.sub}</div>}
+          </>
+        );
+        const cls = "block px-5 py-4";
+        return st.href ? (
+          <Link key={st.label} href={st.href} className={cn(cls, "transition-colors hover:bg-muted/40")}>{inner}</Link>
+        ) : (
+          <div key={st.label} className={cls}>{inner}</div>
+        );
+      })}
+    </section>
   );
 }
 
@@ -183,7 +154,7 @@ export function NextTwoWeeks({
   return (
     <Panel title="Next two weeks" link={{ label: "Calendar", href: "/dashboard/appointments" }}>
       {rows.length === 0 ? (
-        <p className="py-6 text-center text-[13px] italic text-muted-foreground">Nothing scheduled in the next two weeks</p>
+        <p className="text-[13px] text-muted-foreground">Nothing scheduled.</p>
       ) : (
         <ul className="space-y-2.5">
           {rows.map((r, i) => {

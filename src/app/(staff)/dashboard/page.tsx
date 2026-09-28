@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AttentionList } from "@/components/dashboard/AttentionList";
-import { CaseloadCard, MoneyCard, NextTwoWeeks, PipelineRows } from "@/components/dashboard/copilot-cards";
+import { NextTwoWeeks, PipelineRows, StatStrip } from "@/components/dashboard/copilot-cards";
+import { formatKpiValue } from "@/lib/dashboard/metrics";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { buttonVariants } from "@/components/ui/button";
 import { staffCan } from "@/lib/auth/permissions";
@@ -17,7 +18,6 @@ import { getPipeline } from "@/lib/dashboard/getPipeline";
 import { getRecentActivity } from "@/lib/dashboard/getRecentActivity";
 import { getUpcomingAppointments } from "@/lib/dashboard/getUpcomingAppointments";
 import type {
-  KpiView,
   DashboardTask,
   RecentRow,
 } from "@/lib/dashboard/types";
@@ -140,17 +140,25 @@ export default async function DashboardPage() {
 
   const { date, greeting } = torontoHeader();
 
-  const activeKpi = kpis.find((k) => k.key === "active_cases");
-  const clientsKpi = kpis.find((k) => k.key === "clients");
-  const retainedKpi = kpis.find((k) => k.key === "retained_mtd");
-  const outstandingKpi = kpis.find((k) => k.key === "outstanding_fees");
+  const kpi = (key: string) => kpis.find((k) => k.key === key);
+  const activeKpi = kpi("active_cases");
+  const clientsKpi = kpi("clients");
+  const retainedKpi = kpi("retained_mtd");
+  const outstandingKpi = kpi("outstanding_fees");
   const boardHref = myPipeline ? `/dashboard/cases?view=board&assigned=${me.id}` : "/dashboard/cases?view=board";
   const shownPipeline = myPipeline ?? pipeline;
-  const shownActive: KpiView | null = activeKpi
-    ? myPipeline
-      ? { ...activeKpi, current: myCards.length, previous: null, series: [] }
-      : activeKpi
-    : null;
+  const stats = [
+    canCases && {
+      label: myPipeline ? "My active cases" : "Active cases",
+      value: String(myPipeline ? myCards.length : (activeKpi?.current ?? 0)),
+      view: myPipeline ? undefined : activeKpi,
+      sub: `${onUs.length} waiting on ${myPipeline ? "you" : "the firm"}`,
+      href: boardHref,
+    },
+    canCases && clientsKpi && { label: "Clients", value: String(clientsKpi.current), view: clientsKpi, sub: "on file", href: "/dashboard/clients" },
+    canCases && retainedKpi && { label: "Retained this month", value: String(retainedKpi.current), view: retainedKpi, sub: "new cases opened", href: "/dashboard/cases" },
+    canFinancials && outstandingKpi && { label: "Outstanding fees", value: formatKpiValue(outstandingKpi), view: outstandingKpi, sub: "across active cases", href: "/dashboard/payments" },
+  ].filter((x): x is Exclude<typeof x, false | null | undefined> => Boolean(x));
 
   return (
     <main className="px-6 py-6">
@@ -187,30 +195,21 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* Two columns of panels. Left: what needs doing and how the work is
-          moving; right: the figures, the money, the calendar. */}
-      <div className="grid gap-4 min-[1080px]:grid-cols-2">
-        <div className="flex flex-col gap-4">
-          <AttentionList queues={queues} />
-          {canCases && <PipelineRows phases={shownPipeline} href={boardHref} />}
-          {canCases && <RecentActivity rows={recent} />}
-        </div>
-        <div className="flex flex-col gap-4">
-          {canCases && shownActive && (
-            <CaseloadCard
-              active={shownActive}
-              onUs={onUs.length}
-              clients={clientsKpi?.current ?? 0}
-              mine={Boolean(myPipeline)}
-              href={boardHref}
-            />
-          )}
-          {canFinancials && retainedKpi && outstandingKpi && (
-            <MoneyCard retained={retainedKpi} outstanding={outstandingKpi} />
-          )}
-          {(canAppointments || canTasks) && (
-            <NextTwoWeeks appointments={canAppointments ? appointments : []} tasks={canTasks ? tasks : []} />
-          )}
+      {/* The numbers that frame the day, then two columns: what needs doing
+          and how the work is moving on the left; what is coming up on the right. */}
+      <div className="flex flex-col gap-4">
+        {stats.length > 0 && <StatStrip stats={stats} />}
+        <div className="grid gap-4 min-[1080px]:grid-cols-2">
+          <div className="flex flex-col gap-4">
+            <AttentionList queues={queues} />
+            {canCases && <RecentActivity rows={recent} />}
+          </div>
+          <div className="flex flex-col gap-4">
+            {canCases && <PipelineRows phases={shownPipeline} href={boardHref} />}
+            {(canAppointments || canTasks) && (
+              <NextTwoWeeks appointments={canAppointments ? appointments : []} tasks={canTasks ? tasks : []} />
+            )}
+          </div>
         </div>
       </div>
     </main>
