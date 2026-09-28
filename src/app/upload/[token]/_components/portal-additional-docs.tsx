@@ -7,6 +7,8 @@ import { useRef, useState, useTransition } from "react";
 
 import { cn } from "@/lib/utils/index";
 
+import { formatBytesMb, MAX_UPLOAD_BYTES } from "@/lib/validators/document";
+
 import { uploadAsClientAdditional } from "../actions";
 
 export type PortalAdditionalDocLatest = {
@@ -99,11 +101,21 @@ function PortalRow({
   function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setError(null);
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError(`File exceeds the 4 MB limit (${formatBytesMb(file.size)} MB). Compress or split it before uploading.`);
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
     const fd = new FormData();
     fd.set("file", file);
-    setError(null);
     startTransition(async () => {
-      const r = await uploadAsClientAdditional(token, row.id, fd);
+      let r: Awaited<ReturnType<typeof uploadAsClientAdditional>>;
+      try {
+        r = await uploadAsClientAdditional(token, row.id, fd);
+      } catch {
+        r = { error: "Upload failed. The file may be over the 4 MB limit, or the connection dropped — please try again." };
+      }
       if (inputRef.current) inputRef.current.value = "";
       if ("error" in r) {
         setError(r.error);

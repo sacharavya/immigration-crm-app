@@ -1,6 +1,7 @@
 "use server";
 
 import { adminClient } from "@/lib/supabase/admin";
+import { MAX_UPLOAD_BYTES } from "@/lib/validators/document";
 import { revalidatePath } from "next/cache";
 
 import { ensureCasePaymentsFolder } from "@/lib/graph/folders";
@@ -21,7 +22,6 @@ const ALLOWED_MIME = new Set([
   "image/heic",
   "image/webp",
 ]);
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB; same cap as staff attachPaymentProof.
 
 // Statuses where the pay portal stays active. Once the case is closed
 // or in a settled phase, the link goes dead — this matches the doc-
@@ -175,7 +175,7 @@ export async function submitCasePaymentProof(
   if (!(file instanceof File)) return { error: "No file attached" };
   if (file.size === 0) return { error: "File is empty" };
   if (file.size > MAX_UPLOAD_BYTES) {
-    return { error: "Proof must be under 10 MB." };
+    return { error: "Proof must be under 4 MB." };
   }
   if (!ALLOWED_MIME.has(file.type)) {
     return {

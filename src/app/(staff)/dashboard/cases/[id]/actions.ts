@@ -29,12 +29,7 @@ import { requireStaffTenantId } from "@/lib/tenant/context";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 import { immigrationStatusFromServiceType } from "@/lib/validators/client-immigration";
-import {
-  ALLOWED_EXTENSIONS_HUMAN,
-  ALLOWED_MIME_TYPES_SET,
-  MAX_UPLOAD_BYTES,
-  formatBytesMb,
-} from "@/lib/validators/document";
+import { ALLOWED_EXTENSIONS_HUMAN, ALLOWED_MIME_TYPES_SET, MAX_UPLOAD_BYTES, formatBytesMb } from "@/lib/validators/document";
 import {
   MILESTONE_LABEL,
   MILESTONE_STATUS,
@@ -925,7 +920,7 @@ const PROOF_ACCEPTED_MIME = new Set([
   "image/heic",
   "image/webp",
 ]);
-const PROOF_MAX_BYTES = 10 * 1024 * 1024;
+const PROOF_MAX_BYTES = MAX_UPLOAD_BYTES; // Vercel drops request bodies over 4.5 MB before the app runs
 
 export type AttachPaymentProofResult =
   | { ok: true; documentId: string; webUrl: string | null }
@@ -949,7 +944,7 @@ export async function attachPaymentProof(
   if (!(file instanceof File)) return { error: "No file attached" };
   if (file.size === 0) return { error: "File is empty" };
   if (file.size > PROOF_MAX_BYTES) {
-    return { error: "Proof must be under 10 MB" };
+    return { error: "Proof must be under 4 MB" };
   }
   if (!PROOF_ACCEPTED_MIME.has(file.type)) {
     return { error: `Unsupported file type: ${file.type || "unknown"}` };

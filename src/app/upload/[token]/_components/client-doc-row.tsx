@@ -14,6 +14,8 @@ import { useRef, useState, useTransition } from "react";
 
 import { cn } from "@/lib/utils/index";
 
+import { formatBytesMb, MAX_UPLOAD_BYTES } from "@/lib/validators/document";
+
 import { reuploadFileAsClient, uploadFileAsClient } from "../actions";
 
 // File types the client may send. Mirrors the server's ALLOWED_MIME_TYPES;
@@ -186,11 +188,22 @@ export function ClientDocRow({
   const { files, acceptsMultiple, label } = requirement;
   const isMulti = acceptsMultiple || files.length > 1;
 
-  function run(key: string, fn: () => Promise<{ ok: true } | { error: string }>) {
+  function run(key: string, file: File, fn: () => Promise<{ ok: true } | { error: string }>) {
     setError(null);
+    // Checked here first: a body over the platform limit is rejected before
+    // the server action runs, so the server's own message never comes back.
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError(`File exceeds the 4 MB limit (${formatBytesMb(file.size)} MB). Compress or split it before uploading.`);
+      return;
+    }
     setPending(key);
     startTransition(async () => {
-      const r = await fn();
+      let r: { ok: true } | { error: string };
+      try {
+        r = await fn();
+      } catch {
+        r = { error: "Upload failed. The file may be over the 4 MB limit, or the connection dropped — please try again." };
+      }
       setPending(null);
       if ("error" in r) {
         setError(r.error);
@@ -203,13 +216,13 @@ export function ClientDocRow({
   function uploadNew(file: File) {
     const fd = new FormData();
     fd.set("file", file);
-    run("new", () => uploadFileAsClient(token, requirement.code, fd));
+    run("new", file, () => uploadFileAsClient(token, requirement.code, fd));
   }
 
   function replace(fileGroupKey: string, file: File) {
     const fd = new FormData();
     fd.set("file", file);
-    run(fileGroupKey, () => reuploadFileAsClient(token, fileGroupKey, fd));
+    run(fileGroupKey, file, () => reuploadFileAsClient(token, fileGroupKey, fd));
   }
 
   return (

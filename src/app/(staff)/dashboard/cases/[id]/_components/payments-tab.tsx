@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { MAX_UPLOAD_BYTES } from "@/lib/validators/document";
 import {
   ExternalLink,
   Loader2,
@@ -35,7 +36,7 @@ const ACCEPTED_MIME = [
   "image/heic",
   "image/webp",
 ];
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = MAX_UPLOAD_BYTES; // Vercel drops request bodies over 4.5 MB before the app runs
 
 const cadFormatter = new Intl.NumberFormat("en-CA", {
   style: "currency",
@@ -249,7 +250,7 @@ function ProofCell({
       return;
     }
     if (file.size > MAX_BYTES) {
-      setError("File must be under 10 MB.");
+      setError("File must be under 4 MB.");
       return;
     }
     const fd = new FormData();

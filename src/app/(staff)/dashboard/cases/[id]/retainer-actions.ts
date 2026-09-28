@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { MAX_UPLOAD_BYTES } from "@/lib/validators/document";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -1287,7 +1288,7 @@ const ALLOWED_SCAN_MIME = new Set([
   "image/png",
   "image/heic",
 ]);
-const SCAN_MAX_BYTES = 10 * 1024 * 1024;
+const SCAN_MAX_BYTES = MAX_UPLOAD_BYTES; // Vercel drops request bodies over 4.5 MB before the app runs
 
 export async function uploadSignedRetainer(
   retainerId: string,
@@ -1304,7 +1305,7 @@ export async function uploadSignedRetainer(
   if (!(file instanceof File)) return { error: "No file attached" };
   if (file.size === 0) return { error: "File is empty" };
   if (file.size > SCAN_MAX_BYTES) {
-    return { error: "File must be under 10 MB." };
+    return { error: "File must be under 4 MB." };
   }
   if (!ALLOWED_SCAN_MIME.has(file.type)) {
     return { error: `Unsupported file type: ${file.type}` };

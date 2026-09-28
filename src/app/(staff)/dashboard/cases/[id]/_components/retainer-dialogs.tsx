@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, Upload as UploadIcon } from "lucide-react";
+import { MAX_UPLOAD_BYTES } from "@/lib/validators/document";
 import { useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ const ALLOWED_SCAN_MIME = [
   "image/png",
   "image/heic",
 ];
-const SCAN_MAX_BYTES = 10 * 1024 * 1024;
+const SCAN_MAX_BYTES = MAX_UPLOAD_BYTES; // Vercel drops request bodies over 4.5 MB before the app runs
 
 // ---------------------------------------------------------------------------
 // SendForSignatureDialog
@@ -265,7 +266,7 @@ export function UploadSignedRetainerDialog({
       return;
     }
     if (f.size > SCAN_MAX_BYTES) {
-      setError("File must be under 10 MB.");
+      setError("File must be under 4 MB.");
       setFile(null);
       return;
     }
@@ -324,7 +325,7 @@ export function UploadSignedRetainerDialog({
             </p>
           )}
           <p className="text-xs text-stone-500">
-            Accepts PDF, JPG, PNG, HEIC. Max 10 MB.
+            Accepts PDF, JPG, PNG, HEIC. Max 4 MB.
           </p>
         </div>
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { adminClient } from "@/lib/supabase/admin";
+import { MAX_UPLOAD_BYTES } from "@/lib/validators/document";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
@@ -46,7 +47,7 @@ const ACCEPTED_DOCUMENT_MIME = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 const SIGNATURE_MAX_BYTES = 2 * 1024 * 1024;
-const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+const DOCUMENT_MAX_BYTES = MAX_UPLOAD_BYTES; // Vercel drops request bodies over 4.5 MB before the app runs
 
 type SubmitResult =
   | { ok: true; download_path: string | null }
@@ -514,7 +515,7 @@ export async function submitScannedDocument(
   if (!(file instanceof File)) return { error: "No file attached" };
   if (file.size === 0) return { error: "File is empty" };
   if (file.size > DOCUMENT_MAX_BYTES) {
-    return { error: "File must be under 10 MB" };
+    return { error: "File must be under 4 MB" };
   }
   if (!ACCEPTED_DOCUMENT_MIME.has(file.type)) {
     return { error: `Unsupported file type: ${file.type}` };

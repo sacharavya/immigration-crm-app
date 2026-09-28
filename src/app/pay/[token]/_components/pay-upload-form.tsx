@@ -6,6 +6,8 @@ import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+import { formatBytesMb, MAX_UPLOAD_BYTES } from "@/lib/validators/document";
+
 import { submitCasePaymentProof } from "../actions";
 
 type Props = {
@@ -40,12 +42,22 @@ export function PayUploadForm({ token, amountDueCad }: Props) {
       return;
     }
 
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setStatus({ kind: "error", reason: `File exceeds the 4 MB limit (${formatBytesMb(file.size)} MB). Compress or split it before uploading.` });
+      return;
+    }
+
     const fd = new FormData();
     fd.set("file", file);
     fd.set("amount_cad", amount.toFixed(2));
 
     startTransition(async () => {
-      const res = await submitCasePaymentProof(token, fd);
+      let res: Awaited<ReturnType<typeof submitCasePaymentProof>>;
+      try {
+        res = await submitCasePaymentProof(token, fd);
+      } catch {
+        res = { error: "Upload failed. The file may be over the 4 MB limit, or the connection dropped — please try again." };
+      }
       if ("error" in res) {
         setStatus({ kind: "error", reason: res.error });
         return;
