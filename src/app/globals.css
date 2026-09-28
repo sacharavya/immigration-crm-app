@@ -295,7 +295,7 @@
    screens, so the staff shell opts into a soft radius — same escape hatch
    the marketing pages use. Set to 0 to go back to square. */
 .app-surface {
-  --radius: 14px;
+  --radius: 12px;
 
   /* Hairline borders. The default --border is tuned for square edges and
      looks heavy once corners are rounded, and elevation now carries most of

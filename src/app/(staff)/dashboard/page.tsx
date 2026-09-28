@@ -2,9 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AttentionList } from "@/components/dashboard/AttentionList";
-import { KpiBar } from "@/components/dashboard/KpiBar";
-import { MyTasks } from "@/components/dashboard/MyTasks";
-import { PipelineStrip } from "@/components/dashboard/PipelineStrip";
+import { CaseloadCard, MoneyCard, NextTwoWeeks, PipelineRows } from "@/components/dashboard/copilot-cards";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { buttonVariants } from "@/components/ui/button";
 import { staffCan } from "@/lib/auth/permissions";
@@ -19,6 +17,7 @@ import { getPipeline } from "@/lib/dashboard/getPipeline";
 import { getRecentActivity } from "@/lib/dashboard/getRecentActivity";
 import { getUpcomingAppointments } from "@/lib/dashboard/getUpcomingAppointments";
 import type {
+  KpiView,
   DashboardTask,
   RecentRow,
 } from "@/lib/dashboard/types";
@@ -26,7 +25,6 @@ import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils/index";
 
 import type { AppointmentRow } from "./appointments/_components/types";
-import { UpcomingAppointmentsCard } from "./appointments/_components/upcoming-appointments-card";
 
 // Server-rendered home for the signed-in person. It opens on what is waiting
 // on them, then the slice of the work that fits their role (own caseload for
@@ -88,15 +86,6 @@ export default async function DashboardPage() {
   const isOwnWorkRole = me.role === "rcic" || me.role === "paralegal" || me.role === "staff";
   const myCards = cards.filter((c) => c.rcicId === me.id || c.card.workerId === me.id);
   const myPipeline = isOwnWorkRole && myCards.length > 0 ? getPipeline(myCards) : null;
-  // Front desk lives by the calendar; the firm's numbers matter to whoever runs it.
-  const calendarFirst = me.role === "reception";
-  const showKpis = !isOwnWorkRole && me.role !== "reception" && me.role !== "document_officer";
-
-  // Outstanding fees is financial; hide that card from staff without the
-  // permission. The other three are not sensitive.
-  const visibleKpis = kpis.filter(
-    (k) => k.key !== "outstanding_fees" || canFinancials,
-  );
 
   // Only load the appointment dialog's data when the button will render.
   const apptDialogData = canAppointments
@@ -151,28 +140,30 @@ export default async function DashboardPage() {
 
   const { date, greeting } = torontoHeader();
 
+  const activeKpi = kpis.find((k) => k.key === "active_cases");
+  const clientsKpi = kpis.find((k) => k.key === "clients");
+  const retainedKpi = kpis.find((k) => k.key === "retained_mtd");
+  const outstandingKpi = kpis.find((k) => k.key === "outstanding_fees");
+  const boardHref = myPipeline ? `/dashboard/cases?view=board&assigned=${me.id}` : "/dashboard/cases?view=board";
+  const shownPipeline = myPipeline ?? pipeline;
+  const shownActive: KpiView | null = activeKpi
+    ? myPipeline
+      ? { ...activeKpi, current: myCards.length, previous: null, series: [] }
+      : activeKpi
+    : null;
+
   return (
-    <main className="space-y-6 px-6 py-8">
-      <div className="relative flex flex-col gap-4 overflow-hidden rounded-[calc(var(--radius)*1.4)] border border-border bg-card px-6 py-6 shadow-sm sm:flex-row sm:items-end sm:justify-between">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{ background: "radial-gradient(60% 120% at 0% 0%, color-mix(in srgb, var(--navy) 9%, transparent), transparent 70%)" }}
-        />
-        <div className="relative flex flex-col gap-1.5">
-          <p className="text-xs font-medium uppercase tracking-[0.08em] text-[var(--subtle-foreground)]">
-            {date}
-          </p>
-          <h1 className="text-[28px] font-semibold tracking-[-0.02em] text-foreground">
+    <main className="px-6 py-6">
+      {/* Slim top row: where you are, what day it is, and the two or three things you create most. */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[12px] text-muted-foreground">{date}</p>
+          <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-foreground">
             {greeting}, {me.first_name}
           </h1>
-          <p className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-[var(--surface-sunken)] px-3 py-1 text-[12.5px] text-muted-foreground">
-            <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", glance.length === 0 ? "bg-[var(--success)]" : "bg-[var(--warning)]")} />
-            {glance.length === 0 ? "Nothing is waiting on you — a good day to get ahead." : `Today: ${glance.join(" · ")}`}
-          </p>
         </div>
         {(canCreateCases || canCreateClients || canAppointments) && (
-          <div className="relative flex shrink-0 flex-wrap items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             {apptDialogData && (
               <NewAppointmentDialog
                 types={apptDialogData.types}
@@ -183,18 +174,12 @@ export default async function DashboardPage() {
               />
             )}
             {canCreateClients && (
-              <Link
-                href="/dashboard/clients/new"
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "rounded-full")}
-              >
+              <Link href="/dashboard/clients/new" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
                 + New client
               </Link>
             )}
             {canCreateCases && (
-              <Link
-                href="/dashboard/cases/new"
-                className={cn(buttonVariants({ size: "sm" }), "rounded-full")}
-              >
+              <Link href="/dashboard/cases/new" className={cn(buttonVariants({ size: "sm" }))}>
                 + New case
               </Link>
             )}
@@ -202,54 +187,29 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* Row 1: what is waiting on you, beside the queue your day runs on. */}
-      <div className="grid gap-6 min-[1080px]:grid-cols-[minmax(0,1fr)_340px]">
-        <AttentionList queues={queues} />
-        {calendarFirst && canAppointments ? (
-          <UpcomingAppointmentsCard
-            title="Today and next"
-            appointments={appointments}
-            viewAllHref="/dashboard/appointments"
-            prominent
-          />
-        ) : canTasks ? (
-          <MyTasks tasks={tasks} />
-        ) : null}
-      </div>
-
-      {/* Row 2: your own files, or the firm's numbers, depending on the role. */}
-      {myPipeline && (
-        <PipelineStrip phases={myPipeline} title="My caseload" boardHref={`/dashboard/cases?view=board&assigned=${me.id}`} />
-      )}
-      {showKpis && (
-        <KpiBar
-          views={visibleKpis}
-          links={canCases ? { active_cases: "/dashboard/cases" } : undefined}
-        />
-      )}
-      {canCases && <PipelineStrip phases={pipeline} title={myPipeline ? "Firm pipeline" : "Pipeline"} />}
-
-      {/* Row 3: activity and outcomes, with whatever queue row 1 did not take. */}
-      <div className="grid gap-6 pt-1 min-[1080px]:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-6">
+      {/* Two columns of panels. Left: what needs doing and how the work is
+          moving; right: the figures, the money, the calendar. */}
+      <div className="grid gap-4 min-[1080px]:grid-cols-2">
+        <div className="flex flex-col gap-4">
+          <AttentionList queues={queues} />
+          {canCases && <PipelineRows phases={shownPipeline} href={boardHref} />}
           {canCases && <RecentActivity rows={recent} />}
         </div>
-
-        <div className="space-y-6">
-          {!calendarFirst && canAppointments && (
-            <UpcomingAppointmentsCard
-              title="Upcoming appointments"
-              appointments={appointments}
-              viewAllHref="/dashboard/appointments"
-              prominent
+        <div className="flex flex-col gap-4">
+          {canCases && shownActive && (
+            <CaseloadCard
+              active={shownActive}
+              onUs={onUs.length}
+              clients={clientsKpi?.current ?? 0}
+              mine={Boolean(myPipeline)}
+              href={boardHref}
             />
           )}
-          {calendarFirst && canTasks && <MyTasks tasks={tasks} />}
-          {!showKpis && (
-            <KpiBar
-              views={visibleKpis.filter((k) => k.key !== "outstanding_fees")}
-              links={canCases ? { active_cases: "/dashboard/cases" } : undefined}
-            />
+          {canFinancials && retainedKpi && outstandingKpi && (
+            <MoneyCard retained={retainedKpi} outstanding={outstandingKpi} />
+          )}
+          {(canAppointments || canTasks) && (
+            <NextTwoWeeks appointments={canAppointments ? appointments : []} tasks={canTasks ? tasks : []} />
           )}
         </div>
       </div>
