@@ -103,24 +103,51 @@ export default async function DashboardPage() {
     ? await loadNewAppointmentDialogData()
     : null;
 
-  // Cases where the next move is the firm's come from the board model, so
-  // they join the attention list here rather than in the loader.
+  // Two queues come from the board model rather than the loader: cases where
+  // the next move is the firm's, and permits about to expire.
   const scope = myPipeline ? myCards : cards;
-  const onUs = scope.filter((c) => c.card.ballInCourt === "firm").length;
-  const attentionItems = sortAttention(
-    canCases && onUs > 0
-      ? [
-          ...attention,
-          {
-            key: "on_us",
-            count: onUs,
-            noun: myPipeline ? ["of your cases is waiting on you", "of your cases are waiting on you"] : ["case waiting on the firm", "cases waiting on the firm"],
-            href: myPipeline ? `/dashboard/cases?view=board&assigned=${me.id}` : "/dashboard/cases?view=board",
-            tone: "action" as const,
-          },
-        ]
-      : attention,
-  );
+  const onUs = scope.filter((c) => c.card.ballInCourt === "firm");
+  const expiring = scope
+    .filter((c) => c.daysUntilExpiry !== null && c.daysUntilExpiry <= 60)
+    .sort((a, b) => (a.daysUntilExpiry ?? 0) - (b.daysUntilExpiry ?? 0));
+  const caseHref = (c: EnrichedCard) => `/dashboard/cases/${c.card.id}`;
+  const queues = sortAttention([
+    ...attention,
+    ...(canCases && expiring.length > 0
+      ? [{
+          key: "expiring",
+          count: expiring.length,
+          noun: ["permit expiring within 60 days", "permits expiring within 60 days"] as [string, string],
+          href: myPipeline ? `/dashboard/cases?view=board&assigned=${me.id}` : "/dashboard/cases?view=board",
+          tone: (expiring.some((c) => (c.daysUntilExpiry ?? 99) <= 14) ? "critical" : "action") as "critical" | "action",
+          items: expiring.slice(0, 3).map((c) => ({
+            title: c.card.clientName,
+            meta: `${c.card.caseNumber} · ${(c.daysUntilExpiry ?? 0) < 0 ? `expired ${-(c.daysUntilExpiry ?? 0)} days ago` : `expires in ${c.daysUntilExpiry} days`}`,
+            href: caseHref(c),
+          })),
+        }]
+      : []),
+    ...(canCases && onUs.length > 0
+      ? [{
+          key: "on_us",
+          count: onUs.length,
+          noun: (myPipeline ? ["of your cases is waiting on you", "of your cases are waiting on you"] : ["case waiting on the firm", "cases waiting on the firm"]) as [string, string],
+          href: myPipeline ? `/dashboard/cases?view=board&assigned=${me.id}` : "/dashboard/cases?view=board",
+          tone: "action" as const,
+          items: onUs
+            .sort((a, b) => b.card.phaseAgeDays - a.card.phaseAgeDays)
+            .slice(0, 3)
+            .map((c) => ({
+              title: c.card.clientName,
+              meta: `${c.card.caseNumber} · ${c.card.statusText} · ${c.card.phaseAgeDays} days in phase`,
+              href: caseHref(c),
+            })),
+        }]
+      : []),
+  ]);
+
+  // One line under the greeting that says what today looks like.
+  const glance = queues.slice(0, 4).map((q) => `${q.count} ${q.count === 1 ? q.noun[0] : q.noun[1]}`);
 
   const { date, greeting } = torontoHeader();
 
@@ -134,6 +161,9 @@ export default async function DashboardPage() {
           <h1 className="text-[28px] font-semibold tracking-[-0.02em] text-foreground">
             {greeting}, {me.first_name}
           </h1>
+          <p className="text-sm text-muted-foreground">
+            {glance.length === 0 ? "Nothing is waiting on you — a good day to get ahead." : `Today: ${glance.join(" · ")}.`}
+          </p>
         </div>
         {(canCreateCases || canCreateClients || canAppointments) && (
           <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -168,7 +198,7 @@ export default async function DashboardPage() {
 
       {/* Row 1: what is waiting on you, beside the queue your day runs on. */}
       <div className="grid gap-6 min-[1080px]:grid-cols-[minmax(0,1fr)_340px]">
-        <AttentionList items={attentionItems} />
+        <AttentionList queues={queues} />
         {calendarFirst && canAppointments ? (
           <UpcomingAppointmentsCard
             title="Today and next"
