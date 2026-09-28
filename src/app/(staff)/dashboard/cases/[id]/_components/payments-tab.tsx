@@ -1,6 +1,8 @@
 "use client";
 
 import { format } from "date-fns";
+import { stageFile } from "@/lib/uploads/client";
+import { mintStaffUpload } from "@/app/_uploads/actions";
 import { MAX_UPLOAD_BYTES } from "@/lib/validators/document";
 import {
   ExternalLink,
@@ -250,13 +252,12 @@ function ProofCell({
       return;
     }
     if (file.size > MAX_BYTES) {
-      setError("File must be under 4 MB.");
+      setError("File must be under 10 MB.");
       return;
     }
-    const fd = new FormData();
-    fd.set("file", file);
     startUpload(async () => {
-      const res = await attachPaymentProof(paymentId, fd);
+      const staged = await stageFile(file, mintStaffUpload);
+      const res = "error" in staged ? staged : await attachPaymentProof(paymentId, staged);
       if ("error" in res) setError(res.error);
     });
   }

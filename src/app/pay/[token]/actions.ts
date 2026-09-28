@@ -1,6 +1,8 @@
 "use server";
 
 import { adminClient } from "@/lib/supabase/admin";
+import type { StagedUpload } from "@/lib/uploads/types";
+import { takeStagedFile } from "@/lib/uploads/staged";
 import { MAX_UPLOAD_BYTES } from "@/lib/validators/document";
 import { revalidatePath } from "next/cache";
 
@@ -155,7 +157,8 @@ export type SubmitProofResult =
 // future they should add a method picker here.
 export async function submitCasePaymentProof(
   token: string,
-  formData: FormData,
+  staged: StagedUpload,
+  amountCad: string,
 ): Promise<SubmitProofResult> {
   const caseRow = await loadCaseByPayToken(token);
   if (!caseRow) {
@@ -171,18 +174,18 @@ export async function submitCasePaymentProof(
     };
   }
 
-  const file = formData.get("file");
-  if (!(file instanceof File)) return { error: "No file attached" };
+  const file = await takeStagedFile(staged, caseRow.tenant_id);
+  if (!file) return { error: "We couldn't find the uploaded file. Please try again." };
   if (file.size === 0) return { error: "File is empty" };
   if (file.size > MAX_UPLOAD_BYTES) {
-    return { error: "Proof must be under 4 MB." };
+    return { error: "Proof must be under 10 MB." };
   }
   if (!ALLOWED_MIME.has(file.type)) {
     return {
       error: `File type ${file.type || "unknown"} is not allowed. Use PDF, PNG, JPG, HEIC, or WebP.`,
     };
   }
-  const amountRaw = formData.get("amount_cad");
+  const amountRaw = amountCad;
   const amount =
     typeof amountRaw === "string" ? Number.parseFloat(amountRaw) : NaN;
   if (!Number.isFinite(amount) || amount <= 0) {

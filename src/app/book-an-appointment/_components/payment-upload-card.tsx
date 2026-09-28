@@ -3,11 +3,15 @@
 import { Hourglass, Loader2, Upload } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 
+import { mintPortalUpload } from "@/app/_uploads/actions";
+import { stageFile } from "@/lib/uploads/client";
+import { MAX_UPLOAD_BYTES } from "@/lib/validators/document";
+
 import { uploadPaymentProof } from "../actions";
 
 const ALLOWED_MIME = ["image/png", "image/jpeg", "image/heic", "application/pdf"];
-const ALLOWED_HUMAN = "PNG, JPG, HEIC, or PDF · max 5 MB";
-const MAX_BYTES = 5 * 1024 * 1024;
+const ALLOWED_HUMAN = "PNG, JPG, HEIC, or PDF · max 10 MB";
+const MAX_BYTES = MAX_UPLOAD_BYTES;
 const FIRM_EMAIL = "info@genzdatalabs.com";
 
 export type PaymentUploadCardProps = {
@@ -62,7 +66,7 @@ export function PaymentUploadCard({
       return;
     }
     if (f.size > MAX_BYTES) {
-      setError("Maximum file size is 5 MB.");
+      setError("Maximum file size is 10 MB.");
       return;
     }
     setFile(f);
@@ -75,10 +79,12 @@ export function PaymentUploadCard({
     }
     setError(null);
     startTransition(async () => {
-      const fd = new FormData();
-      fd.append("token", token);
-      fd.append("file", file);
-      const result = await uploadPaymentProof(fd);
+      const staged = await stageFile(file, () => mintPortalUpload(token));
+      if ("error" in staged) {
+        setError(staged.error);
+        return;
+      }
+      const result = await uploadPaymentProof(token, staged);
       if (!result.ok) {
         setError(translate(result.error));
         return;

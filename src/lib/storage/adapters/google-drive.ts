@@ -106,9 +106,45 @@ export class GoogleDriveAdapter implements StorageAdapter {
     content: Uint8Array,
     mimeType: string,
   ): Promise<StoredItem> {
-    // Multipart upload: metadata part names the file and parent, media part
-    // carries the bytes. One request, fine up to 5MB which is the app's own
-    // ceiling for a client document.
+    // Multipart is one request but Google caps it at 5 MB; larger files go
+    // through a resumable session (metadata first, then the bytes).
+    if (content.byteLength > 5 * 1024 * 1024) {
+      const start = await fetch(
+        `${UPLOAD}/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,webViewLink,size,mimeType`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            "Content-Type": "application/json; charset=UTF-8",
+            "X-Upload-Content-Type": mimeType,
+            "X-Upload-Content-Length": String(content.byteLength),
+          },
+          body: JSON.stringify({ name: sanitizeName(fileName), parents: [parentId] }),
+        },
+      );
+      const sessionUrl = start.headers.get("location");
+      if (!start.ok || !sessionUrl) {
+        throw new Error(`Google Drive ${start.status}: could not open a resumable upload`);
+      }
+      const done = await fetch(sessionUrl, {
+        method: "PUT",
+        headers: { "Content-Type": mimeType, "Content-Length": String(content.byteLength) },
+        body: content as BodyInit,
+      });
+      if (!done.ok) {
+        const body = await done.text().catch(() => "");
+        throw new Error(`Google Drive ${done.status}: ${body.slice(0, 300)}`);
+      }
+      const big = (await done.json()) as DriveFile;
+      return {
+        id: big.id,
+        name: big.name,
+        webUrl: big.webViewLink ?? "",
+        size: Number(big.size ?? content.byteLength),
+        mimeType: big.mimeType,
+      };
+    }
+
     const boundary = `crm-${Date.now().toString(36)}`;
     const meta = JSON.stringify({ name: sanitizeName(fileName), parents: [parentId] });
     const head =

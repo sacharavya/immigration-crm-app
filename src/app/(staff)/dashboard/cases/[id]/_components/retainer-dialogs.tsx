@@ -1,6 +1,8 @@
 "use client";
 
 import { Loader2, Upload as UploadIcon } from "lucide-react";
+import { stageFile } from "@/lib/uploads/client";
+import { mintStaffUpload } from "@/app/_uploads/actions";
 import { MAX_UPLOAD_BYTES } from "@/lib/validators/document";
 import { useRef, useState, useTransition } from "react";
 
@@ -266,7 +268,7 @@ export function UploadSignedRetainerDialog({
       return;
     }
     if (f.size > SCAN_MAX_BYTES) {
-      setError("File must be under 4 MB.");
+      setError("File must be under 10 MB.");
       setFile(null);
       return;
     }
@@ -277,9 +279,8 @@ export function UploadSignedRetainerDialog({
     if (!file) return;
     setError(null);
     startTransition(async () => {
-      const fd = new FormData();
-      fd.set("file", file);
-      const result = await uploadSignedRetainer(retainerId, fd);
+      const staged = await stageFile(file, mintStaffUpload);
+      const result = "error" in staged ? staged : await uploadSignedRetainer(retainerId, staged);
       if ("error" in result) {
         setError(result.error);
         return;
@@ -325,7 +326,7 @@ export function UploadSignedRetainerDialog({
             </p>
           )}
           <p className="text-xs text-stone-500">
-            Accepts PDF, JPG, PNG, HEIC. Max 4 MB.
+            Accepts PDF, JPG, PNG, HEIC. Max 10 MB.
           </p>
         </div>
 

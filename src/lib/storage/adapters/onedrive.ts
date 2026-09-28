@@ -1,3 +1,4 @@
+import { putUploadSession } from "@/lib/graph/uploads";
 import "server-only";
 
 import type {
@@ -115,15 +116,24 @@ export class OneDriveAdapter implements StorageAdapter {
     content: Uint8Array,
     mimeType: string,
   ): Promise<StoredItem> {
-    if (content.byteLength > SMALL_UPLOAD_LIMIT) {
-      throw new Error(
-        `${fileName} is over 4MB; Graph needs an upload session for that, which is not implemented.`,
-      );
+    const itemPath = `/drives/${this.driveId}/items/${parentId}:/${encodeURIComponent(sanitizeName(fileName))}:`;
+    let item: DriveItem;
+    if (content.byteLength <= SMALL_UPLOAD_LIMIT) {
+      item = await this.api<DriveItem>(`${itemPath}/content`, {
+        method: "PUT",
+        headers: { "Content-Type": mimeType },
+        body: content as BodyInit,
+      });
+    } else {
+      // Over the simple-PUT limit: an upload session, whole file in one chunk
+      // (sessions accept up to 60 MiB per PUT; our ceiling is 10 MB).
+      const session = await this.api<{ uploadUrl: string }>(`${itemPath}/createUploadSession`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item: { "@microsoft.graph.conflictBehavior": "rename" } }),
+      });
+      item = (await putUploadSession(session.uploadUrl, content as BodyInit, content.byteLength)) as DriveItem;
     }
-    const item = await this.api<DriveItem>(
-      `/drives/${this.driveId}/items/${parentId}:/${encodeURIComponent(sanitizeName(fileName))}:/content`,
-      { method: "PUT", headers: { "Content-Type": mimeType }, body: content as BodyInit },
-    );
     return {
       id: item.id,
       name: item.name,

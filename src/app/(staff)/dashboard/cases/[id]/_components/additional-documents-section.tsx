@@ -1,6 +1,8 @@
 "use client";
 
 import { format } from "date-fns";
+import { stageFile } from "@/lib/uploads/client";
+import { mintStaffUpload } from "@/app/_uploads/actions";
 import { ExternalLink, Loader2, Upload } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 
@@ -240,11 +242,10 @@ function UploadButton({
   function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const fd = new FormData();
-    fd.set("file", file);
     setError(null);
     startTransition(async () => {
-      const r = await uploadAdditionalDocument(caseId, requiredDocumentId, fd);
+      const staged = await stageFile(file, mintStaffUpload);
+      const r = "error" in staged ? staged : await uploadAdditionalDocument(caseId, requiredDocumentId, staged);
       if ("error" in r) setError(r.error);
       if (inputRef.current) inputRef.current.value = "";
     });

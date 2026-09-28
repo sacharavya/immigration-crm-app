@@ -1,6 +1,8 @@
 "use server";
 
 import { adminClient } from "@/lib/supabase/admin";
+import type { StagedUpload } from "@/lib/uploads/types";
+import { takeStagedFile } from "@/lib/uploads/staged";
 import { revalidatePath } from "next/cache";
 
 import { enqueueAndAttemptRejectedMove } from "@/lib/files/rejected-move";
@@ -191,11 +193,11 @@ async function resolvePortalUploadContext(
     };
   }
   if (templateDoc.max_file_size_mb !== null) {
-    const cap = Math.min(templateDoc.max_file_size_mb, 4) * 1024 * 1024;
+    const cap = Math.min(templateDoc.max_file_size_mb, 10) * 1024 * 1024;
     if (file.size > cap) {
       return {
         ok: false,
-        error: `File exceeds the ${Math.min(templateDoc.max_file_size_mb, 4)}MB limit (${formatBytesMb(file.size)} MB).`,
+        error: `File exceeds the ${Math.min(templateDoc.max_file_size_mb, 10)}MB limit (${formatBytesMb(file.size)} MB).`,
       };
     }
   }
@@ -240,20 +242,11 @@ async function resolvePortalUploadContext(
 export async function uploadFileAsClient(
   token: string,
   documentCode: string,
-  formData: FormData,
+  staged: StagedUpload,
 ): Promise<UploadAsClientResult> {
   if (!TOKEN_RE.test(token)) return { error: "Invalid link" };
   if (!documentCode || documentCode.length > 50) {
     return { error: "Invalid document code" };
-  }
-
-  const file = formData.get("file");
-  if (!(file instanceof File)) return { error: "No file provided" };
-  if (file.size === 0) return { error: "File is empty" };
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return {
-      error: `File exceeds the 4MB limit (${formatBytesMb(file.size)} MB).`,
-    };
   }
 
   const caseRow = await loadCaseByPortalToken(token);
@@ -262,6 +255,13 @@ export async function uploadFileAsClient(
       error:
         "This upload link is no longer active. Please contact our office for a new link.",
     };
+  }
+
+  const file = await takeStagedFile(staged, caseRow.tenant_id);
+  if (!file) return { error: "We couldn't find the uploaded file. Please try again." };
+  if (file.size === 0) return { error: "File is empty" };
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return { error: `File exceeds the 10 MB limit (${formatBytesMb(file.size)} MB).` };
   }
 
   const supabase = adminClient();
@@ -361,19 +361,10 @@ export async function uploadFileAsClient(
 export async function reuploadFileAsClient(
   token: string,
   fileGroupKey: string,
-  formData: FormData,
+  staged: StagedUpload,
 ): Promise<UploadAsClientResult> {
   if (!TOKEN_RE.test(token)) return { error: "Invalid link" };
   if (!TOKEN_RE.test(fileGroupKey)) return { error: "Invalid file group" };
-
-  const file = formData.get("file");
-  if (!(file instanceof File)) return { error: "No file provided" };
-  if (file.size === 0) return { error: "File is empty" };
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return {
-      error: `File exceeds the 4MB limit (${formatBytesMb(file.size)} MB).`,
-    };
-  }
 
   const caseRow = await loadCaseByPortalToken(token);
   if (!caseRow) {
@@ -381,6 +372,13 @@ export async function reuploadFileAsClient(
       error:
         "This upload link is no longer active. Please contact our office for a new link.",
     };
+  }
+
+  const file = await takeStagedFile(staged, caseRow.tenant_id);
+  if (!file) return { error: "We couldn't find the uploaded file. Please try again." };
+  if (file.size === 0) return { error: "File is empty" };
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return { error: `File exceeds the 10 MB limit (${formatBytesMb(file.size)} MB).` };
   }
 
   const supabase = adminClient();
@@ -557,7 +555,7 @@ export async function reuploadFileAsClient(
 export async function uploadAsClient(
   token: string,
   documentCode: string,
-  formData: FormData,
+  staged: StagedUpload,
 ): Promise<UploadAsClientResult> {
   if (!TOKEN_RE.test(token)) return { error: "Invalid link" };
   if (!documentCode || documentCode.length > 50) {
@@ -587,10 +585,10 @@ export async function uploadAsClient(
     .maybeSingle();
 
   if (!live) {
-    return uploadFileAsClient(token, documentCode, formData);
+    return uploadFileAsClient(token, documentCode, staged);
   }
   if (live.status === "rejected") {
-    return reuploadFileAsClient(token, live.file_group_key, formData);
+    return reuploadFileAsClient(token, live.file_group_key, staged);
   }
   return {
     error:
@@ -609,25 +607,11 @@ const UUID_RE = /^[0-9a-f-]{36}$/i;
 export async function uploadAsClientAdditional(
   token: string,
   requiredDocumentId: string,
-  formData: FormData,
+  staged: StagedUpload,
 ): Promise<UploadAsClientResult> {
   if (!TOKEN_RE.test(token)) return { error: "Invalid link" };
   if (!UUID_RE.test(requiredDocumentId)) {
     return { error: "Invalid document id" };
-  }
-
-  const file = formData.get("file");
-  if (!(file instanceof File)) return { error: "No file provided" };
-  if (file.size === 0) return { error: "File is empty" };
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return {
-      error: `File exceeds the 4MB limit (${formatBytesMb(file.size)} MB).`,
-    };
-  }
-  if (!ALLOWED_MIME_TYPES_SET.has(file.type)) {
-    return {
-      error: `File type ${file.type || "unknown"} is not allowed. Use ${ALLOWED_EXTENSIONS_HUMAN}.`,
-    };
   }
 
   const caseRow = await loadCaseByPortalToken(token);
@@ -635,6 +619,18 @@ export async function uploadAsClientAdditional(
     return {
       error:
         "This upload link is no longer active. Please contact our office for a new link.",
+    };
+  }
+
+  const file = await takeStagedFile(staged, caseRow.tenant_id);
+  if (!file) return { error: "We couldn't find the uploaded file. Please try again." };
+  if (file.size === 0) return { error: "File is empty" };
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return { error: `File exceeds the 10 MB limit (${formatBytesMb(file.size)} MB).` };
+  }
+  if (!ALLOWED_MIME_TYPES_SET.has(file.type)) {
+    return {
+      error: `File type ${file.type || "unknown"} is not allowed. Use ${ALLOWED_EXTENSIONS_HUMAN}.`,
     };
   }
   if (!caseRow.sharepoint_folder_id) {

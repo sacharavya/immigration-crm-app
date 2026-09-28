@@ -1,6 +1,8 @@
 "use server";
 
 import { adminClient } from "@/lib/supabase/admin";
+import type { StagedUpload } from "@/lib/uploads/types";
+import { takeStagedFile } from "@/lib/uploads/staged";
 import { MAX_UPLOAD_BYTES } from "@/lib/validators/document";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -502,7 +504,7 @@ async function finishOnlineSignature(
 
 export async function submitScannedDocument(
   token: string,
-  formData: FormData,
+  staged: StagedUpload,
 ): Promise<SubmitResult> {
   if (!TOKEN_RE.test(token)) return { error: "Invalid token" };
 
@@ -511,11 +513,11 @@ export async function submitScannedDocument(
     return { error: "This signing link is invalid or has expired." };
   }
 
-  const file = formData.get("file");
-  if (!(file instanceof File)) return { error: "No file attached" };
+  const file = await takeStagedFile(staged, retainer.tenant_id);
+  if (!file) return { error: "We couldn't find the uploaded file. Please try again." };
   if (file.size === 0) return { error: "File is empty" };
   if (file.size > DOCUMENT_MAX_BYTES) {
-    return { error: "File must be under 4 MB" };
+    return { error: "File must be under 10 MB" };
   }
   if (!ACCEPTED_DOCUMENT_MIME.has(file.type)) {
     return { error: `Unsupported file type: ${file.type}` };

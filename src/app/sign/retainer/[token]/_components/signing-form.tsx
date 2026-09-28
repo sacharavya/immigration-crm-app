@@ -1,6 +1,8 @@
 "use client";
 
 import { Check, Loader2, Upload } from "lucide-react";
+import { stageFile } from "@/lib/uploads/client";
+import { mintPortalUpload } from "@/app/_uploads/actions";
 import { MAX_UPLOAD_BYTES } from "@/lib/validators/document";
 import { useRef, useState, useTransition } from "react";
 
@@ -104,7 +106,7 @@ export function SigningForm({
     if (file.size > DOCUMENT_MAX_BYTES) {
       setSubmission({
         state: "error",
-        message: "Document must be under 4 MB.",
+        message: "Document must be under 10 MB.",
       });
       return;
     }
@@ -167,9 +169,12 @@ export function SigningForm({
             });
             return;
           }
-          const fd = new FormData();
-          fd.set("file", documentFile);
-          const result = await submitScannedDocument(token, fd);
+          const staged = await stageFile(documentFile, () => mintPortalUpload(token));
+          if ("error" in staged) {
+            setSubmission({ state: "error", message: staged.error });
+            return;
+          }
+          const result = await submitScannedDocument(token, staged);
           if ("error" in result) {
             setSubmission({ state: "error", message: result.error });
             return;
@@ -292,7 +297,7 @@ export function SigningForm({
             <p className="text-xs text-stone-500">
               If you&apos;ve already printed and signed the agreement, upload
               the scanned copy here. The full document replaces the digital
-              version. PDF, image, or Word file up to 4 MB.
+              version. PDF, image, or Word file up to 10 MB.
             </p>
             {documentFile && (
               <p className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-700">

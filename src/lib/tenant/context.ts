@@ -142,6 +142,14 @@ export const tenantForPortalToken = cache(
       .maybeSingle();
     if (consultation) return consultation.tenant_id;
 
+    const { data: managed } = await db
+      .schema("crm")
+      .from("appointments")
+      .select("tenant_id")
+      .eq("management_token", token)
+      .maybeSingle();
+    if (managed) return managed.tenant_id;
+
     const { data: retainer } = await db
       .schema("crm")
       .from("retainer_agreements")

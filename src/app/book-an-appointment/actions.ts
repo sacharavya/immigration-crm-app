@@ -1,6 +1,9 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
+import { MAX_UPLOAD_BYTES } from "@/lib/validators/document";
+import type { StagedUpload } from "@/lib/uploads/types";
+import { takeStagedFile } from "@/lib/uploads/staged";
 
 import { adminClient } from "@/lib/supabase/admin";
 import { fileTypeFromBuffer } from "file-type";
@@ -376,26 +379,17 @@ const ALLOWED_PROOF_MIME = new Set([
   "image/heic",
   "application/pdf",
 ]);
-const MAX_PROOF_BYTES = 5 * 1024 * 1024;
+const MAX_PROOF_BYTES = MAX_UPLOAD_BYTES;
 
 export type UploadProofResult =
   | { ok: true; status: "confirmed" }
   | { ok: false; error: string };
 
 export async function uploadPaymentProof(
-  formData: FormData,
+  token: string,
+  staged: StagedUpload,
 ): Promise<UploadProofResult> {
-  const token = String(formData.get("token") ?? "");
   if (!TOKEN_RE.test(token)) return { ok: false, error: "invalid_token" };
-
-  const file = formData.get("file");
-  if (!(file instanceof File)) return { ok: false, error: "no_file" };
-  if (!ALLOWED_PROOF_MIME.has(file.type)) {
-    return { ok: false, error: "unsupported_file_type" };
-  }
-  if (file.size > MAX_PROOF_BYTES) {
-    return { ok: false, error: "file_too_large" };
-  }
 
   const supabase = adminClient();
 
@@ -412,6 +406,15 @@ export async function uploadPaymentProof(
   }
   if (!appt.client_id) {
     return { ok: false, error: "missing_client" };
+  }
+
+  const file = await takeStagedFile(staged, appt.tenant_id);
+  if (!file) return { ok: false, error: "no_file" };
+  if (!ALLOWED_PROOF_MIME.has(file.type)) {
+    return { ok: false, error: "unsupported_file_type" };
+  }
+  if (file.size > MAX_PROOF_BYTES) {
+    return { ok: false, error: "file_too_large" };
   }
 
   // Upload to OneDrive under Consultation Payments/{year}/. Year is taken

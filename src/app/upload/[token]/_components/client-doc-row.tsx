@@ -9,6 +9,8 @@ import {
   Loader2,
   Upload,
 } from "lucide-react";
+import { stageFile } from "@/lib/uploads/client";
+import { mintPortalUpload } from "@/app/_uploads/actions";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 
@@ -193,7 +195,7 @@ export function ClientDocRow({
     // Checked here first: a body over the platform limit is rejected before
     // the server action runs, so the server's own message never comes back.
     if (file.size > MAX_UPLOAD_BYTES) {
-      setError(`File exceeds the 4 MB limit (${formatBytesMb(file.size)} MB). Compress or split it before uploading.`);
+      setError(`File exceeds the 10 MB limit (${formatBytesMb(file.size)} MB). Compress or split it before uploading.`);
       return;
     }
     setPending(key);
@@ -202,7 +204,7 @@ export function ClientDocRow({
       try {
         r = await fn();
       } catch {
-        r = { error: "Upload failed. The file may be over the 4 MB limit, or the connection dropped — please try again." };
+        r = { error: "Upload failed. The connection dropped — please try again." };
       }
       setPending(null);
       if ("error" in r) {
@@ -214,15 +216,17 @@ export function ClientDocRow({
   }
 
   function uploadNew(file: File) {
-    const fd = new FormData();
-    fd.set("file", file);
-    run("new", file, () => uploadFileAsClient(token, requirement.code, fd));
+    run("new", file, async () => {
+      const staged = await stageFile(file, () => mintPortalUpload(token));
+      return "error" in staged ? staged : uploadFileAsClient(token, requirement.code, staged);
+    });
   }
 
   function replace(fileGroupKey: string, file: File) {
-    const fd = new FormData();
-    fd.set("file", file);
-    run(fileGroupKey, file, () => reuploadFileAsClient(token, fileGroupKey, fd));
+    run(fileGroupKey, file, async () => {
+      const staged = await stageFile(file, () => mintPortalUpload(token));
+      return "error" in staged ? staged : reuploadFileAsClient(token, fileGroupKey, staged);
+    });
   }
 
   return (

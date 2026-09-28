@@ -1,6 +1,8 @@
 "use client";
 
 import { CheckCircle2, Loader2, Upload } from "lucide-react";
+import { stageFile } from "@/lib/uploads/client";
+import { mintPortalUpload } from "@/app/_uploads/actions";
 import { useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -43,20 +45,17 @@ export function PayUploadForm({ token, amountDueCad }: Props) {
     }
 
     if (file.size > MAX_UPLOAD_BYTES) {
-      setStatus({ kind: "error", reason: `File exceeds the 4 MB limit (${formatBytesMb(file.size)} MB). Compress or split it before uploading.` });
+      setStatus({ kind: "error", reason: `File exceeds the 10 MB limit (${formatBytesMb(file.size)} MB). Compress or split it before uploading.` });
       return;
     }
-
-    const fd = new FormData();
-    fd.set("file", file);
-    fd.set("amount_cad", amount.toFixed(2));
 
     startTransition(async () => {
       let res: Awaited<ReturnType<typeof submitCasePaymentProof>>;
       try {
-        res = await submitCasePaymentProof(token, fd);
+        const staged = await stageFile(file, () => mintPortalUpload(token));
+        res = "error" in staged ? staged : await submitCasePaymentProof(token, staged, amount.toFixed(2));
       } catch {
-        res = { error: "Upload failed. The file may be over the 4 MB limit, or the connection dropped — please try again." };
+        res = { error: "Upload failed. The connection dropped — please try again." };
       }
       if ("error" in res) {
         setStatus({ kind: "error", reason: res.error });

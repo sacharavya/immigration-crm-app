@@ -1,6 +1,9 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { getStaffTenantId } from "@/lib/tenant/context";
+import type { StagedUpload } from "@/lib/uploads/types";
+import { takeStagedFile } from "@/lib/uploads/staged";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -109,7 +112,7 @@ async function resolveUploadContext(
   if (file.size > MAX_UPLOAD_BYTES) {
     return {
       ok: false,
-      error: `File exceeds the 4MB limit (${formatBytesMb(file.size)} MB).`,
+      error: `File exceeds the 10 MB limit (${formatBytesMb(file.size)} MB).`,
     };
   }
 
@@ -172,14 +175,14 @@ async function resolveUploadContext(
   if (templateDoc.max_file_size_mb !== null) {
     if (templateDoc.max_file_size_mb > 4) {
       console.warn(
-        `template_document.max_file_size_mb=${templateDoc.max_file_size_mb} exceeds the 4MB Graph small-upload ceiling — clamping.`,
+        `template_document.max_file_size_mb=${templateDoc.max_file_size_mb} exceeds the 10 MB Graph small-upload ceiling — clamping.`,
       );
     }
-    const cap = Math.min(templateDoc.max_file_size_mb, 4) * 1024 * 1024;
+    const cap = Math.min(templateDoc.max_file_size_mb, 10) * 1024 * 1024;
     if (file.size > cap) {
       return {
         ok: false,
-        error: `File exceeds this document's ${Math.min(templateDoc.max_file_size_mb, 4)}MB limit (${formatBytesMb(file.size)} MB).`,
+        error: `File exceeds this document's ${Math.min(templateDoc.max_file_size_mb, 10)}MB limit (${formatBytesMb(file.size)} MB).`,
       };
     }
   }
@@ -244,7 +247,7 @@ async function resolveUploadContext(
 export async function uploadFile(
   caseId: string,
   documentCode: string,
-  formData: FormData,
+  staged: StagedUpload,
 ): Promise<UploadDocumentResult> {
   if (!z.string().uuid().safeParse(caseId).success) {
     return { error: "Invalid case id" };
@@ -253,8 +256,8 @@ export async function uploadFile(
     return { error: "Invalid document code" };
   }
 
-  const file = formData.get("file");
-  if (!(file instanceof File)) return { error: "No file provided" };
+  const file = await takeStagedFile(staged, await getStaffTenantId());
+  if (!file) return { error: "We couldn't find the uploaded file. Please try again." };
 
   const supabase = await createClient();
 
@@ -385,14 +388,14 @@ export async function uploadFile(
  */
 export async function reuploadFile(
   fileGroupKey: string,
-  formData: FormData,
+  staged: StagedUpload,
 ): Promise<UploadDocumentResult> {
   if (!z.string().uuid().safeParse(fileGroupKey).success) {
     return { error: "Invalid file group" };
   }
 
-  const file = formData.get("file");
-  if (!(file instanceof File)) return { error: "No file provided" };
+  const file = await takeStagedFile(staged, await getStaffTenantId());
+  if (!file) return { error: "We couldn't find the uploaded file. Please try again." };
 
   const supabase = await createClient();
 
@@ -592,7 +595,7 @@ export async function reuploadFile(
 export async function uploadDocument(
   caseId: string,
   documentCode: string,
-  formData: FormData,
+  staged: StagedUpload,
 ): Promise<UploadDocumentResult> {
   if (!z.string().uuid().safeParse(caseId).success) {
     return { error: "Invalid case id" };
@@ -616,10 +619,10 @@ export async function uploadDocument(
     .maybeSingle();
 
   if (!live) {
-    return uploadFile(caseId, documentCode, formData);
+    return uploadFile(caseId, documentCode, staged);
   }
   if (live.status === "rejected") {
-    return reuploadFile(live.file_group_key, formData);
+    return reuploadFile(live.file_group_key, staged);
   }
   return {
     error:
@@ -640,7 +643,7 @@ export async function uploadDocument(
 export async function uploadAdditionalDocument(
   caseId: string,
   requiredDocumentId: string,
-  formData: FormData,
+  staged: StagedUpload,
 ): Promise<UploadDocumentResult> {
   if (!z.string().uuid().safeParse(caseId).success) {
     return { error: "Invalid case id" };
@@ -649,11 +652,11 @@ export async function uploadAdditionalDocument(
     return { error: "Invalid required document id" };
   }
 
-  const file = formData.get("file");
-  if (!(file instanceof File)) return { error: "No file provided" };
+  const file = await takeStagedFile(staged, await getStaffTenantId());
+  if (!file) return { error: "We couldn't find the uploaded file. Please try again." };
   if (file.size > MAX_UPLOAD_BYTES) {
     return {
-      error: `File exceeds the 4MB limit (${formatBytesMb(file.size)} MB).`,
+      error: `File exceeds the 10 MB limit (${formatBytesMb(file.size)} MB).`,
     };
   }
   if (!ALLOWED_MIME_TYPES_SET.has(file.type)) {
@@ -928,7 +931,7 @@ export type AttachPaymentProofResult =
 
 export async function attachPaymentProof(
   paymentId: string,
-  formData: FormData,
+  staged: StagedUpload,
 ): Promise<AttachPaymentProofResult> {
   if (!z.string().uuid().safeParse(paymentId).success) {
     return { error: "Invalid payment id" };
@@ -940,11 +943,11 @@ export async function attachPaymentProof(
     return { error: "You don't have permission to manage payments." };
   }
 
-  const file = formData.get("file");
-  if (!(file instanceof File)) return { error: "No file attached" };
+  const file = await takeStagedFile(staged, await getStaffTenantId());
+  if (!file) return { error: "We couldn't find the uploaded file. Please try again." };
   if (file.size === 0) return { error: "File is empty" };
   if (file.size > PROOF_MAX_BYTES) {
-    return { error: "Proof must be under 4 MB" };
+    return { error: "Proof must be under 10 MB" };
   }
   if (!PROOF_ACCEPTED_MIME.has(file.type)) {
     return { error: `Unsupported file type: ${file.type || "unknown"}` };

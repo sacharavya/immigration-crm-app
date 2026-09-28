@@ -10,6 +10,8 @@ import {
   Upload as UploadIcon,
   X,
 } from "lucide-react";
+import { stageFile } from "@/lib/uploads/client";
+import { mintPortalUpload, mintStaffUpload } from "@/app/_uploads/actions";
 import { useRef, useState, useTransition, type ChangeEvent } from "react";
 
 import { FileViewerDialog } from "@/components/files/file-viewer-dialog";
@@ -99,7 +101,7 @@ export type DocumentRowProps = {
 
 function validateFile(file: File): string | null {
   if (file.size > MAX_UPLOAD_BYTES) {
-    return `File exceeds the 4MB limit (${formatBytesMb(file.size)} MB). Compress or split before uploading.`;
+    return `File exceeds the 10 MB limit (${formatBytesMb(file.size)} MB). Compress or split before uploading.`;
   }
   if (!ALLOWED_MIME_TYPES_SET.has(file.type)) {
     return `File type ${file.type || "unknown"} is not allowed. Use ${ALLOWED_EXTENSIONS_HUMAN}.`;
@@ -345,12 +347,17 @@ function FileUnit({
       setReplaceError(validation);
       return;
     }
-    const fd = new FormData();
-    fd.append("file", upload);
     startReplace(async () => {
+      const staged = await stageFile(upload, () =>
+        clientPortalToken ? mintPortalUpload(clientPortalToken) : mintStaffUpload(),
+      );
+      if ("error" in staged) {
+        setReplaceError(staged.error);
+        return;
+      }
       const result = clientPortalToken
-        ? await reuploadFileAsClient(clientPortalToken, file.file_group_key, fd)
-        : await reuploadFile(file.file_group_key, fd);
+        ? await reuploadFileAsClient(clientPortalToken, file.file_group_key, staged)
+        : await reuploadFile(file.file_group_key, staged);
       if ("error" in result) setReplaceError(result.error);
     });
   }
@@ -733,12 +740,17 @@ export function DocumentRow({
       setUploadError(validation);
       return;
     }
-    const fd = new FormData();
-    fd.append("file", file);
     startUpload(async () => {
+      const staged = await stageFile(file, () =>
+        clientPortalToken ? mintPortalUpload(clientPortalToken) : mintStaffUpload(),
+      );
+      if ("error" in staged) {
+        setUploadError(staged.error);
+        return;
+      }
       const result = clientPortalToken
-        ? await uploadAsClient(clientPortalToken, templateDoc.document_code, fd)
-        : await uploadDocument(caseId, templateDoc.document_code, fd);
+        ? await uploadAsClient(clientPortalToken, templateDoc.document_code, staged)
+        : await uploadDocument(caseId, templateDoc.document_code, staged);
       if ("error" in result) setUploadError(result.error);
     });
   }
@@ -756,16 +768,17 @@ export function DocumentRow({
       setAddError(validation);
       return;
     }
-    const fd = new FormData();
-    fd.append("file", file);
     startAdd(async () => {
+      const staged = await stageFile(file, () =>
+        clientPortalToken ? mintPortalUpload(clientPortalToken) : mintStaffUpload(),
+      );
+      if ("error" in staged) {
+        setAddError(staged.error);
+        return;
+      }
       const result = clientPortalToken
-        ? await uploadFileAsClient(
-            clientPortalToken,
-            templateDoc.document_code,
-            fd,
-          )
-        : await uploadFile(caseId, templateDoc.document_code, fd);
+        ? await uploadFileAsClient(clientPortalToken, templateDoc.document_code, staged)
+        : await uploadFile(caseId, templateDoc.document_code, staged);
       if ("error" in result) setAddError(result.error);
     });
   }

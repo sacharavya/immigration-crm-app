@@ -1,6 +1,8 @@
 "use client";
 
 import { format } from "date-fns";
+import { stageFile } from "@/lib/uploads/client";
+import { mintPortalUpload } from "@/app/_uploads/actions";
 import { Check, CircleAlert, CircleDashed, Clock, Loader2, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
@@ -103,18 +105,17 @@ function PortalRow({
     if (!file) return;
     setError(null);
     if (file.size > MAX_UPLOAD_BYTES) {
-      setError(`File exceeds the 4 MB limit (${formatBytesMb(file.size)} MB). Compress or split it before uploading.`);
+      setError(`File exceeds the 10 MB limit (${formatBytesMb(file.size)} MB). Compress or split it before uploading.`);
       if (inputRef.current) inputRef.current.value = "";
       return;
     }
-    const fd = new FormData();
-    fd.set("file", file);
     startTransition(async () => {
       let r: Awaited<ReturnType<typeof uploadAsClientAdditional>>;
       try {
-        r = await uploadAsClientAdditional(token, row.id, fd);
+        const staged = await stageFile(file, () => mintPortalUpload(token));
+        r = "error" in staged ? staged : await uploadAsClientAdditional(token, row.id, staged);
       } catch {
-        r = { error: "Upload failed. The file may be over the 4 MB limit, or the connection dropped — please try again." };
+        r = { error: "Upload failed. The connection dropped — please try again." };
       }
       if (inputRef.current) inputRef.current.value = "";
       if ("error" in r) {
