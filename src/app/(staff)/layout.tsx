@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 
+import { staffCan } from "@/lib/auth/permissions";
 import { getStaff } from "@/lib/auth/staff";
 import { StaffProvider } from "@/lib/auth/staff-context";
 
 import { FirmLogo } from "@/components/brand/firm-logo";
 
 import { StaffSidebar } from "./_components/staff-sidebar";
+import { StaffTopBar } from "./_components/staff-topbar";
 
 export default async function StaffLayout({
   children,
@@ -31,9 +33,15 @@ export default async function StaffLayout({
 
   return (
     <StaffProvider staff={staff}>
-      <div className="app-surface flex min-h-dvh bg-[var(--surface-sunken)]">
-        <StaffSidebar logo={<FirmLogo className="h-8 w-auto" />} />
-        <div className="min-w-0 flex-1 pb-10">{children}</div>
+      <div className="app-surface min-h-dvh bg-[var(--surface-sunken)] p-4">
+        {/* The whole app sits on one white sheet, the way the reference frames it. */}
+        <div className="flex min-h-[calc(100dvh-2rem)] overflow-clip rounded-2xl border border-border bg-card shadow-sm">
+          <StaffSidebar logo={<FirmLogo className="h-8 w-auto" />} />
+          <div className="min-w-0 flex-1 bg-[var(--surface-sunken)]/60 pb-10">
+            <StaffTopBar canCreateCases={staffCan(staff, "create_cases")} />
+            {children}
+          </div>
+        </div>
       </div>
     </StaffProvider>
   );

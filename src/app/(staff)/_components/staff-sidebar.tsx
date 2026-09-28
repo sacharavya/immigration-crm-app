@@ -8,8 +8,6 @@ import {
   CalendarDays,
   CheckSquare,
   ChevronDown,
-  PanelLeftClose,
-  PanelLeftOpen,
   FileText,
   Handshake,
   HardDrive,
@@ -36,27 +34,7 @@ import { Can } from "@/components/auth/can";
 import { useStaff } from "@/lib/auth/staff-context";
 import { cn } from "@/lib/utils/index";
 
-import { NotificationBell } from "./notification-bell";
-
-const COLLAPSED_KEY = "sidebar-collapsed";
-const COLLAPSED_EVENT = "sidebar-collapsed-change";
-
-function readCollapsed(): boolean {
-  try {
-    return localStorage.getItem(COLLAPSED_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function subscribeCollapsed(onChange: () => void): () => void {
-  window.addEventListener("storage", onChange);
-  window.addEventListener(COLLAPSED_EVENT, onChange);
-  return () => {
-    window.removeEventListener("storage", onChange);
-    window.removeEventListener(COLLAPSED_EVENT, onChange);
-  };
-}
+import { readCollapsed, subscribeCollapsed } from "./sidebar-state";
 
 function initialsOf(first: string, last: string) {
   const f = first?.trim()?.[0] ?? "";
@@ -77,13 +55,6 @@ export function StaffSidebar({ logo }: { logo?: React.ReactNode }) {
     readCollapsed,
     () => false,
   );
-  function toggleCollapsed() {
-    try {
-      localStorage.setItem(COLLAPSED_KEY, collapsed ? "0" : "1");
-    } catch {}
-    window.dispatchEvent(new Event(COLLAPSED_EVENT));
-  }
-
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard";
     return pathname === href || pathname.startsWith(`${href}/`);
@@ -92,28 +63,15 @@ export function StaffSidebar({ logo }: { logo?: React.ReactNode }) {
   return (
     <aside
       data-collapsed={collapsed}
-      className="group/side sticky top-0 flex h-dvh w-56 shrink-0 flex-col self-start border-r border-border bg-card transition-[width] duration-200 data-[collapsed=true]:w-14"
+      className="group/side sticky top-4 flex h-[calc(100dvh-2rem)] w-60 shrink-0 flex-col self-start border-r border-border bg-card transition-[width] duration-200 data-[collapsed=true]:w-[68px]"
     >
-      <div className="flex h-14 items-center justify-between border-b border-border px-4 group-data-[collapsed=true]/side:justify-center group-data-[collapsed=true]/side:px-0">
-        <Link
-          href="/dashboard"
-          aria-label="CaseBind"
-          className="block transition-opacity hover:opacity-80 group-data-[collapsed=true]/side:hidden"
-        >
+      <div className="flex h-[72px] items-center px-5 group-data-[collapsed=true]/side:justify-center group-data-[collapsed=true]/side:px-0">
+        <Link href="/dashboard" aria-label="CaseBind" className="block transition-opacity hover:opacity-80 group-data-[collapsed=true]/side:hidden">
           {logo ?? <CaseBindLogo className="h-8 w-auto" />}
         </Link>
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="rounded-lg p-1.5 text-[var(--subtle-foreground)] transition-colors hover:bg-muted hover:text-foreground"
-        >
-          {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-        </button>
+        <span aria-hidden className="hidden h-8 w-8 rounded-lg bg-[var(--navy)] group-data-[collapsed=true]/side:block" />
       </div>
-
-      <nav className="min-h-0 flex-1 space-y-4 overflow-y-auto p-2.5">
+      <nav className="min-h-0 flex-1 space-y-5 overflow-y-auto px-3 pb-3 pt-1">
         <NavItem
           href="/dashboard"
           label="Dashboard"
@@ -159,33 +117,32 @@ export function StaffSidebar({ logo }: { logo?: React.ReactNode }) {
         <AdminSection pathname={pathname} />
       </nav>
 
-      <div className="border-t border-border p-3">
-        <div className="flex items-center gap-3 rounded-md px-2 py-2 group-data-[collapsed=true]/side:flex-col group-data-[collapsed=true]/side:px-0">
+      <div className="p-3">
+        <div className="flex items-center gap-3 rounded-xl border border-border px-3 py-2.5 group-data-[collapsed=true]/side:flex-col group-data-[collapsed=true]/side:border-0 group-data-[collapsed=true]/side:px-0">
           <span
             aria-hidden
             title={`${staff.first_name} ${staff.last_name}`}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--navy-100)] text-sm font-semibold text-[var(--navy-700)] ring-2 ring-white"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--navy-100)] text-sm font-semibold text-[var(--navy-700)]"
           >
             {initials}
           </span>
           <div className="min-w-0 flex-1 group-data-[collapsed=true]/side:hidden">
-            <div className="truncate text-sm font-medium text-foreground">
+            <div className="truncate text-[13px] font-medium text-foreground">
               {staff.first_name} {staff.last_name}
             </div>
-            <div className="truncate text-xs text-[var(--subtle-foreground)]">{staff.email}</div>
+            <div className="truncate text-[12px] text-[var(--subtle-foreground)]">{staff.email}</div>
           </div>
-          <NotificationBell />
+          <form action="/logout" method="post">
+            <button
+              type="submit"
+              title="Sign out"
+              aria-label="Sign out"
+              className="rounded-md p-1.5 text-[var(--subtle-foreground)] transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </form>
         </div>
-        <form action="/logout" method="post" className="mt-1">
-          <button
-            type="submit"
-            className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-[var(--subtle-foreground)] transition-colors hover:bg-muted hover:text-foreground group-data-[collapsed=true]/side:justify-center group-data-[collapsed=true]/side:px-0"
-            title="Sign out"
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            <span className="group-data-[collapsed=true]/side:hidden">Sign out</span>
-          </button>
-        </form>
       </div>
     </aside>
   );
@@ -208,9 +165,9 @@ function NavItem({
       aria-current={active ? "page" : undefined}
       title={label}
       className={cn(
-        "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors group-data-[collapsed=true]/side:justify-center group-data-[collapsed=true]/side:px-0",
+        "flex items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-colors group-data-[collapsed=true]/side:justify-center group-data-[collapsed=true]/side:px-0",
         active
-          ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
+          ? "bg-[var(--navy-50)] font-medium text-[var(--navy)]"
           : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >
@@ -238,9 +195,9 @@ function CasesSection({ pathname }: { pathname: string }) {
           href="/dashboard/cases"
           aria-current={sectionActive ? "page" : undefined}
           className={cn(
-            "flex flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors group-data-[collapsed=true]/side:justify-center group-data-[collapsed=true]/side:px-0",
+            "flex flex-1 items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-colors group-data-[collapsed=true]/side:justify-center group-data-[collapsed=true]/side:px-0",
             sectionActive
-              ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
+              ? "bg-[var(--navy-50)] font-medium text-[var(--navy)]"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
         >
@@ -302,9 +259,9 @@ function AppointmentsSection({ pathname }: { pathname: string }) {
           href="/dashboard/appointments"
           aria-current={sectionActive ? "page" : undefined}
           className={cn(
-            "flex flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors group-data-[collapsed=true]/side:justify-center group-data-[collapsed=true]/side:px-0",
+            "flex flex-1 items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-colors group-data-[collapsed=true]/side:justify-center group-data-[collapsed=true]/side:px-0",
             sectionActive
-              ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
+              ? "bg-[var(--navy-50)] font-medium text-[var(--navy)]"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
         >
@@ -391,7 +348,7 @@ function NavGroup({ label, children }: { label: string; children: React.ReactNod
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 px-2.5 pb-1 text-[10.5px] font-medium uppercase tracking-[.12em] text-[var(--subtle-foreground)] transition-colors hover:text-foreground group-data-[collapsed=true]/side:hidden"
+        className="flex w-full items-center gap-1.5 px-3 pb-1.5 text-[11px] font-medium uppercase tracking-[.1em] text-[var(--subtle-foreground)] transition-colors hover:text-foreground group-data-[collapsed=true]/side:hidden"
       >
         <ChevronDown className={cn("h-3 w-3 transition-transform", !open && "-rotate-90")} />
         {label}
@@ -420,7 +377,7 @@ function SubNavItem({
       className={cn(
         "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors",
         active
-          ? "bg-[var(--primary)]/10 font-medium text-[var(--primary)]"
+          ? "bg-[var(--navy-50)] font-medium text-[var(--navy)]"
           : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >

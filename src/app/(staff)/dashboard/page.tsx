@@ -2,9 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AttentionList } from "@/components/dashboard/AttentionList";
-import { NextTwoWeeks, PipelineRows, StatStrip } from "@/components/dashboard/copilot-cards";
-import { formatKpiValue } from "@/lib/dashboard/metrics";
-import { RecentActivity } from "@/components/dashboard/RecentActivity";
+import { CaseloadArea, PipelineBars, ServiceDonut } from "@/components/dashboard/charts-lazy";
+import { NextTwoWeeks } from "@/components/dashboard/copilot-cards";
+import { Callout, KpiCards, Panel, PanelLink, RecentTable } from "@/components/dashboard/overview-cards";
 import { buttonVariants } from "@/components/ui/button";
 import { staffCan } from "@/lib/auth/permissions";
 import { NewAppointmentDialog } from "./appointments/_components/new-appointment-dialog";
@@ -16,6 +16,7 @@ import { getKpis } from "@/lib/dashboard/getKpis";
 import { getMyTasks } from "@/lib/dashboard/getMyTasks";
 import { getPipeline } from "@/lib/dashboard/getPipeline";
 import { getRecentActivity } from "@/lib/dashboard/getRecentActivity";
+import { getSnapshotSeries } from "@/lib/dashboard/getSnapshotSeries";
 import { getUpcomingAppointments } from "@/lib/dashboard/getUpcomingAppointments";
 import type {
   DashboardTask,
@@ -68,7 +69,7 @@ export default async function DashboardPage() {
 
   const supabase = await createClient();
 
-  const [attention, kpis, cards, recent, tasks, appointments] = await Promise.all([
+  const [attention, kpis, cards, recent, tasks, appointments, history, tenant] = await Promise.all([
     getAttention(supabase, me),
     getKpis(supabase),
     canCases ? loadActiveBoardCards(supabase) : Promise.resolve([] as EnrichedCard[]),
@@ -77,6 +78,8 @@ export default async function DashboardPage() {
     canAppointments
       ? getUpcomingAppointments(supabase)
       : Promise.resolve([] as AppointmentRow[]),
+    canCases ? getSnapshotSeries(supabase) : Promise.resolve([]),
+    supabase.schema("crm").from("tenants").select("name").maybeSingle().then((r) => r.data?.name ?? null),
   ]);
 
   const pipeline = getPipeline(cards);
@@ -140,37 +143,36 @@ export default async function DashboardPage() {
 
   const { date, greeting } = torontoHeader();
 
-  const kpi = (key: string) => kpis.find((k) => k.key === key);
-  const activeKpi = kpi("active_cases");
-  const clientsKpi = kpi("clients");
-  const retainedKpi = kpi("retained_mtd");
-  const outstandingKpi = kpi("outstanding_fees");
   const boardHref = myPipeline ? `/dashboard/cases?view=board&assigned=${me.id}` : "/dashboard/cases?view=board";
   const shownPipeline = myPipeline ?? pipeline;
-  const stats = [
-    canCases && {
-      label: myPipeline ? "My active cases" : "Active cases",
-      value: String(myPipeline ? myCards.length : (activeKpi?.current ?? 0)),
-      view: myPipeline ? undefined : activeKpi,
-      sub: `${onUs.length} waiting on ${myPipeline ? "you" : "the firm"}`,
-      href: boardHref,
-    },
-    canCases && clientsKpi && { label: "Clients", value: String(clientsKpi.current), view: clientsKpi, sub: "on file", href: "/dashboard/clients" },
-    canCases && retainedKpi && { label: "Retained this month", value: String(retainedKpi.current), view: retainedKpi, sub: "new cases opened", href: "/dashboard/cases" },
-    canFinancials && outstandingKpi && { label: "Outstanding fees", value: formatKpiValue(outstandingKpi), view: outstandingKpi, sub: "across active cases", href: "/dashboard/payments" },
-  ].filter((x): x is Exclude<typeof x, false | null | undefined> => Boolean(x));
+  const kpiViews = kpis
+    .filter((k) => k.key !== "outstanding_fees" || canFinancials)
+    .map((k) => (k.key === "active_cases" && myPipeline ? { ...k, current: myCards.length, previous: null, series: [] } : k));
+  const kpiOverrides = {
+    active_cases: { label: myPipeline ? "My active cases" : "Active cases", href: boardHref },
+    clients: { href: "/dashboard/clients" },
+    retained_mtd: { href: "/dashboard/cases" },
+    outstanding_fees: { href: "/dashboard/payments" },
+  };
+  const byService = new Map<string, number>();
+  for (const c of myPipeline ? myCards : cards) {
+    const k = c.card.serviceName ?? "Unassigned";
+    byService.set(k, (byService.get(k) ?? 0) + 1);
+  }
+  const serviceSlices = [...byService.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value).slice(0, 6);
+  const waitingOnFirm = shownPipeline.reduce((n, p) => (p.withIrcc ? n : n + p.onUs), 0);
+  const withIrcc = shownPipeline.filter((p) => p.withIrcc).reduce((n, p) => n + p.count, 0);
 
   return (
-    <main className="px-6 py-6">
-      {/* Slim top row: where you are, what day it is, and the two or three things you create most. */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <main className="space-y-5 px-6 pb-6 pt-1">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[12px] text-muted-foreground">{date}</p>
-          <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-foreground">
-            {greeting}, {me.first_name}
-          </h1>
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-foreground">Dashboard</h1>
+          <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+            {greeting}, {me.first_name}. Here&apos;s what&apos;s happening at {tenant ?? "the firm"} on {date}.
+          </p>
         </div>
-        {(canCreateCases || canCreateClients || canAppointments) && (
+        {(canCreateClients || canAppointments) && (
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {apptDialogData && (
               <NewAppointmentDialog
@@ -186,32 +188,56 @@ export default async function DashboardPage() {
                 + New client
               </Link>
             )}
-            {canCreateCases && (
-              <Link href="/dashboard/cases/new" className={cn(buttonVariants({ size: "sm" }))}>
-                + New case
-              </Link>
-            )}
           </div>
         )}
       </div>
 
-      {/* The numbers that frame the day, then two columns: what needs doing
-          and how the work is moving on the left; what is coming up on the right. */}
-      <div className="flex flex-col gap-4">
-        {stats.length > 0 && <StatStrip stats={stats} />}
-        <div className="grid gap-4 min-[1080px]:grid-cols-2">
-          <div className="flex flex-col gap-4">
-            <AttentionList queues={queues} />
-            {canCases && <RecentActivity rows={recent} />}
-          </div>
-          <div className="flex flex-col gap-4">
-            {canCases && <PipelineRows phases={shownPipeline} href={boardHref} />}
-            {(canAppointments || canTasks) && (
-              <NextTwoWeeks appointments={canAppointments ? appointments : []} tasks={canTasks ? tasks : []} />
-            )}
-          </div>
+      {canCases && kpiViews.length > 0 && <KpiCards views={kpiViews} overrides={kpiOverrides} />}
+
+      {canCases && (
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <Panel
+            title={myPipeline ? "My caseload over time" : "Caseload over time"}
+            aside={
+              <div className="flex items-center gap-4 text-[12px] text-muted-foreground">
+                <span className="flex items-center gap-1.5"><span aria-hidden className="h-1.5 w-4 rounded-full bg-[var(--navy)]" /> Active cases</span>
+                <span className="flex items-center gap-1.5"><span aria-hidden className="h-1.5 w-4 rounded-full bg-[#C9CED6]" /> Clients</span>
+              </div>
+            }
+          >
+            <CaseloadArea points={history} />
+          </Panel>
+          <Panel title="Pipeline" aside={<PanelLink href={boardHref}>Board</PanelLink>}>
+            <div className="mb-3 grid grid-cols-2 gap-3">
+              <div>
+                <div className="text-[12px] text-muted-foreground">Waiting on {myPipeline ? "you" : "the firm"}</div>
+                <div className="text-[20px] font-semibold leading-none tabular-nums text-foreground">{waitingOnFirm}</div>
+              </div>
+              <div>
+                <div className="text-[12px] text-muted-foreground">With IRCC</div>
+                <div className="text-[20px] font-semibold leading-none tabular-nums text-foreground">{withIrcc}</div>
+              </div>
+            </div>
+            <PipelineBars phases={shownPipeline} />
+          </Panel>
         </div>
+      )}
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        {canCases ? <RecentTable rows={recent} /> : <AttentionList queues={queues} />}
+        {canCases && <AttentionList queues={queues} />}
+        {canCases && (
+          <Panel title="Cases by service" aside={<PanelLink href="/dashboard/reports">Reports</PanelLink>}>
+            <ServiceDonut slices={serviceSlices} centreLabel={serviceSlices[0]?.label ?? ""} />
+          </Panel>
+        )}
       </div>
+
+      {(canAppointments || canTasks) && (
+        <NextTwoWeeks appointments={canAppointments ? appointments : []} tasks={canTasks ? tasks : []} />
+      )}
+
+      <Callout queues={queues} />
     </main>
   );
 }
