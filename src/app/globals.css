@@ -225,6 +225,42 @@
   --paper: #FAF8F2;
 }
 
+/* Page frame: two hairlines running the full height at the content edges,
+   with sections cut by horizontal rules — the page reads as a drawn grid. */
+.frame::before,
+.frame::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--rule);
+  pointer-events: none;
+  z-index: 1;
+}
+.frame::before { left: max(0px, calc(50% - 640px)); }
+.frame::after { right: max(0px, calc(50% - 640px)); }
+
+/* Dot grid ground for the hero. */
+.dotgrid {
+  background-image: radial-gradient(var(--rule) 1px, transparent 1.5px);
+  background-size: 14px 14px;
+}
+
+/* Crosshair ticks on the corners of a primary control. */
+.tick { position: relative; }
+.tick::before,
+.tick::after {
+  content: "";
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 0 solid var(--ink);
+  pointer-events: none;
+}
+.tick::before { top: -5px; left: -5px; border-top-width: 1px; border-left-width: 1px; }
+.tick::after { bottom: -5px; right: -5px; border-bottom-width: 1px; border-right-width: 1px; }
+
 /* Focus list: the whole set sits faded, one entry is in focus. Pointing at
    any entry moves the focus to it. Pure CSS so the section stays a server
    component — the specificity ladder is what makes it deterministic:

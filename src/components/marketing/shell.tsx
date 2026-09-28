@@ -137,13 +137,13 @@ export function SiteNav() {
         <>
           <Link
             href="/login"
-            className="hidden rounded-[var(--radius)] border border-[var(--ink)]/20 px-3.5 py-2 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:border-[var(--ink)]/40 sm:block"
+            className="hidden h-10 items-center border border-[var(--rule)] bg-[var(--paper-raised)] px-4 text-[14px] font-medium text-[var(--ink)] transition-colors hover:border-[var(--ink)] sm:inline-flex"
           >
             Login
           </Link>
           <Link
             href="/#request"
-            className="rounded-[var(--radius)] bg-[var(--slab)] px-3.5 py-2 text-[13px] font-semibold text-[var(--on-ink)] transition-opacity hover:opacity-90"
+            className="inline-flex h-10 items-center bg-[var(--navy)] px-4 text-[14px] font-medium text-white transition-colors hover:bg-[var(--navy-light)]"
           >
             Request access
           </Link>
@@ -212,7 +212,7 @@ export function BandHeader({
 export function PublicChrome({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className={`${dmMono.variable} ${fraunces.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-[var(--paper)] font-[family-name:var(--font-inter)] text-[var(--ink)] antialiased`}
+      className={`${dmMono.variable} ${fraunces.variable} marketing-radius frame relative flex min-h-dvh flex-col overflow-x-clip bg-[var(--paper)] font-[family-name:var(--font-inter)] text-[var(--ink)] antialiased`}
     >
       <SiteNav />
       {children}

@@ -21,7 +21,7 @@ export default function CareersPage() {
           <Eyebrow>Open roles</Eyebrow>
         </div>
         <div className="max-w-[640px]">
-          <h2 className="font-[family-name:var(--font-display)] text-[30px] leading-tight tracking-[-0.01em] text-[var(--ink)]">
+          <h2 className="font-[family-name:var(--font-inter)] font-bold text-[30px] leading-tight tracking-[-0.01em] text-[var(--ink)]">
             No open roles right now.
           </h2>
           <p className="mt-4 text-[15.5px] leading-relaxed text-[var(--ink-muted)]">

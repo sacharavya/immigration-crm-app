@@ -319,7 +319,7 @@ export default function HomePage() {
               <span className='self-start font-[family-name:var(--font-dm-mono)] text-[10px] uppercase tracking-[.18em] text-white/50'>
                 FOR FIRMS
               </span>
-              <div className='font-[family-name:var(--font-display)] text-[26px] leading-[1.05] tracking-[-0.02em]'>
+              <div className='font-[family-name:var(--font-inter)] font-bold text-[26px] leading-[1.05] tracking-[-0.02em]'>
                 CaseBind alpha program
               </div>
               <p className='text-[13.5px] leading-relaxed text-white/90'>

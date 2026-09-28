@@ -29,7 +29,7 @@ export default function SolutionsPage() {
             return (
               <li key={s.slug} id={s.slug} className="grid scroll-mt-28 gap-3 border-t border-[var(--rule)] pt-6">
                 <Eyebrow>The problem</Eyebrow>
-                <h2 className="font-[family-name:var(--font-display)] text-[26px] leading-tight tracking-[-0.01em] text-[var(--ink)]">
+                <h2 className="font-[family-name:var(--font-inter)] font-bold text-[26px] leading-tight tracking-[-0.01em] text-[var(--ink)]">
                   {s.problem}
                 </h2>
                 <p className="text-[15px] leading-relaxed text-[var(--ink-muted)]">{s.solution}</p>

@@ -75,7 +75,7 @@ export default function FirmsPage() {
             white background black; screen blending then drops that black
             into the tile, so a logo shipped on white reads like a cut-out. */}
         <DarkSection className="py-24">
-          <h2 className="max-w-[24ch] text-balance font-[family-name:var(--font-display)] text-[clamp(28px,3.4vw,44px)] leading-[1.05] tracking-[-0.02em]">
+          <h2 className="max-w-[24ch] text-balance font-[family-name:var(--font-inter)] font-bold text-[clamp(28px,3.4vw,44px)] leading-[1.05] tracking-[-0.02em]">
             Trusted by Canadian immigration practices.
           </h2>
           <ul className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">

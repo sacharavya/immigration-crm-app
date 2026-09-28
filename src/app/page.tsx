@@ -146,7 +146,7 @@ function FeatureCard({
 export default function CrmLandingPage() {
   return (
     <main
-      className={`${dmMono.variable} ${fraunces.variable} marketing-radius flex min-h-dvh flex-col overflow-x-clip bg-[var(--paper)] font-[family-name:var(--font-inter)] text-[var(--ink)] antialiased`}
+      className={`${dmMono.variable} ${fraunces.variable} marketing-radius frame relative flex min-h-dvh flex-col overflow-x-clip bg-[var(--paper)] font-[family-name:var(--font-inter)] text-[var(--ink)] antialiased`}
     >
       <SiteNav />
       <HeroBand>
@@ -154,12 +154,12 @@ export default function CrmLandingPage() {
           <div className="mx-auto grid w-full max-w-[1180px] items-end gap-10 lg:grid-cols-[1.3fr_1fr]">
             <div className="flex flex-col items-start gap-6">
               <span className="inline-flex items-center gap-2.5 font-[family-name:var(--font-dm-mono)] text-[10.5px] uppercase tracking-[.18em] text-[var(--ink-muted)]">
-                <span className="rounded-[3px] bg-[var(--slab)] px-1.5 py-0.5 text-[10px] text-white">
+                <span className="bg-[var(--navy)] px-1.5 py-0.5 text-[10px] text-white">
                   ALPHA
                 </span>
                 Built inside a CICC-regulated firm · Toronto
               </span>
-              <Display as="h1" className="text-balance text-[clamp(40px,6vw,76px)]">
+              <Display as="h1" className="text-balance text-[clamp(36px,4.6vw,60px)]">
                 The all-in-one CRM for Canadian immigration practices
               </Display>
             </div>
@@ -170,10 +170,10 @@ export default function CrmLandingPage() {
                 consultants.
               </p>
               <div className="flex flex-wrap gap-2.5">
-                <PrimaryLink href="#request">
+                <PrimaryLink href="#request" className="tick">
                   Request alpha access <ArrowRight className="h-4 w-4" />
                 </PrimaryLink>
-                <WhiteLink href="#features">See what&apos;s inside</WhiteLink>
+                <WhiteLink href="#features" className="tick">See what&apos;s inside</WhiteLink>
               </div>
               <div className="font-[family-name:var(--font-dm-mono)] text-[11px] uppercase leading-relaxed tracking-[.14em] text-[var(--ink-faint)]">
                 Free through alpha &amp; beta · One week of hands-on training ·
@@ -209,7 +209,7 @@ export default function CrmLandingPage() {
           {PROGRAMS.map((p) => (
             <span
               key={p}
-              className="rounded-full border border-[var(--rule)] bg-[var(--paper-raised)] px-3.5 py-2 text-[13px] font-semibold"
+              className="border border-[var(--rule)] bg-[var(--paper-raised)] px-3.5 py-2 text-[13px] font-medium"
             >
               {p}
             </span>
@@ -218,7 +218,7 @@ export default function CrmLandingPage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="flex flex-col items-center gap-4 px-6 pt-28">
+      <section id="features" className="mt-24 flex flex-col items-center gap-4 border-t border-[var(--rule)] px-6 pt-20">
         <SectionHead
           eyebrow="STAY IN CONTROL"
           title="Every case, document and deadline in one place."
@@ -347,7 +347,7 @@ export default function CrmLandingPage() {
       </section>
 
       {/* How it works */}
-      <section id="how" className="flex flex-col items-center gap-4 px-6 pt-28">
+      <section id="how" className="mt-24 flex flex-col items-center gap-4 border-t border-[var(--rule)] px-6 pt-20">
         <SectionHead
           eyebrow="WORK THE WAY YOU FILE"
           title="Built around how a practice actually runs."
@@ -519,7 +519,7 @@ export default function CrmLandingPage() {
             <span className="font-[family-name:var(--font-dm-mono)] text-[10.5px] uppercase tracking-[.18em] text-white/45">
               Achieve more with less effort
             </span>
-            <h2 className="text-balance font-[family-name:var(--font-display)] text-[clamp(32px,3.6vw,50px)] leading-[1.0] tracking-[-0.02em]">
+            <h2 className="text-balance font-[family-name:var(--font-inter)] font-bold text-[clamp(32px,3.6vw,50px)] leading-[1.0] tracking-[-0.02em]">
               Secure, compliant, and yours to keep.
             </h2>
             <p className="max-w-[34ch] text-[14px] leading-relaxed text-white/60">
@@ -536,7 +536,7 @@ export default function CrmLandingPage() {
                     {String(i + 1).padStart(2, "0")}
                   </span>
                 </div>
-                <div className="font-[family-name:var(--font-display)] text-[23px] leading-[1.08] tracking-[-0.02em]">
+                <div className="font-[family-name:var(--font-inter)] font-bold text-[23px] leading-[1.08] tracking-[-0.02em]">
                   {title}
                 </div>
                 <p className="text-[13.5px] leading-relaxed text-white/60">{body}</p>
@@ -547,7 +547,7 @@ export default function CrmLandingPage() {
       </DarkSection>
 
       {/* FAQ */}
-      <section id="faq" className="flex flex-col items-center gap-4 px-6 pt-28">
+      <section id="faq" className="mt-24 flex flex-col items-center gap-4 border-t border-[var(--rule)] px-6 pt-20">
         <SectionHead
           eyebrow="ALPHA PROGRAM"
           title="Frequently asked questions"

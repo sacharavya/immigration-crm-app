@@ -42,7 +42,7 @@ export function MarketingFooter() {
       <div className="mx-auto w-full max-w-[1180px] px-6 py-16">
         {/* Closing call to action, sitting on the same rule as the columns. */}
         <div className="flex flex-col items-start justify-between gap-6 border-b border-white/10 pb-12 sm:flex-row sm:items-center">
-          <h2 className="max-w-xl text-balance font-[family-name:var(--font-display)] text-[clamp(26px,3.2vw,40px)] font-normal leading-[1.02] tracking-[-0.02em]">
+          <h2 className="max-w-xl text-balance font-[family-name:var(--font-inter)] font-bold text-[clamp(26px,3.2vw,40px)] font-normal leading-[1.02] tracking-[-0.02em]">
             Your pathway to Canada starts with one conversation.
           </h2>
           <Link

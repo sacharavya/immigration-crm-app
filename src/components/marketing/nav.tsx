@@ -74,7 +74,7 @@ function Announcement({ text, href }: { text: string; href: string }) {
   if (hidden) return null;
 
   return (
-    <div className="relative bg-[var(--slab)] px-10 py-2 text-center text-white">
+    <div className="relative bg-[var(--navy)] px-10 py-2 text-center text-white">
       <span className="text-[12.5px]">
         {text}{" "}
         <Link href={href} className="font-semibold underline underline-offset-2">
@@ -137,7 +137,7 @@ export function MegaNav({
         className="relative border-b border-[var(--rule)] bg-[var(--paper)]"
         onMouseLeave={scheduleClose}
       >
-        <nav className="mx-auto flex w-full max-w-[1280px] items-center gap-6 px-6 py-3.5">
+        <nav className="mx-auto flex h-[72px] w-full max-w-[1280px] items-center gap-6 px-6">
           <Link href="/" className="flex shrink-0 items-center">
             <CaseBindLogo className="h-7 w-auto" />
           </Link>
@@ -159,7 +159,7 @@ export function MegaNav({
                     setOpen(open === item.label ? null : item.label)
                   }
                   className={cn(
-                    "relative flex items-center gap-1 px-3 py-2 text-[13.5px] font-medium transition-colors",
+                    "relative flex items-center gap-1 px-3 py-2 text-[14px] font-medium transition-colors",
                     open === item.label
                       ? "text-[var(--ink)]"
                       : "text-[var(--ink-muted)] hover:text-[var(--ink)]",
@@ -187,7 +187,7 @@ export function MegaNav({
                   key={item.label}
                   href={item.href ?? "#"}
                   onMouseEnter={scheduleClose}
-                  className="px-3 py-2 text-[13.5px] font-medium text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
+                  className="px-3 py-2 text-[14px] font-medium text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
                 >
                   {item.label}
                 </Link>
@@ -195,7 +195,7 @@ export function MegaNav({
             )}
           </div>
 
-          <div className="ml-auto flex flex-none items-center gap-2 md:ml-0">
+          <div className="ml-auto flex flex-none items-center gap-0 md:ml-0">
             {actions}
             <button
               type="button"

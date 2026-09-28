@@ -54,7 +54,7 @@ export default function AboutPage() {
               <Eyebrow>{s.eyebrow}</Eyebrow>
             </div>
             <div className="max-w-[640px]">
-              <h2 className="font-[family-name:var(--font-display)] text-[30px] leading-tight tracking-[-0.01em] text-[var(--ink)]">
+              <h2 className="font-[family-name:var(--font-inter)] font-bold text-[30px] leading-tight tracking-[-0.01em] text-[var(--ink)]">
                 {s.title}
               </h2>
               {s.body.map((para) => (

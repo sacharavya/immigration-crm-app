@@ -25,12 +25,12 @@ export function Display({
   return (
     <Tag
       className={cn(
-        "font-[family-name:var(--font-display)] font-normal tracking-[-0.02em] text-[var(--ink)]",
+        "font-[family-name:var(--font-inter)] font-bold tracking-[-0.02em] text-[var(--ink)]",
         className,
         // Last, deliberately: tailwind-merge treats an arbitrary text-[…] size
         // as conflicting with leading-*, so a caller's font-size class would
         // otherwise strip the tight display leading.
-        "leading-[0.98]",
+        "leading-[1.08]",
       )}
     >
       {children}
@@ -42,8 +42,7 @@ export function Display({
 // colour most sections carry.
 export function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-2 font-[family-name:var(--font-dm-mono)] text-[10.5px] font-medium uppercase tracking-[.18em] text-[var(--ink-muted)]">
-      <span aria-hidden className="h-[5px] w-[5px] rounded-full bg-[var(--gold)]" />
+    <span className="inline-flex items-center font-[family-name:var(--font-dm-mono)] text-[11px] font-medium uppercase tracking-[.16em] text-[var(--navy)]">
       {children}
     </span>
   );
@@ -71,7 +70,7 @@ export function SectionHead({
       )}
     >
       {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-      <Display className="max-w-3xl text-balance text-[clamp(32px,4.4vw,52px)]">
+      <Display className="max-w-3xl text-balance text-[clamp(28px,3.6vw,44px)]">
         {title}
       </Display>
       {subline && (
@@ -104,9 +103,9 @@ export function PrimaryLink({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center gap-2 rounded-[var(--radius)] px-4 py-2.5 text-[13px] font-semibold transition-colors",
+        "inline-flex items-center gap-2 rounded-[var(--radius)] px-4 py-2.5 text-[14px] font-medium transition-colors",
         tone === "primary"
-          ? "bg-[var(--slab)] text-[var(--on-ink)] hover:opacity-90"
+          ? "bg-[var(--navy)] text-white hover:bg-[var(--navy-light)]"
           : "bg-[var(--gold)] text-[var(--on-ink)] hover:opacity-90",
         className,
       )}
@@ -129,7 +128,7 @@ export function WhiteLink({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center gap-2 rounded-[var(--radius)] border border-[var(--ink)]/20 bg-transparent px-4 py-2.5 text-[13px] font-semibold text-[var(--ink)] transition-colors hover:border-[var(--ink)]/40 hover:bg-[var(--slab)]/[0.03]",
+        "inline-flex items-center gap-2 rounded-[var(--radius)] border border-[var(--rule)] bg-[var(--paper-raised)] px-4 py-2.5 text-[14px] font-medium text-[var(--ink)] transition-colors hover:border-[var(--ink)]",
         className,
       )}
     >
@@ -149,7 +148,15 @@ export function HeroBand({
   deep?: boolean;
 }) {
   void deep;
-  return <div className="relative bg-[var(--paper)]">{children}</div>;
+  return (
+    <div className="relative bg-[var(--paper)]">
+      <div
+        aria-hidden
+        className="dotgrid pointer-events-none absolute inset-0 [mask-image:linear-gradient(to_bottom,black,transparent_75%)]"
+      />
+      <div className="relative">{children}</div>
+    </div>
+  );
 }
 
 // Dark slab for feature and CTA blocks. Flat navy with one soft mint bloom
@@ -344,7 +351,7 @@ export function FocusList({
           key={item.label}
           href={item.href}
           className={cn(
-            "fw font-[family-name:var(--font-display)] text-[clamp(30px,5.2vw,64px)] leading-[1.12] tracking-[-0.02em]",
+            "fw font-[family-name:var(--font-inter)] font-bold text-[clamp(30px,5.2vw,64px)] leading-[1.12] tracking-[-0.02em]",
             i === activeIndex && "fw-active",
           )}
         >
@@ -376,7 +383,7 @@ export function BleedPanel({
         <span className="font-[family-name:var(--font-dm-mono)] text-[10.5px] uppercase tracking-[.18em] text-white/45">
           {eyebrow}
         </span>
-        <h3 className="max-w-[16ch] text-balance font-[family-name:var(--font-display)] text-[clamp(26px,2.6vw,36px)] leading-[1.02] tracking-[-0.02em]">
+        <h3 className="max-w-[16ch] text-balance font-[family-name:var(--font-inter)] font-bold text-[clamp(26px,2.6vw,36px)] leading-[1.02] tracking-[-0.02em]">
           {title}
         </h3>
         <p className="max-w-[40ch] text-[13.5px] leading-relaxed text-white/60">{body}</p>
